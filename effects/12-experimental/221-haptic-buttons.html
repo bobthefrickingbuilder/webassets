@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haptic Feedback Buttons</title>
+<meta name="description" content="Buttons, toggles and a slider with vibration patterns via the Vibration API (tap, success, error, heavy, detents on a slider), each paired with a matching visual 'buzz' so the feedback reads on devices without a vibration motor.">
+<meta name="tech" content="Vibration API, CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 560px; margin: 0 auto; padding: 90px 20px 40px; display: grid; gap: 18px; }
+  .support { font-size: 13px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .hb { padding: 22px 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-weight: 700; font-size: 15px; display: grid; gap: 6px; justify-items: center; }
+  .hb small { font: 11px var(--mono); color: var(--muted); font-weight: 400; }
+  .hb:active { transform: scale(.97); }
+  .buzz { animation: buzz var(--dur, .15s) linear; }
+  @keyframes buzz { 0%, 100% { translate: 0 0; } 20% { translate: -2px 1px; } 40% { translate: 2px -1px; } 60% { translate: -2px -1px; } 80% { translate: 2px 1px; } }
+  .ok { background: #10301f; border-color: #1f8f4e; } .err { background: #3a1214; border-color: #b4232b; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); }
+  .switch { width: 56px; height: 32px; border-radius: 99px; background: #333; position: relative; border: 0; cursor: pointer; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: translate .25s cubic-bezier(.3, 1.5, .5, 1); }
+  .switch[aria-checked="true"] { background: var(--accent); } .switch[aria-checked="true"]::after { translate: 24px 0; }
+  .slider { padding: 16px 18px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); }
+  .slider input { width: 100%; }
+  .ticks { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .buzz { animation: none; outline: 2px solid var(--accent); } }
+</style>
+</head>
+<body>
+<main>
+  <h1 style="margin:0">Feel the click.</h1>
+  <p class="support"></p>
+  <div class="grid">
+    <button class="hb" data-p="10">Tap<small>[10]</small></button>
+    <button class="hb" data-p="30,60,30" data-cls="ok">Success<small>[30,60,30]</small></button>
+    <button class="hb" data-p="80,40,80,40,80" data-cls="err">Error<small>[80,40,80,40,80]</small></button>
+    <button class="hb" data-p="200">Heavy<small>[200]</small></button>
+    <button class="hb" data-p="5,20,5,20,5,20,5">Purr<small>[5,20,…]</small></button>
+    <button class="hb" data-p="100,30,100,30,300">SOS-ish<small>[100,30,100,…]</small></button>
+  </div>
+  <div class="toggle"><span>Notifications</span><button class="switch" role="switch" aria-checked="false" aria-label="Notifications"></button></div>
+  <div class="slider"><label>Volume with detents <input type="range" min="0" max="100" value="40" step="1"></label><div class="ticks"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const canVibrate = "vibrate" in navigator;
+  document.querySelector(".support").textContent = canVibrate ? "Vibration API available — try on a phone with sound off." : "No Vibration API here (desktop / iOS Safari). You'll still see the visual buzz.";
+  // Visual stand-in: shake for roughly the pattern's total duration.
+  function haptic(el, pattern) {
+    if (canVibrate) navigator.vibrate(pattern);
+    const total = [].concat(pattern).reduce((a, b) => a + b, 0);
+    el.style.setProperty("--dur", Math.max(120, Math.min(total, 700)) + "ms");
+    el.classList.remove("buzz"); void el.offsetWidth; el.classList.add("buzz");
+  }
+  document.querySelectorAll(".hb").forEach((b) => b.addEventListener("click", () => {
+    haptic(b, b.dataset.p.split(",").map(Number));
+    if (b.dataset.cls) { b.classList.add(b.dataset.cls); setTimeout(() => b.classList.remove(b.dataset.cls), 600); }
+  }));
+  const sw = document.querySelector(".switch");
+  sw.onclick = () => { const on = sw.getAttribute("aria-checked") !== "true"; sw.setAttribute("aria-checked", on); haptic(sw, on ? [15, 40, 25] : [15]); };
+  // Slider: a tiny tick every 5, a stronger bump at each quarter.
+  const range = document.querySelector("input[type=range]"); let lastStep = Math.round(range.value / 5);
+  range.addEventListener("input", () => {
+    const s = Math.round(range.value / 5); if (s === lastStep) return; lastStep = s;
+    haptic(range, s % 5 === 0 ? 35 : 6);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shake to Undo</title>
+<meta name="description" content="Shake your phone to undo, like iOS: DeviceMotion acceleration is high-pass filtered and a burst of direction reversals counts as a shake, which pops an undo sheet for the last action in a small to-do list. Also 'shake for a surprise'. Desktop: shake the window by dragging the pointer back and forth fast, or press Ctrl/⌘+Z.">
+<meta name="tech" content="DeviceMotion, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 480px; margin: 0 auto; padding: 80px 18px 40px; }
+  h1 { margin: 0 0 6px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  form { display: flex; gap: 8px; margin-bottom: 12px; }
+  form input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); color: inherit; }
+  form button, .perm { padding: 12px 16px; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); animation: in .25s ease-out; }
+  li.done span { text-decoration: line-through; color: var(--muted); }
+  li button { margin-left: auto; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 18px; }
+  @keyframes in { from { opacity: 0; transform: translateY(-6px); } }
+  .sheet { position: fixed; left: 50%; bottom: 20px; width: min(360px, 92vw); transform: translate(-50%, 160%); padding: 18px; border-radius: 18px; background: #1d1e27; border: 1px solid var(--line); box-shadow: 0 20px 60px rgb(0 0 0 / .5); text-align: center; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); z-index: 9; }
+  .sheet.open { transform: translate(-50%, 0); }
+  .sheet .acts { display: flex; gap: 8px; margin-top: 12px; } .sheet .acts button { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; font-weight: 700; }
+  .sheet .undo { background: var(--accent); color: #fff; }
+  body.shaking main { animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-8px) rotate(-1deg); } 40%, 80% { transform: translateX(8px) rotate(1deg); } }
+  .meter { height: 4px; border-radius: 2px; background: var(--line); margin: 14px 0; overflow: hidden; } .meter i { display: block; height: 100%; width: 0; background: var(--accent-3); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Oops-proof list</h1>
+  <p class="hint">Add, tick or delete items, then shake to undo. <button class="perm" style="padding:4px 10px;font-size:12px">Enable motion</button></p>
+  <form><input placeholder="Add a task…" aria-label="New task"><button>Add</button></form>
+  <div class="meter" title="Shake energy"><i></i></div>
+  <ul></ul>
+</main>
+<div class="sheet" role="dialog" aria-live="assertive"><b>Undo <span class="what"></span>?</b><div class="acts"><button class="cancel">Cancel</button><button class="undo">Undo</button></div></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  let items = [{ t: "Water the plants", d: false }, { t: "Reply to Sam", d: true }, { t: "Book dentist", d: false }];
+  const undoHist = [];   // snapshots for undo
+  const ul = document.querySelector("ul");
+  const snap = (label) => undoHist.push({ label, items: JSON.parse(JSON.stringify(items)) });
+  function render() {
+    ul.innerHTML = "";
+    items.forEach((it, i) => {
+      const li = document.createElement("li"); li.className = it.d ? "done" : "";
+      li.innerHTML = `<input type="checkbox" ${it.d ? "checked" : ""} aria-label="Done"><span></span><button aria-label="Delete">×</button>`;
+      li.querySelector("span").textContent = it.t;
+      li.querySelector("input").onchange = () => { snap(`“${it.t}” ${it.d ? "unticked" : "ticked"}`); it.d = !it.d; render(); };
+      li.querySelector("button").onclick = () => { snap(`delete “${it.t}”`); items.splice(i, 1); render(); };
+      ul.appendChild(li);
+    });
+  }
+  document.querySelector("form").onsubmit = (e) => { e.preventDefault(); const inp = e.target.querySelector("input"); if (!inp.value.trim()) return; snap(`add “${inp.value.trim()}”`); items.unshift({ t: inp.value.trim(), d: false }); inp.value = ""; render(); };
+  render();
+  // --- Undo sheet ---
+  const sheet = document.querySelector(".sheet");
+  function offerUndo() {
+    document.body.classList.remove("shaking"); void document.body.offsetWidth; if (!Demo.reduced) document.body.classList.add("shaking");
+    if (!undoHist.length) { sheet.querySelector("b").textContent = "Nothing to undo — have a 🍩 instead"; sheet.querySelector(".undo").style.display = "none"; }
+    else { sheet.querySelector("b").innerHTML = `Undo ${undoHist[undoHist.length - 1].label}?`; sheet.querySelector(".undo").style.display = ""; }
+    sheet.classList.add("open"); navigator.vibrate?.(30);
+  }
+  sheet.querySelector(".undo").onclick = () => { const h = undoHist.pop(); if (h) { items = h.items; render(); } sheet.classList.remove("open"); };
+  sheet.querySelector(".cancel").onclick = () => sheet.classList.remove("open");
+  addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); offerUndo(); } });
+  // --- Shake detection ---
+  // Remove gravity with a high-pass filter, then count strong acceleration peaks that alternate in sign within 800 ms.
+  const meter = document.querySelector(".meter i");
+  let gx = 0, gy = 0, gz = 0, peaks = [], lastSign = 0, cooldown = 0, energy = 0;
+  function sample(ax, ay, az, now) {
+    gx = gx * .8 + ax * .2; gy = gy * .8 + ay * .2; gz = gz * .8 + az * .2;
+    const hx = ax - gx, hy = ay - gy, hz = az - gz, mag = Math.hypot(hx, hy, hz);
+    energy = Math.max(energy * .9, Math.min(1, mag / 25)); meter.style.width = energy * 100 + "%";
+    const dom = Math.abs(hx) > Math.abs(hy) ? hx : hy, sign = Math.sign(dom);
+    if (Math.abs(dom) > 12 && sign !== lastSign) { peaks.push(now); lastSign = sign; }
+    peaks = peaks.filter((t) => now - t < 800);
+    if (peaks.length >= 4 && now > cooldown) { cooldown = now + 1500; peaks = []; offerUndo(); }
+  }
+  function onMotion(e) { const a = e.accelerationIncludingGravity || e.acceleration; if (a && a.x != null) sample(a.x, a.y, a.z || 0, performance.now()); }
+  document.querySelector(".perm").onclick = async () => {
+    try { if (DeviceMotionEvent?.requestPermission) { const r = await DeviceMotionEvent.requestPermission(); if (r !== "granted") throw 0; } addEventListener("devicemotion", onMotion); document.querySelector(".perm").textContent = "Motion on ✓"; }
+    catch { document.querySelector(".perm").textContent = "Motion unavailable"; }
+  };
+  if (!("DeviceMotionEvent" in window) || !DeviceMotionEvent.requestPermission) addEventListener("devicemotion", onMotion);
+  // Desktop stand-in: fast left-right pointer wiggles act as a shake (pointer velocity as "acceleration").
+  let lx = null, lt = 0, lvx = 0;
+  addEventListener("pointermove", (e) => {
+    const now = performance.now(); if (lx == null) { lx = e.clientX; lt = now; return; }
+    const dt = Math.max(1, now - lt), vx = (e.clientX - lx) / dt; const ax = (vx - lvx) / dt * 400;
+    lx = e.clientX; lt = now; lvx = vx; if (e.pointerType === "mouse") sample(ax * 3, 0, 0, now);
+  });
+</script>
+</body>
+</html>

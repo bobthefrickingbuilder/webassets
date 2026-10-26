@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Battery &amp; Network-aware Animation</title>
+<meta name="description" content="Animation that degrades gracefully: reads the Battery Status API, Network Information (effectiveType, saveData), reduced-motion and a measured frame rate to pick a quality tier (full, lite, minimal), and the particle scene adapts live. Simulator toggles let you try every condition.">
+<meta name="tech" content="Battery API, Network Information API, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .panel { position: fixed; top: 64px; left: 16px; width: min(340px, calc(100vw - 32px)); padding: 16px; border-radius: 16px; background: rgb(17 18 24 / .9); border: 1px solid var(--line); font-size: 13px; display: grid; gap: 10px; }
+  .tier { font: 800 22px var(--font); }
+  .tier[data-t="full"] { color: #4ade80; } .tier[data-t="lite"] { color: #facc15; } .tier[data-t="minimal"] { color: #f87171; }
+  .sig { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-family: var(--mono); color: var(--muted); }
+  .sig b { color: var(--fg); font-weight: 600; text-align: right; }
+  .sim { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .sim label { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  select { background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<div class="panel" aria-live="polite">
+  <div>Quality tier: <span class="tier" data-t="full">full</span></div>
+  <div class="sig"></div>
+  <div class="sim"><b>Simulate</b>
+    <label>Battery <select class="s-batt"><option value="">real</option><option value="80c">80% charging</option><option value="40">40%</option><option value="12">12% (low)</option></select></label>
+    <label>Network <select class="s-net"><option value="">real</option><option>4g</option><option>3g</option><option>2g</option><option value="save">save-data</option></select></label>
+    <label>Reduced motion <input type="checkbox" class="s-rm"></label>
+  </div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const signals = { battery: null, charging: null, net: null, saveData: false, reduced: Demo.reduced, fps: 60 };
+  // --- Real signals (each API is optional); wired up once everything below exists ---
+  function listen() {
+    navigator.getBattery?.().then((b) => {
+      const upd = () => { signals.battery = b.level; signals.charging = b.charging; decide(); };
+      b.addEventListener("levelchange", upd); b.addEventListener("chargingchange", upd); upd();
+    });
+    const conn = navigator.connection;
+    if (conn) { const upd = () => { signals.net = conn.effectiveType; signals.saveData = !!conn.saveData; decide(); }; conn.addEventListener?.("change", upd); upd(); }
+    matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => { signals.reduced = e.matches; decide(); });
+  }
+  // --- Simulator overrides ---
+  const sim = { batt: "", net: "", rm: false };
+  document.querySelector(".s-batt").onchange = (e) => { sim.batt = e.target.value; decide(); };
+  document.querySelector(".s-net").onchange = (e) => { sim.net = e.target.value; decide(); };
+  document.querySelector(".s-rm").onchange = (e) => { sim.rm = e.target.checked; decide(); };
+  // --- Policy: combine everything into one tier ---
+  let tier = "full";
+  function effective() {
+    const s = { ...signals };
+    if (sim.batt) { s.battery = parseInt(sim.batt) / 100; s.charging = sim.batt.endsWith("c"); }
+    if (sim.net === "save") s.saveData = true; else if (sim.net) s.net = sim.net;
+    if (sim.rm) s.reduced = true;
+    return s;
+  }
+  function decide() {
+    const s = effective(), why = [];
+    let t = 2;   // 2 full, 1 lite, 0 minimal
+    if (s.reduced) { t = 0; why.push("reduced motion"); }
+    if (s.saveData) { t = Math.min(t, 0); why.push("save-data"); }
+    if (s.net === "2g" || s.net === "slow-2g") { t = Math.min(t, 0); why.push("slow network"); } else if (s.net === "3g") { t = Math.min(t, 1); why.push("3g"); }
+    if (s.battery != null && !s.charging) { if (s.battery < .2) { t = Math.min(t, 0); why.push("low battery"); } else if (s.battery < .5) { t = Math.min(t, 1); why.push("battery < 50%"); } }
+    if (s.fps < 40) { t = Math.min(t, 1); why.push("low frame rate"); }
+    const prev = tier; tier = ["minimal", "lite", "full"][t];
+    const el = document.querySelector(".tier"); el.textContent = tier + (why.length ? " — " + why.join(", ") : ""); el.dataset.t = tier;
+    const f = (v) => (v == null ? "n/a" : v);
+    document.querySelector(".sig").innerHTML = `<span>battery</span><b>${s.battery == null ? "n/a" : Math.round(s.battery * 100) + "%" + (s.charging ? " ⚡" : "")}</b><span>network</span><b>${f(s.net)}${s.saveData ? " (save-data)" : ""}</b><span>reduced motion</span><b>${s.reduced}</b><span>measured fps</span><b>${Math.round(s.fps)}</b>`;
+    if (!cfg || tier !== prev) configure();
+  }
+  // --- The animated scene: tier sets particle count, frame cap, blur glow and links ---
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, parts = [], cfg;
+  function configure() {
+    cfg = { full: { n: 220, fps: 60, links: true, glow: true, dpr: 2 }, lite: { n: 80, fps: 30, links: false, glow: false, dpr: 1 }, minimal: { n: 24, fps: 0, links: false, glow: false, dpr: 1 } }[tier];
+    dpr = Math.min(devicePixelRatio, cfg.dpr); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; W = innerWidth; H = innerHeight; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    while (parts.length < cfg.n) parts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * 40, vy: (Math.random() - .5) * 40, r: 1 + Math.random() * 3 });
+    parts.length = cfg.n; draw(0);
+  }
+  addEventListener("resize", configure);
+  function draw(dt) {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      p.x = (p.x + p.vx * dt + W) % W; p.y = (p.y + p.vy * dt + H) % H;
+      if (cfg.glow) { ctx.fillStyle = "rgb(124 92 255 / .15)"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, 7); ctx.fill(); }
+      ctx.fillStyle = "#b9a8ff"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+    if (cfg.links) { ctx.strokeStyle = "rgb(124 92 255 / .25)"; ctx.beginPath(); for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) { const a = parts[i], b = parts[j]; if (Math.abs(a.x - b.x) < 90 && Math.abs(a.y - b.y) < 90 && Math.hypot(a.x - b.x, a.y - b.y) < 90) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } } ctx.stroke(); }
+  }
+  let last = performance.now(), acc = 0, frames = 0, fpsT = 0;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, .1); last = now; acc += dt;
+    frames++; fpsT += dt; if (fpsT > 1) { signals.fps = frames / fpsT; frames = 0; fpsT = 0; decide(); }
+    // the frame cap (lite = 30 fps) and the static minimal tier save work and battery
+    if (cfg.fps && acc >= 1 / cfg.fps - .002) { draw(acc); acc = 0; }
+    requestAnimationFrame(frame);
+  }
+  listen(); decide(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

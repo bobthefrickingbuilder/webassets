@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Konami Code Easter Eggs</title>
+<meta name="description" content="A tiny plug-in framework for secret key sequences: register any sequence with a surprise (the Konami code rains unicorns, 'barrel' does a barrel roll, 'disco' starts a party, 'matrix' goes green). Live progress dots show how far into a code you are.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; transition: filter .6s; }
+  main { max-width: 760px; margin: 0 auto; padding: 100px 24px; }
+  h1 { font-size: clamp(36px, 6vw, 64px); letter-spacing: -.03em; margin: 0 0 10px; }
+  kbd { font: 600 13px var(--mono); padding: 3px 7px; border-radius: 6px; background: var(--bg-2); border: 1px solid var(--line); }
+  .codes { display: grid; gap: 10px; margin-top: 28px; }
+  .code { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+  .code .name { min-width: 120px; font-weight: 700; }
+  .dots { display: flex; gap: 4px; margin-left: auto; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background .15s, transform .15s; }
+  .dots i.on { background: var(--accent); transform: scale(1.25); }
+  .code.done { border-color: var(--accent); }
+  .pad { display: none; gap: 6px; margin-top: 20px; flex-wrap: wrap; }
+  .pad button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font: 600 14px var(--mono); }
+  @media (pointer: coarse) { .pad { display: flex; } }
+  .rain { position: fixed; top: -60px; font-size: 40px; pointer-events: none; animation: fall linear forwards; z-index: 10; }
+  @keyframes fall { to { transform: translateY(calc(100vh + 120px)) rotate(360deg); } }
+  body.barrel { animation: roll 1.2s cubic-bezier(.6, 0, .3, 1); }
+  @keyframes roll { to { transform: rotate(360deg); } }
+  body.disco { animation: disco .4s steps(1) infinite; }
+  @keyframes disco { 0% { filter: hue-rotate(0); } 25% { filter: hue-rotate(90deg) saturate(2); } 50% { filter: hue-rotate(180deg); } 75% { filter: hue-rotate(270deg) saturate(2); } }
+  body.matrix { filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(5) brightness(.9); }
+  @media (prefers-reduced-motion: reduce) { body.barrel, body.disco { animation: none; } .rain { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Psst… there are secrets here.</h1>
+  <p>Type one of these sequences anywhere on the page. Progress lights up as you go; a wrong key resets that code.</p>
+  <div class="codes"></div>
+  <div class="pad" aria-label="On-screen keys for touch devices"></div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // --- The framework: register(name, sequence, effect). Sequences are arrays of KeyboardEvent.key values. ---
+  const Secrets = (() => {
+    const list = [];
+    function register(name, seq, fn) { const s = { name, seq: seq.map((k) => k.toLowerCase()), fn, i: 0 }; list.push(s); return s; }
+    function press(key) {
+      key = key.toLowerCase();
+      for (const s of list) {
+        // on a miss, fall back to 1 if the key restarts the sequence (so "uup" still works for up-up-…)
+        s.i = s.seq[s.i] === key ? s.i + 1 : s.seq[0] === key ? 1 : 0;
+        if (s.i === s.seq.length) { s.i = 0; s.fn(); onFire(s); }
+        onProgress(s);
+      }
+    }
+    let onProgress = () => {}, onFire = () => {};
+    addEventListener("keydown", (e) => { if (!e.repeat && !e.metaKey && !e.ctrlKey) press(e.key); });
+    return { register, press, list, set onProgress(f) { onProgress = f; }, set onFire(f) { onFire = f; } };
+  })();
+
+  // --- Surprises ---
+  function rain(chars, n = 40) {
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement("div"); el.className = "rain"; el.textContent = chars[i % chars.length];
+      el.style.left = Math.random() * 100 + "vw"; el.style.animationDuration = 1.8 + Math.random() * 2 + "s"; el.style.animationDelay = Math.random() * 1.5 + "s";
+      el.addEventListener("animationend", () => el.remove()); document.body.appendChild(el);
+    }
+  }
+  const once = (cls, ms) => { document.body.classList.remove(cls); void document.body.offsetWidth; document.body.classList.add(cls); setTimeout(() => document.body.classList.remove(cls), ms); };
+  Secrets.register("Konami", ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"], () => rain(["🦄", "🌈", "✨"], 60));
+  Secrets.register("barrel", [..."barrel"], () => once("barrel", 1300));
+  Secrets.register("disco", [..."disco"], () => once("disco", 4000));
+  Secrets.register("matrix", [..."matrix"], () => document.body.classList.toggle("matrix"));
+  Secrets.register("cake", [..."cake"], () => rain(["🎂", "🧁", "🍰", "🎉"], 30));
+
+  // --- UI: one row per code with progress dots ---
+  const pretty = (k) => ({ arrowup: "↑", arrowdown: "↓", arrowleft: "←", arrowright: "→" }[k] || k.toUpperCase());
+  const rows = new Map();
+  for (const s of Secrets.list) {
+    const row = document.createElement("div"); row.className = "code";
+    row.innerHTML = `<span class="name">${s.name}</span><span>${s.seq.map((k) => `<kbd>${pretty(k)}</kbd>`).join(" ")}</span><span class="dots">${s.seq.map(() => "<i></i>").join("")}</span>`;
+    document.querySelector(".codes").appendChild(row); rows.set(s, row);
+  }
+  Secrets.onProgress = (s) => rows.get(s).querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i < s.i));
+  Secrets.onFire = (s) => { const r = rows.get(s); r.classList.add("done"); setTimeout(() => r.classList.remove("done"), 1500); };
+  // touch keypad for phones (no keyboard)
+  const pad = document.querySelector(".pad");
+  ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "b", "a"].forEach((k) => { const b = document.createElement("button"); b.textContent = pretty(k.toLowerCase()); b.onclick = () => Secrets.press(k); pad.appendChild(b); });
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Text-to-Particles Generator</title>
+<meta name="description" content="Type anything and thousands of particles fly into the shape of your words: the text is rasterised to an offscreen canvas, sampled into target points, and particles steer there with arrive behaviour, colour gradients and pointer repulsion. Emoji and shapes work too.">
+<meta name="tech" content="Canvas, Particles">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #07070c; }
+  form { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; width: min(520px, 92vw); }
+  form input { flex: 1; padding: 14px 18px; border-radius: 999px; border: 1px solid var(--line); background: rgb(20 20 30 / .9); color: inherit; font-size: 16px; }
+  form button { padding: 0 18px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
+  .chips { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .chips button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 13px; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Particles forming the typed text"></canvas>
+<div class="chips"><button>HELLO</button><button>✦ 2026 ✦</button><button>🐙</button><button>♥</button><button>WEB ASSETS</button></div>
+<form><input value="Type anything" aria-label="Text to form" maxlength="24"><button>Form</button></form>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, parts = [], targets = [];
+  const off = document.createElement("canvas"), og = off.getContext("2d", { willReadFrequently: true });
+  function resize() { dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  // Rasterise text, then keep pixels on a grid whose spacing adapts so we get roughly MAX points.
+  function sample(text) {
+    const MAX = Math.min(3200, Math.floor(W * H / 260));
+    off.width = W; off.height = H; og.clearRect(0, 0, W, H);
+    let size = Math.min(H * .38, W / Math.max(2.5, text.length * .62));
+    og.font = `900 ${size}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+    const tw = og.measureText(text).width; if (tw > W * .9) { size *= W * .9 / tw; og.font = `900 ${size}px system-ui, sans-serif`; }
+    og.textAlign = "center"; og.textBaseline = "middle"; og.fillStyle = "#fff"; og.fillText(text, W / 2, H * .47);
+    const d = og.getImageData(0, 0, W, H).data, pts = [];
+    let step = 3;
+    for (;;) { pts.length = 0; for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) { const i = (y * W + x) * 4; if (d[i + 3] > 128) pts.push({ x, y, r: d[i], g: d[i + 1], b: d[i + 2] }); } if (pts.length <= MAX || step > 12) break; step++; }
+    return pts;
+  }
+  function setText(text) {
+    targets = sample(text);
+    // shuffle so particles cross the screen in interesting paths instead of sliding in rows
+    for (let i = targets.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [targets[i], targets[j]] = [targets[j], targets[i]]; }
+    while (parts.length < targets.length) parts.push({ x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, size: 1 + Math.random() * 1.8 });
+    parts.forEach((p, i) => { p.t = targets[i] || null; p.hue = 0; });
+    const isEmoji = targets.some((t) => t.r !== t.g || t.g !== t.b);   // colour glyphs keep their own colours
+    parts.forEach((p) => (p.col = p.t ? (isEmoji ? `rgb(${p.t.r} ${p.t.g} ${p.t.b})` : `hsl(${250 + (p.t.x / W) * 120} 90% ${60 + Math.random() * 15}%)`) : "rgb(255 255 255 / .25)"));
+  }
+  let mx = -999, my = -999;
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  addEventListener("pointerleave", () => (mx = my = -999));
+  const input = document.querySelector("input");
+  document.querySelector("form").onsubmit = (e) => { e.preventDefault(); setText(input.value || " "); };
+  document.querySelectorAll(".chips button").forEach((b) => (b.onclick = () => { input.value = b.textContent; setText(b.textContent); }));
+  // explode on click for fun
+  cv.addEventListener("pointerdown", () => parts.forEach((p) => { const a = Math.random() * 7, s = 300 + Math.random() * 700; p.vx += Math.cos(a) * s; p.vy += Math.sin(a) * s; }));
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    ctx.fillStyle = "rgb(7 7 12 / .35)"; ctx.fillRect(0, 0, W, H);   // short motion trails
+    for (const p of parts) {
+      if (p.t) {
+        // "arrive" steering: desired velocity toward the target, slowing inside 80px
+        const dx = p.t.x - p.x, dy = p.t.y - p.y, d = Math.hypot(dx, dy) || 1, speed = Math.min(900, d * 7);
+        p.vx += ((dx / d) * speed - p.vx) * 6 * dt; p.vy += ((dy / d) * speed - p.vy) * 6 * dt;
+      } else { p.vx += (Math.random() - .5) * 20; p.vy += (Math.random() - .5) * 20; p.vx *= .96; p.vy *= .96; }
+      const ex = p.x - mx, ey = p.y - my, ed = ex * ex + ey * ey;
+      if (ed < 8000) { const f = (8000 - ed) / 8000 * 2500 * dt; const l = Math.sqrt(ed) || 1; p.vx += ex / l * f * 60; p.vy += ey / l * f * 60; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (!p.t) { if (p.x < 0) p.x += W; if (p.x > W) p.x -= W; if (p.y < 0) p.y += H; if (p.y > H) p.y -= H; }
+      ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener("resize", () => { resize(); setText(input.value); });
+  resize(); setText(input.value);
+  if (Demo.reduced) parts.forEach((p) => p.t && ((p.x = p.t.x), (p.y = p.t.y)));
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

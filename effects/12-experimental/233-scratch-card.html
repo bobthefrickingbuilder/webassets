@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scratch-off Reveal Card</title>
+<meta name="description" content="A lottery-style scratch card: a foil layer drawn on canvas is erased with destination-out strokes as you drag, with metallic shimmer, scratch particles and a progress meter that auto-reveals the prize (with confetti) once 55% is cleared.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #3b2a6b, #0d0b18 70%); padding: 70px 16px 20px; }
+  .card { position: relative; width: min(420px, 90vw); aspect-ratio: 7 / 4; border-radius: 22px; overflow: hidden; box-shadow: 0 30px 70px rgb(0 0 0 / .5); }
+  .prize { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: linear-gradient(135deg, #fff7d6, #ffe08a); color: #4a2a00; }
+  .prize b { font: 900 clamp(38px, 10vw, 64px)/1 var(--font); letter-spacing: -.03em; }
+  .prize span { font-weight: 700; opacity: .7; }
+  canvas.foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; transition: opacity .6s; }
+  canvas.foil.gone { opacity: 0; pointer-events: none; }
+  .meter { width: min(420px, 90vw); height: 6px; border-radius: 3px; background: rgb(255 255 255 / .1); margin-top: 16px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd36e, #ff7ad9); transition: width .2s; }
+  .row { display: flex; justify-content: space-between; width: min(420px, 90vw); margin-top: 10px; color: var(--muted); font-size: 13px; }
+  .row button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  canvas.fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+</style>
+</head>
+<body>
+<div>
+  <div class="card"><div class="prize" aria-live="polite"><span>You won</span><b class="amt">20% OFF</b><span>Code: SCRATCH20</span></div><canvas class="foil" aria-label="Scratch area. Drag to scratch off the foil."></canvas></div>
+  <div class="meter"><i></i></div>
+  <div class="row"><span class="pct">Scratch to reveal</span><button class="again">New card</button></div>
+</div>
+<canvas class="fx" aria-hidden="true"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const foil = document.querySelector(".foil"), g = foil.getContext("2d", { willReadFrequently: true });
+  const fx = document.querySelector(".fx"), fg = fx.getContext("2d");
+  const PRIZES = [["20% OFF", "SCRATCH20"], ["FREE SHIPPING", "SHIPFREE"], ["$10 CREDIT", "TENNER"], ["2-FOR-1", "TWOFER"]];
+  let W, H, dpr, scratched = 0, revealed = false, bits = [], last = null;
+  function newCard() {
+    const [amt, code] = PRIZES[Math.floor(Math.random() * PRIZES.length)];
+    document.querySelector(".amt").textContent = amt; document.querySelector(".prize span:last-child").textContent = "Code: " + code;
+    dpr = Math.min(devicePixelRatio, 2); W = foil.clientWidth; H = foil.clientHeight; foil.width = W * dpr; foil.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // foil: brushed-metal gradient + noise + embossed text
+    g.globalCompositeOperation = "source-over";
+    const lg = g.createLinearGradient(0, 0, W, H); ["#b8b8c8", "#e9e9f2", "#9c9cad", "#dcdce6", "#a9a9b8"].forEach((c, i) => lg.addColorStop(i / 4, c));
+    g.fillStyle = lg; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 1400; i++) { g.fillStyle = `rgb(255 255 255 / ${Math.random() * .25})`; g.fillRect(Math.random() * W, Math.random() * H, Math.random() * 30, .7); }
+    g.font = `900 ${H * .16}px system-ui`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "rgb(255 255 255 / .6)"; g.fillText("SCRATCH HERE", W / 2 + 1, H / 2 + 1); g.fillStyle = "rgb(80 80 100 / .45)"; g.fillText("SCRATCH HERE", W / 2, H / 2);
+    g.font = "24px system-ui"; ["★", "♣", "♦", "♥", "♠"].forEach((s, i) => { g.fillStyle = "rgb(90 90 110 / .25)"; g.fillText(s, W * (.1 + i * .2), H * .2); g.fillText(s, W * (.2 + i * .2), H * .82); });
+    foil.classList.remove("gone"); scratched = 0; revealed = false; update(0);
+  }
+  function scratch(x0, y0, x1, y1) {
+    g.globalCompositeOperation = "destination-out"; g.lineCap = g.lineJoin = "round"; g.lineWidth = 34;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    // flakes fly off the foil
+    const r = foil.getBoundingClientRect();
+    for (let i = 0; i < 3; i++) bits.push({ x: r.left + x1, y: r.top + y1, vx: (Math.random() - .5) * 200, vy: -Math.random() * 150, life: 1, s: 2 + Math.random() * 3 });
+  }
+  // Measure the cleared fraction on a coarse grid (cheap enough to run on pointerup and every few moves).
+  function measure() {
+    const d = g.getImageData(0, 0, foil.width, foil.height).data; let clear = 0, n = 0;
+    for (let i = 3; i < d.length; i += 4 * 37) { n++; if (d[i] < 40) clear++; }
+    return clear / n;
+  }
+  function update(p) {
+    scratched = p; document.querySelector(".meter i").style.width = Math.min(100, p / .55 * 100) + "%";
+    document.querySelector(".pct").textContent = revealed ? "Revealed!" : p ? Math.round(p * 100) + "% scratched" : "Scratch to reveal";
+    if (p > .55 && !revealed) { revealed = true; foil.classList.add("gone"); confetti(); update(p); }
+  }
+  let moves = 0;
+  foil.addEventListener("pointerdown", (e) => { last = [e.offsetX, e.offsetY]; scratch(...last, ...last); foil.setPointerCapture(e.pointerId); });
+  foil.addEventListener("pointermove", (e) => { if (!last) return; const p = [e.offsetX, e.offsetY]; scratch(...last, ...p); last = p; if (++moves % 8 === 0) update(measure()); });
+  foil.addEventListener("pointerup", () => { last = null; update(measure()); });
+  document.querySelector(".again").onclick = newCard;
+  function confetti() { const r = foil.getBoundingClientRect(); for (let i = 0; i < 150; i++) bits.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, vx: (Math.random() - .5) * 900, vy: -Math.random() * 800, life: 1.6, s: 5, c: `hsl(${Math.random() * 360} 90% 60%)` }); }
+  function frame() {
+    fx.width = innerWidth; fx.height = innerHeight;
+    for (const b of bits) { b.vy += 900 / 60; b.x += b.vx / 60; b.y += b.vy / 60; b.life -= 1 / 60; fg.fillStyle = b.c || `rgb(200 200 215 / ${b.life})`; fg.fillRect(b.x, b.y, b.s, b.s * (b.c ? .5 : 1)); }
+    bits = bits.filter((b) => b.life > 0 && b.y < innerHeight + 20);
+    requestAnimationFrame(frame);
+  }
+  addEventListener("resize", () => !revealed && newCard());
+  newCard(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

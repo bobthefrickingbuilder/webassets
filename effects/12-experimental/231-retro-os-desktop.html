@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retro OS Desktop</title>
+<meta name="description" content="A 90s-style desktop in the browser: draggable, resizable, focusable windows with minimise/maximise/close, desktop icons, a taskbar with clock, a Start menu, a working Notepad, Paint, Minesweeper-lite and an About box, all with chunky bevelled chrome.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #008080; color: #000; font: 13px/1.3 Tahoma, "MS Sans Serif", system-ui, sans-serif; }
+  .bevel { background: #c0c0c0; box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf; }
+  .sunk { background: #fff; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a; }
+  .desk { position: fixed; inset: 48px 0 36px; }
+  .icon { position: absolute; width: 76px; text-align: center; color: #fff; cursor: pointer; padding: 4px; user-select: none; }
+  .icon .g { font-size: 34px; display: block; filter: drop-shadow(1px 1px 0 #000); }
+  .icon span { text-shadow: 1px 1px #000; }
+  .icon.sel span { background: #000080; outline: 1px dotted #fff; }
+  .win { position: absolute; min-width: 220px; min-height: 120px; display: flex; flex-direction: column; padding: 3px; }
+  .win.max { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
+  .win.open-anim { animation: open .18s steps(4); }
+  @keyframes open { from { transform: scale(.3); opacity: .3; } }
+  .bar { display: flex; align-items: center; gap: 4px; padding: 3px 3px 3px 6px; background: linear-gradient(90deg, #808080, #b5b5b5); color: #dcdcdc; font-weight: bold; cursor: move; user-select: none; touch-action: none; }
+  .win.active .bar { background: linear-gradient(90deg, #000080, #1084d0); color: #fff; }
+  .bar .t { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .bar button { width: 18px; height: 16px; padding: 0; font: bold 11px/1 monospace; border: 0; cursor: pointer; }
+  .body { flex: 1; margin-top: 3px; overflow: auto; position: relative; }
+  .grip { position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, #808080 50% 60%, transparent 60% 70%, #808080 70% 80%, transparent 80%); touch-action: none; }
+  textarea { width: 100%; height: 100%; border: 0; resize: none; font: 13px monospace; padding: 4px; outline: 0; }
+  .task { position: fixed; left: 0; right: 0; bottom: 0; height: 36px; display: flex; align-items: center; gap: 4px; padding: 3px; z-index: 9999; }
+  .start { font-weight: bold; padding: 4px 8px; border: 0; cursor: pointer; display: flex; gap: 4px; align-items: center; height: 28px; }
+  .start[aria-expanded="true"], .tb.on { box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080; }
+  .tb { height: 28px; min-width: 120px; max-width: 160px; border: 0; text-align: left; padding: 0 8px; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .clock { margin-left: auto; padding: 5px 10px; }
+  .menu { position: fixed; left: 2px; bottom: 36px; width: 210px; display: none; z-index: 10000; padding: 3px 3px 3px 28px; }
+  .menu::before { content: "Retro95"; position: absolute; left: 3px; top: 3px; bottom: 3px; width: 22px; background: linear-gradient(#000080, #1084d0); color: #fff; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 900; font-size: 15px; padding-top: 6px; }
+  .menu.open { display: block; }
+  .menu button { display: flex; gap: 8px; align-items: center; width: 100%; padding: 6px 8px; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; }
+  .menu button:hover, .menu button:focus { background: #000080; color: #fff; }
+  .mines { display: grid; gap: 0; }
+  .mines button { width: 22px; height: 22px; padding: 0; border: 0; font: bold 12px monospace; cursor: pointer; }
+  .mines button.open { box-shadow: none; background: #bdbdbd; outline: 1px solid #8a8a8a; }
+  canvas.paint { background: #fff; cursor: crosshair; display: block; touch-action: none; }
+  .pal { display: flex; gap: 2px; padding: 3px; flex-wrap: wrap; }
+  .pal i { width: 16px; height: 16px; cursor: pointer; outline: 1px solid #808080; }
+</style>
+</head>
+<body>
+<div class="desk"></div>
+<div class="menu bevel" role="menu"></div>
+<div class="task bevel"><button class="start bevel" aria-expanded="false">🪟 Start</button><div class="tbs" style="display:flex;gap:4px;overflow:hidden"></div><span class="clock sunk" style="background:#c0c0c0"></span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const desk = document.querySelector(".desk"), tbs = document.querySelector(".tbs"), menu = document.querySelector(".menu"), startBtn = document.querySelector(".start");
+  let z = 10, wins = [];
+  const APPS = {
+    notepad: { title: "Notepad", icon: "📝", w: 360, h: 260, body: (b) => { const t = document.createElement("textarea"); t.value = "Dear diary,\n\nToday I dragged a window across the screen.\nIt was glorious.\n"; b.classList.add("sunk"); b.appendChild(t); } },
+    paint: { title: "Paint", icon: "🎨", w: 420, h: 320, body: paint },
+    mines: { title: "Minesweeper", icon: "💣", w: 230, h: 270, body: mines },
+    about: { title: "About Retro95", icon: "💻", w: 300, h: 170, body: (b) => (b.innerHTML = `<div style="padding:12px;display:flex;gap:12px"><div style="font-size:44px">💻</div><div><b>Retro95</b><br>Version 4.00.950<br><br>Memory: 640 KB (ought to be enough)</div></div>`) },
+    docs: { title: "My Documents", icon: "📁", w: 340, h: 220, body: (b) => { b.classList.add("sunk"); b.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">${["📄 resume.doc", "📄 todo.txt", "🖼️ cat.bmp", "📁 secret"].map((x) => `<div style="width:80px;text-align:center">${x.split(" ")[0]}<br>${x.split(" ")[1]}</div>`).join("")}</div>`; } },
+  };
+  // desktop icons
+  Object.entries(APPS).forEach(([k, a], i) => {
+    const ic = document.createElement("div"); ic.className = "icon"; ic.tabIndex = 0; ic.style.left = 12 + "px"; ic.style.top = 12 + i * 84 + "px";
+    ic.innerHTML = `<span class="g">${a.icon}</span><span>${a.title}</span>`;
+    ic.onclick = () => { document.querySelectorAll(".icon").forEach((x) => x.classList.toggle("sel", x === ic)); };
+    ic.ondblclick = () => open(k); ic.onkeydown = (e) => e.key === "Enter" && open(k);
+    // single tap opens on touch
+    ic.addEventListener("pointerup", (e) => e.pointerType === "touch" && open(k));
+    desk.appendChild(ic);
+  });
+  function focusWin(w) { wins.forEach((x) => { x.el.classList.toggle("active", x === w); x.tb.classList.toggle("on", x === w && !x.min); }); if (w) w.el.style.zIndex = ++z; }
+  function open(kind) {
+    const a = APPS[kind], el = document.createElement("div"); el.className = "win bevel open-anim";
+    const n = wins.length, W = Math.min(a.w, innerWidth - 20), H = Math.min(a.h, innerHeight - 120);
+    Object.assign(el.style, { left: Math.min(120 + n * 26, innerWidth - W - 10) + "px", top: 20 + (n % 6) * 26 + "px", width: W + "px", height: H + "px" });
+    el.innerHTML = `<div class="bar"><span>${a.icon}</span><span class="t">${a.title}</span><button class="bevel" aria-label="Minimise">_</button><button class="bevel" aria-label="Maximise">□</button><button class="bevel" aria-label="Close">×</button></div><div class="body"></div><div class="grip"></div>`;
+    desk.appendChild(el); a.body(el.querySelector(".body"));
+    const tb = document.createElement("button"); tb.className = "tb bevel"; tb.textContent = a.icon + " " + a.title; tbs.appendChild(tb);
+    const w = { el, tb, min: false }; wins.push(w);
+    const [minB, maxB, closeB] = el.querySelectorAll(".bar button");
+    minB.onclick = () => { w.min = true; el.style.display = "none"; focusWin(null); };
+    maxB.onclick = () => el.classList.toggle("max");
+    closeB.onclick = () => { el.remove(); tb.remove(); wins = wins.filter((x) => x !== w); };
+    tb.onclick = () => { if (w.min) { w.min = false; el.style.display = ""; focusWin(w); } else if (el.classList.contains("active")) { minB.click(); } else focusWin(w); };
+    el.addEventListener("pointerdown", () => focusWin(w));
+    drag(el.querySelector(".bar"), (dx, dy, s) => { if (el.classList.contains("max")) return; el.style.left = s.l + dx + "px"; el.style.top = Math.max(0, s.t + dy) + "px"; }, () => ({ l: el.offsetLeft, t: el.offsetTop }));
+    el.querySelector(".bar").ondblclick = () => maxB.click();
+    drag(el.querySelector(".grip"), (dx, dy, s) => { el.style.width = Math.max(220, s.w + dx) + "px"; el.style.height = Math.max(120, s.h + dy) + "px"; }, () => ({ w: el.offsetWidth, h: el.offsetHeight }));
+    focusWin(w); menu.classList.remove("open"); startBtn.setAttribute("aria-expanded", false);
+  }
+  function drag(handle, move, start) {
+    handle.addEventListener("pointerdown", (e) => {
+      if (e.target.tagName === "BUTTON") return;
+      const sx = e.clientX, sy = e.clientY, s = start(); handle.setPointerCapture(e.pointerId);
+      const mv = (ev) => move(ev.clientX - sx, ev.clientY - sy, s);
+      handle.addEventListener("pointermove", mv);
+      handle.addEventListener("pointerup", () => handle.removeEventListener("pointermove", mv), { once: true });
+    });
+  }
+  // Start menu
+  Object.entries(APPS).forEach(([k, a]) => { const b = document.createElement("button"); b.setAttribute("role", "menuitem"); b.innerHTML = `<span style="font-size:20px">${a.icon}</span>${a.title}`; b.onclick = () => open(k); menu.appendChild(b); });
+  const sd = document.createElement("button"); sd.innerHTML = '<span style="font-size:20px">⏻</span>Shut Down…'; sd.onclick = () => { document.body.innerHTML = '<div style="position:fixed;inset:0;background:#000;color:#ff8c00;display:grid;place-items:center;font:bold 22px system-ui;text-align:center">It is now safe to turn off<br>your computer.<br><br><a href="" style="color:#888;font-size:14px">(reboot)</a></div>'; }; menu.appendChild(sd);
+  startBtn.onclick = (e) => { e.stopPropagation(); const o = menu.classList.toggle("open"); startBtn.setAttribute("aria-expanded", o); if (o) menu.querySelector("button").focus(); };
+  addEventListener("pointerdown", (e) => { if (!e.target.closest(".menu,.start")) { menu.classList.remove("open"); startBtn.setAttribute("aria-expanded", false); } });
+  const clock = document.querySelector(".clock"); const tick = () => (clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); tick(); setInterval(tick, 10000);
+  // --- Apps ---
+  function paint(b) {
+    const cols = ["#000", "#808080", "#800000", "#808000", "#008000", "#008080", "#000080", "#800080", "#fff", "#c0c0c0", "#f00", "#ff0", "#0f0", "#0ff", "#00f", "#f0f"];
+    b.innerHTML = `<div class="pal">${cols.map((c) => `<i style="background:${c}" data-c="${c}"></i>`).join("")}</div>`;
+    const cv = document.createElement("canvas"); cv.className = "paint"; b.appendChild(cv);
+    const fit = () => { const img = cv.width ? cv.getContext("2d").getImageData(0, 0, cv.width, cv.height) : null; cv.width = b.clientWidth; cv.height = Math.max(50, b.clientHeight - 26); if (img) cv.getContext("2d").putImageData(img, 0, 0); };
+    new ResizeObserver(fit).observe(b);
+    let col = "#000", down = false, lx, ly; const g = () => cv.getContext("2d");
+    b.querySelectorAll("[data-c]").forEach((i) => (i.onclick = () => (col = i.dataset.c)));
+    cv.onpointerdown = (e) => { down = true; lx = e.offsetX; ly = e.offsetY; cv.setPointerCapture(e.pointerId); };
+    cv.onpointermove = (e) => { if (!down) return; const c = g(); c.strokeStyle = col; c.lineWidth = 3; c.lineCap = "round"; c.beginPath(); c.moveTo(lx, ly); c.lineTo(e.offsetX, e.offsetY); c.stroke(); lx = e.offsetX; ly = e.offsetY; };
+    cv.onpointerup = () => (down = false);
+  }
+  function mines(b) {
+    const N = 9, M = 10; let board, over;
+    const reset = () => {
+      over = false; board = Array.from({ length: N * N }, () => ({ m: false, o: false, f: false, n: 0 }));
+      let k = 0; while (k < M) { const i = Math.floor(Math.random() * N * N); if (!board[i].m) { board[i].m = true; k++; } }
+      board.forEach((c, i) => (c.n = nb(i).filter((j) => board[j].m).length)); render();
+    };
+    const nb = (i) => { const x = i % N, y = (i / N) | 0, r = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if ((dx || dy) && nx >= 0 && ny >= 0 && nx < N && ny < N) r.push(ny * N + nx); } return r; };
+    const reveal = (i) => { const c = board[i]; if (c.o || c.f) return; c.o = true; if (c.m) { over = true; board.forEach((d) => d.m && (d.o = true)); } else if (!c.n) nb(i).forEach(reveal); };
+    const COL = ["", "#00f", "#080", "#f00", "#008", "#800", "#088", "#000", "#888"];
+    function render() {
+      const won = board.every((c) => c.m || c.o);
+      b.innerHTML = `<div style="padding:6px;text-align:center"><button class="bevel face" style="border:0;font-size:18px;width:30px;height:30px;cursor:pointer">${over ? "😵" : won ? "😎" : "🙂"}</button></div><div class="mines" style="grid-template-columns:repeat(${N},22px);justify-content:center"></div>`;
+      b.querySelector(".face").onclick = reset;
+      const g = b.querySelector(".mines");
+      board.forEach((c, i) => {
+        const btn = document.createElement("button"); btn.className = "bevel" + (c.o ? " open" : "");
+        btn.textContent = c.o ? (c.m ? "💣" : c.n || "") : c.f ? "🚩" : ""; btn.style.color = COL[c.n];
+        btn.onclick = () => { if (!over && !won) { reveal(i); render(); } };
+        btn.oncontextmenu = (e) => { e.preventDefault(); if (!c.o) { c.f = !c.f; render(); } };
+        g.appendChild(btn);
+      });
+    }
+    reset();
+  }
+  open("about"); setTimeout(() => open("notepad"), Demo.reduced ? 0 : 250);
+</script>
+</body>
+</html>

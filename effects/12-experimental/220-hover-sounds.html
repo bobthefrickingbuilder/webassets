@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generative Hover Sounds</title>
+<meta name="description" content="A grid of tiles that play soft synthesized notes as you hover across them, mapped to a pentatonic scale so any path sounds musical, through a shared reverb and delay bus. Sound is opt-in, with volume and scale controls and a drone pad.">
+<meta name="tech" content="Web Audio, CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; padding: 80px 16px 100px; }
+  .grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; width: min(92vw, 760px); }
+  .tile { aspect-ratio: 1; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); transition: background .6s, transform .6s, box-shadow .6s; }
+  .tile.hit { transition: none; background: hsl(var(--h) 90% 62%); transform: scale(.92); box-shadow: 0 0 30px hsl(var(--h) 90% 60% / .7); }
+  .ui { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; padding: 10px 14px; border-radius: 16px; background: rgb(20 20 28 / .9); font-size: 13px; }
+  .ui button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+  select { background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+</style>
+</head>
+<body>
+<div class="grid" aria-label="Sound tiles: hover or drag across to play"></div>
+<div class="ui">
+  <button class="on" aria-pressed="false">🔇 Enable sound</button>
+  <label>Scale <select class="scale"><option value="0,2,4,7,9">Major pentatonic</option><option value="0,3,5,7,10">Minor pentatonic</option><option value="0,2,3,7,8">Hirajoshi</option><option value="0,4,7,11,14">Maj7 arps</option></select></label>
+  <label>Volume <input type="range" class="vol" min="0" max="1" step=".01" value=".5"></label>
+  <button class="drone" aria-pressed="false">Drone</button>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const COLS = 8, ROWS = 6, grid = document.querySelector(".grid");
+  grid.style.setProperty("--cols", COLS);
+  const tiles = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const t = document.createElement("div"); t.className = "tile"; t.dataset.r = r; t.dataset.c = c; t.style.setProperty("--h", 200 + c * 18 - r * 10); grid.appendChild(t); tiles.push(t); }
+  let ac = null, bus, master, scale = [0, 2, 4, 7, 9], drone = null;
+  // A small effects bus: delay with feedback + a convolution reverb built from decaying noise.
+  function setup() {
+    ac = new AudioContext(); master = ac.createGain(); master.gain.value = +document.querySelector(".vol").value; master.connect(ac.destination);
+    bus = ac.createGain(); bus.connect(master);
+    const delay = ac.createDelay(), fb = ac.createGain(), wet = ac.createGain(); delay.delayTime.value = .33; fb.gain.value = .35; wet.gain.value = .3;
+    bus.connect(delay); delay.connect(fb).connect(delay); delay.connect(wet).connect(master);
+    const len = ac.sampleRate * 2.5, ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5); }
+    const verb = ac.createConvolver(), vw = ac.createGain(); verb.buffer = ir; vw.gain.value = .5; bus.connect(verb).connect(vw).connect(master);
+  }
+  function note(r, c) {
+    if (!ac) return;
+    // columns walk up the scale, rows move by octaves (top = high)
+    const deg = c, oct = ROWS - 1 - r, semis = scale[deg % scale.length] + 12 * (Math.floor(deg / scale.length) + oct - 2);
+    const f = 261.63 * Math.pow(2, semis / 12), t = ac.currentTime;
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+    o1.type = "triangle"; o2.type = "sine"; o1.frequency.value = f; o2.frequency.value = f * 2.001;
+    lp.type = "lowpass"; lp.frequency.setValueAtTime(4000, t); lp.frequency.exponentialRampToValueAtTime(600, t + .8);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + 1.4);
+    o1.connect(lp); o2.connect(lp); lp.connect(g).connect(bus); o1.start(t); o2.start(t); o1.stop(t + 1.5); o2.stop(t + 1.5);
+  }
+  let lastTile = null;
+  function hitAt(x, y) {
+    const el = document.elementFromPoint(x, y); if (!el || !el.classList.contains("tile") || el === lastTile) return;
+    lastTile = el; note(+el.dataset.r, +el.dataset.c);
+    el.classList.add("hit"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("hit")));
+  }
+  addEventListener("pointermove", (e) => hitAt(e.clientX, e.clientY));
+  addEventListener("pointerdown", (e) => { lastTile = null; hitAt(e.clientX, e.clientY); });
+  grid.style.touchAction = "none";
+  const onBtn = document.querySelector(".on");
+  onBtn.onclick = async () => {
+    if (!ac) setup(); if (ac.state === "running" && onBtn.getAttribute("aria-pressed") === "true") { await ac.suspend(); onBtn.setAttribute("aria-pressed", false); onBtn.textContent = "🔇 Enable sound"; return; }
+    await ac.resume(); onBtn.setAttribute("aria-pressed", true); onBtn.textContent = "🔊 Sound on";
+  };
+  document.querySelector(".scale").onchange = (e) => (scale = e.target.value.split(",").map(Number));
+  document.querySelector(".vol").oninput = (e) => master && master.gain.setTargetAtTime(+e.target.value, ac.currentTime, .05);
+  const droneBtn = document.querySelector(".drone");
+  droneBtn.onclick = () => {
+    if (!ac) { onBtn.click(); }
+    if (drone) { drone.forEach((o) => o.stop()); drone = null; droneBtn.setAttribute("aria-pressed", false); return; }
+    const g = ac.createGain(); g.gain.value = .04; g.connect(bus);
+    drone = [65.4, 98, 130.8].map((f, i) => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = (i - 1) * 6; const lp = ac.createBiquadFilter(); lp.frequency.value = 500; o.connect(lp).connect(g); o.start(); return o; });
+    droneBtn.setAttribute("aria-pressed", true);
+  };
+  // without sound enabled the tiles still light up, so the visual works muted
+</script>
+</body>
+</html>

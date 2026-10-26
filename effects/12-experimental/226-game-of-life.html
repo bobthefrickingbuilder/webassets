@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game of Life Background</title>
+<meta name="description" content="Conway's Game of Life running as a page background on the GPU (WebGL2 ping-pong textures) with fading trails and age colouring. Draw live cells with the pointer, stamp gliders and Gosper guns, pause and step, while content sits on top.">
+<meta name="tech" content="WebGL2, GLSL">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #05060a; }
+  canvas { cursor: crosshair; touch-action: none; }
+  .hero { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+  .hero h1 { font-size: clamp(40px, 8vw, 110px); margin: 0; letter-spacing: -.05em; text-shadow: 0 4px 30px #000; }
+  .hero p { color: #b6bcd0; text-shadow: 0 2px 10px #000; }
+  .ui { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .ui button { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgb(20 20 28 / .9); cursor: pointer; font-size: 13px; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Game of Life. Draw cells with the pointer."></canvas>
+<div class="hero"><h1>Life finds a way.</h1><p>Draw on the background · B3/S23</p></div>
+<div class="ui" role="toolbar">
+  <button data-tool="draw" aria-pressed="true">✏️ Draw</button><button data-tool="glider" aria-pressed="false">Glider</button><button data-tool="gun" aria-pressed="false">Gosper gun</button>
+  <button class="pause" aria-pressed="false">⏸ Pause</button><button class="stepb">Step</button><button class="rand">Randomise</button><button class="clr">Clear</button>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const canvas = document.querySelector("canvas"), gl = GL.context(canvas);
+  const CELL = 4;
+  let w, h, state, paintBuf = null;
+  // State texture: r = alive (0/1), g = age/trail value used for colour
+  const lifeProg = GL.program(gl, `
+    uniform sampler2D u_s; uniform vec2 u_px; uniform sampler2D u_paint; uniform float u_hasPaint;
+    void main(){
+      vec2 uv = v_uv; float n = 0.;
+      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) if (x != 0 || y != 0) n += texture(u_s, fract(uv + vec2(x, y) * u_px)).r;
+      vec4 c = texture(u_s, uv);
+      float alive = c.r > .5 ? float(n > 1.5 && n < 3.5) : float(n > 2.5 && n < 3.5);
+      float age = alive > .5 ? min(c.g + .02, 1.) : c.g * .9;   // living cells age; dead ones leave a fading trail
+      float born = alive > .5 && c.r < .5 ? 1. : 0.;
+      if (u_hasPaint > .5) { float p = texture(u_paint, uv).r; if (p > .5) { alive = 1.; age = 0.; } }
+      o = vec4(alive, alive > .5 ? (born > .5 ? 0. : age) : age, born, 1.);
+    }`);
+  const copyPaint = GL.program(gl, `
+    uniform sampler2D u_s; uniform sampler2D u_paint;
+    void main(){ vec4 c = texture(u_s, v_uv); float p = texture(u_paint, v_uv).r; o = p > .5 ? vec4(1., 0., 1., 1.) : c; }`);
+  const viewProg = GL.program(gl, `
+    uniform sampler2D u_s;
+    void main(){
+      vec4 c = texture(u_s, v_uv);
+      vec3 live = mix(vec3(.55, 1., .85), vec3(.35, .45, 1.), c.g);   // young cells mint, old cells blue
+      vec3 trail = vec3(.5, .15, .7) * c.g * .6;
+      o = vec4(c.r > .5 ? live : trail, 1.);
+    }`);
+  const paintTex = gl.createTexture();
+  function setupTex(t) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); }
+  setupTex(paintTex);
+  function resize() {
+    canvas.width = innerWidth; canvas.height = innerHeight;
+    w = Math.ceil(innerWidth / CELL); h = Math.ceil(innerHeight / CELL);
+    const data = new Uint8Array(w * h * 4);
+    for (let i = 0; i < w * h; i++) if (Math.random() < .12) { data[i * 4] = 255; data[i * 4 + 3] = 255; }
+    state = GL.doubleTarget(gl, w, h, { nearest: true, data });
+    paintBuf = new Uint8Array(w * h * 4); dirty = false;
+  }
+  let dirty = false;
+  // paint into a CPU buffer, upload once per frame
+  function setCell(x, y) { if (x < 0 || y < 0 || x >= w || y >= h) return; const i = ((h - 1 - y) * w + x) * 4; paintBuf[i] = 255; paintBuf[i + 3] = 255; dirty = true; }
+  const GLIDER = [".O.", "..O", "OOO"];
+  const GUN = ["........................O...........", "......................O.O...........", "............OO......OO............OO", "...........O...O....OO............OO", "OO........O.....O...OO..............", "OO........O...O.OO....O.O...........", "..........O.....O.......O...........", "...........O...O....................", "............OO......................"];
+  function stamp(pattern, cx, cy) { pattern.forEach((row, y) => [...row].forEach((ch, x) => ch === "O" && setCell(cx + x, cy + y))); }
+  let tool = "draw", painting = false, paused = false, stepOnce = false;
+  const cellAt = (e) => [Math.floor(e.clientX / CELL), Math.floor(e.clientY / CELL)];
+  let lx = 0, ly = 0;
+  canvas.addEventListener("pointerdown", (e) => {
+    const [x, y] = cellAt(e); canvas.setPointerCapture(e.pointerId);
+    if (tool === "draw") { painting = true; lx = x; ly = y; brush(x, y); } else stamp(tool === "gun" ? GUN : GLIDER, x, y);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!painting) return; const [x, y] = cellAt(e), n = Math.max(Math.abs(x - lx), Math.abs(y - ly), 1);
+    for (let i = 0; i <= n; i++) brush(Math.round(lx + (x - lx) * i / n), Math.round(ly + (y - ly) * i / n)); lx = x; ly = y;
+  });
+  addEventListener("pointerup", () => (painting = false));
+  function brush(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (Math.random() < .7) setCell(x + dx, y + dy); }
+  document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => { tool = b.dataset.tool; document.querySelectorAll("[data-tool]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  const pauseBtn = document.querySelector(".pause");
+  pauseBtn.onclick = () => { paused = !paused; pauseBtn.setAttribute("aria-pressed", paused); pauseBtn.textContent = paused ? "▶ Play" : "⏸ Pause"; };
+  document.querySelector(".stepb").onclick = () => (stepOnce = true);
+  document.querySelector(".rand").onclick = () => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (Math.random() < .15) setCell(x, y); };
+  document.querySelector(".clr").onclick = () => (state = GL.doubleTarget(gl, w, h, { nearest: true }));
+  addEventListener("resize", resize); resize();
+  if (Demo.reduced) { paused = true; pauseBtn.setAttribute("aria-pressed", true); pauseBtn.textContent = "▶ Play"; }
+  let acc = 0, last = performance.now();
+  function frame(now) {
+    acc += now - last; last = now;
+    let painted = false;
+    if (dirty) {
+      gl.bindTexture(gl.TEXTURE_2D, paintTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, paintBuf);
+      if (paused) { copyPaint.use().set("u_s", state.read).set("u_paint", paintTex); GL.draw(gl, state.write); state.swap(); }
+      painted = !paused; dirty = false; if (paused) paintBuf.fill(0);
+    }
+    // ~20 generations per second, independent of refresh rate
+    if ((!paused && acc > 50) || stepOnce || painted) {
+      acc = 0; stepOnce = false;
+      lifeProg.use().set("u_s", state.read).set("u_px", [1 / w, 1 / h]).set("u_paint", paintTex).set("u_hasPaint", painted ? 1 : 0);
+      GL.draw(gl, state.write); state.swap();
+      if (painted) paintBuf.fill(0);
+    }
+    viewProg.use().set("u_s", state.read); GL.draw(gl, null);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

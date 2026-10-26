@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multiplayer Cursors Across Tabs</title>
+<meta name="description" content="Open this page in several tabs or windows: every tab broadcasts its cursor, name, colour, clicks and chat bubbles over BroadcastChannel, so you see the others' cursors glide around with interpolation, like Figma presence, with no server.">
+<meta name="tech" content="BroadcastChannel, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; overflow: hidden; background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 24px 24px; }
+  .info { position: fixed; top: 64px; left: 16px; max-width: 360px; padding: 14px 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); font-size: 14px; }
+  .info a { color: var(--accent-2); }
+  .peers { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .peers span { padding: 3px 8px; border-radius: 999px; font-size: 12px; color: #000; font-weight: 700; }
+  .cursor { position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform; z-index: 5; }
+  .cursor svg { width: 22px; height: 22px; display: block; }
+  .cursor .tag { position: absolute; left: 16px; top: 18px; padding: 3px 8px; border-radius: 6px 10px 10px 10px; font: 700 12px var(--font); color: #000; white-space: nowrap; }
+  .cursor .bubble { position: absolute; left: 16px; top: 42px; padding: 6px 10px; border-radius: 10px; background: #fff; color: #111; font-size: 13px; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  .ping { position: fixed; width: 40px; height: 40px; margin: -20px; border-radius: 50%; border: 3px solid; pointer-events: none; animation: ping .7s ease-out forwards; }
+  @keyframes ping { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+  .chat { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); }
+  .chat input { width: min(380px, 80vw); padding: 12px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: inherit; }
+</style>
+</head>
+<body>
+<div class="info">You are <b class="me"></b>. <a href="" target="_blank" class="open">Open another tab</a> and move the mouse in both. Click to ping; type below (or press <kbd>/</kbd>) to chat.<div class="peers"></div></div>
+<div class="chat"><input placeholder="Say something to the other tabs…" aria-label="Chat message" maxlength="80"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const ANIMALS = ["Otter", "Lynx", "Heron", "Koala", "Gecko", "Bison", "Panda", "Orca", "Moose", "Quokka"];
+  const id = Math.random().toString(36).slice(2, 8);
+  const me = { id, name: ANIMALS[Math.floor(Math.random() * ANIMALS.length)], hue: Math.floor(Math.random() * 360) };
+  document.querySelector(".me").textContent = me.name; document.querySelector(".me").style.color = `hsl(${me.hue} 90% 65%)`;
+  document.querySelector(".open").href = location.href;
+  const ch = "BroadcastChannel" in window ? new BroadcastChannel("webassets-cursors") : null;
+  if (!ch) document.querySelector(".info").append(" (BroadcastChannel unsupported here.)");
+  const send = (msg) => ch && ch.postMessage({ ...msg, from: me });
+  const peers = new Map();
+  function peerEl(p) {
+    const el = document.createElement("div"); el.className = "cursor";
+    const c = `hsl(${p.hue} 90% 65%)`;
+    el.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="${c}" stroke="#000" stroke-width="1.2"/></svg><span class="tag" style="background:${c}">${p.name}</span>`;
+    document.body.appendChild(el); return el;
+  }
+  function upsert(from) {
+    let p = peers.get(from.id);
+    if (!p) { p = { ...from, x: -100, y: -100, tx: -100, ty: -100, seen: performance.now() }; p.el = peerEl(p); peers.set(from.id, p); renderPeers(); send({ type: "hello" }); }
+    p.seen = performance.now(); return p;
+  }
+  function renderPeers() { document.querySelector(".peers").innerHTML = [...peers.values()].map((p) => `<span style="background:hsl(${p.hue} 90% 65%)">${p.name}</span>`).join("") || '<span style="background:#444;color:#ccc">No one else yet</span>'; }
+  renderPeers();
+  if (ch) ch.onmessage = ({ data }) => {
+    if (data.from.id === id) return;
+    if (data.type === "bye") { const p = peers.get(data.from.id); if (p) { p.el.remove(); peers.delete(data.from.id); renderPeers(); } return; }
+    const p = upsert(data.from);
+    // positions are sent as fractions of the viewport so different window sizes line up
+    if (data.type === "move") { p.tx = data.x * innerWidth; p.ty = data.y * innerHeight; if (p.x < 0) { p.x = p.tx; p.y = p.ty; } }
+    if (data.type === "click") ping(data.x * innerWidth, data.y * innerHeight, data.from.hue);
+    if (data.type === "chat") { let b = p.el.querySelector(".bubble"); if (!b) { b = document.createElement("span"); b.className = "bubble"; p.el.appendChild(b); } b.textContent = data.text; clearTimeout(p.bt); p.bt = setTimeout(() => b.remove(), 4000); }
+  };
+  function ping(x, y, hue) { const r = document.createElement("div"); r.className = "ping"; r.style.cssText = `left:${x}px;top:${y}px;border-color:hsl(${hue} 90% 65%)`; document.body.appendChild(r); setTimeout(() => r.remove(), 800); }
+  let lastSend = 0;
+  addEventListener("pointermove", (e) => { const now = performance.now(); if (now - lastSend < 16) return; lastSend = now; send({ type: "move", x: e.clientX / innerWidth, y: e.clientY / innerHeight }); });
+  addEventListener("pointerdown", (e) => { if (e.target.closest("input,a")) return; ping(e.clientX, e.clientY, me.hue); send({ type: "click", x: e.clientX / innerWidth, y: e.clientY / innerHeight }); });
+  const input = document.querySelector(".chat input");
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && input.value.trim()) { send({ type: "chat", text: input.value.trim() }); input.value = ""; } });
+  addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); input.focus(); } });
+  addEventListener("pagehide", () => send({ type: "bye" }));
+  send({ type: "hello" });
+  setInterval(() => send({ type: "hello" }), 2000);   // heartbeat so stale peers can be dropped
+  function frame(now) {
+    for (const [k, p] of peers) {
+      if (now - p.seen > 6000) { p.el.remove(); peers.delete(k); renderPeers(); continue; }
+      const f = Demo.reduced ? 1 : .25; p.x += (p.tx - p.x) * f; p.y += (p.ty - p.y) * f;   // interpolate between sparse updates
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Webcam Motion Detection</title>
+<meta name="description" content="Wave at your webcam to trigger animations: frame differencing on a downscaled video finds where motion happens, a heat map shows it, and waving over on-screen 'air buttons' (or swiping left/right) fires effects. A simulated mover stands in when there's no camera.">
+<meta name="tech" content="getUserMedia, Canvas">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #000; }
+  .stage { position: fixed; inset: 0; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  canvas.cam { filter: grayscale(.6) brightness(.55); transform: scaleX(-1); }
+  canvas.heat { mix-blend-mode: screen; transform: scaleX(-1); image-rendering: pixelated; }
+  .zone { position: absolute; width: 18vmin; aspect-ratio: 1; border-radius: 50%; border: 3px solid rgb(255 255 255 / .4); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 14px; text-align: center;
+          background: conic-gradient(var(--accent-2) calc(var(--p, 0) * 1turn), transparent 0); transition: transform .2s; }
+  .zone span { width: 82%; aspect-ratio: 1; border-radius: 50%; background: rgb(0 0 0 / .65); display: grid; place-items: center; }
+  .zone.fire { transform: scale(1.25); border-color: #fff; }
+  .msg { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); color: #ddd; font-size: 14px; text-align: center; }
+  .cam-btn { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; border: 0; background: #fff; color: #000; font-weight: 700; cursor: pointer; }
+  .boom { position: fixed; left: 50%; top: 50%; font: 900 clamp(40px, 10vw, 120px) var(--font); color: #fff; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; }
+  .boom.on { animation: boom 1s ease-out; }
+  @keyframes boom { 0% { opacity: 0; scale: .3; } 20% { opacity: 1; scale: 1.1; } 100% { opacity: 0; scale: 1.4; } }
+</style>
+</head>
+<body>
+<div class="stage"><canvas class="cam"></canvas><canvas class="heat"></canvas>
+  <div class="zone" style="left:8vw;top:30vh" data-act="confetti"><span>Wave for<br>🎉</span></div>
+  <div class="zone" style="right:8vw;top:30vh" data-act="color"><span>Wave for<br>🎨</span></div>
+</div>
+<p class="msg" aria-live="polite">Simulated motion (no camera). Press “Use camera”, then wave or swipe.</p>
+<div class="boom"></div>
+<button class="cam-btn">📷 Use camera</button>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const camCv = document.querySelector(".cam"), heatCv = document.querySelector(".heat"), cam = camCv.getContext("2d"), heat = heatCv.getContext("2d");
+  const GW = 64, GH = 48;   // analysis resolution
+  const small = document.createElement("canvas"); small.width = GW; small.height = GH; const sg = small.getContext("2d", { willReadFrequently: true });
+  heatCv.width = GW; heatCv.height = GH; const heatImg = heat.createImageData(GW, GH);
+  let prev = null, video = null, motion = new Float32Array(GW * GH);
+  const msg = document.querySelector(".msg"), boom = document.querySelector(".boom");
+  function size() { camCv.width = innerWidth; camCv.height = innerHeight; }
+  addEventListener("resize", size); size();
+  // Fallback source: a blob that sweeps back and forth so the pipeline is visible without a camera.
+  const sim = document.createElement("canvas"); sim.width = 320; sim.height = 240; const sm = sim.getContext("2d");
+  function drawSim(t) { sm.fillStyle = "#444"; sm.fillRect(0, 0, 320, 240); const x = 160 + Math.sin(t * 1.3) * 130, y = 110 + Math.sin(t * 2.6) * 30; sm.fillStyle = "#eee"; sm.beginPath(); sm.ellipse(x, y, 26, 40, Math.sin(t * 6) * .6, 0, 7); sm.fill(); }
+  document.querySelector(".cam-btn").onclick = async (e) => {
+    try {
+      video = document.createElement("video"); video.playsInline = true; video.muted = true;
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } }); await video.play();
+      msg.textContent = "Wave a hand over a circle, or swipe sideways."; e.target.remove();
+    } catch (err) { video = null; msg.textContent = "Camera unavailable (" + err.name + ") — still using the simulation."; }
+  };
+  const zones = [...document.querySelectorAll(".zone")].map((el) => ({ el, p: 0, cool: 0 }));
+  let centroidHist = [];
+  function act(name) {
+    boom.textContent = name === "confetti" ? "🎉🎉🎉" : name === "color" ? "🎨" : name;
+    boom.classList.remove("on"); void boom.offsetWidth; boom.classList.add("on");
+    if (name === "color") document.body.style.background = `hsl(${Math.random() * 360} 60% 20%)`;
+  }
+  let t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000, src = video || (drawSim(t), sim);
+    const sw = video ? video.videoWidth : 320, sh = video ? video.videoHeight : 240;
+    // cover-fit the source into the screen (also used to map grid cells to screen coords)
+    const s = Math.max(innerWidth / sw, innerHeight / sh), dw = sw * s, dh = sh * s, ox = (innerWidth - dw) / 2, oy = (innerHeight - dh) / 2;
+    cam.drawImage(src, ox, oy, dw, dh);
+    sg.drawImage(src, 0, 0, GW, GH);
+    const px = sg.getImageData(0, 0, GW, GH).data;
+    // frame difference on luminance, with a threshold and decay so motion "glows" briefly
+    let sx = 0, sy = 0, total = 0;
+    for (let i = 0; i < GW * GH; i++) {
+      const l = px[i * 4] * .3 + px[i * 4 + 1] * .59 + px[i * 4 + 2] * .11;
+      const d = prev ? Math.abs(l - prev[i]) : 0;
+      (prev ||= new Float32Array(GW * GH))[i] = l;
+      motion[i] = Math.max(motion[i] * .85, d > 18 ? Math.min(1, d / 60) : 0);
+      if (d > 18) { const x = i % GW, y = (i / GW) | 0; sx += x; sy += y; total++; }
+      const m = motion[i]; heatImg.data.set([255 * m, 80 * m, 255 * (1 - m) * m * 2, 255 * Math.min(1, m * 1.5)], i * 4);
+    }
+    heat.putImageData(heatImg, 0, 0);
+    heatCv.style.left = ox + "px"; heatCv.style.top = oy + "px"; heatCv.style.width = dw + "px"; heatCv.style.height = dh + "px";
+    // zones: average motion inside each circle (mirrored mapping, since the video is mirrored)
+    for (const z of zones) {
+      const r = z.el.getBoundingClientRect();
+      const gx0 = Math.floor((1 - (r.right - ox) / dw) * GW), gx1 = Math.ceil((1 - (r.left - ox) / dw) * GW), gy0 = Math.floor((r.top - oy) / dh * GH), gy1 = Math.ceil((r.bottom - oy) / dh * GH);
+      let sum = 0, n = 0;
+      for (let y = Math.max(0, gy0); y < Math.min(GH, gy1); y++) for (let x = Math.max(0, gx0); x < Math.min(GW, gx1); x++) { sum += motion[y * GW + x]; n++; }
+      const level = n ? sum / n : 0;
+      z.p = Math.max(0, Math.min(1, z.p + (level > .08 ? .04 : -.02))); z.cool -= 1 / 60;
+      if (z.p >= 1 && z.cool <= 0) { act(z.el.dataset.act); z.p = 0; z.cool = 1.5; z.el.classList.add("fire"); setTimeout(() => z.el.classList.remove("fire"), 300); }
+      z.el.style.setProperty("--p", z.p.toFixed(3));
+    }
+    // swipe: the motion centroid travelling quickly across the frame
+    if (total > 40) { centroidHist.push([sx / total, now]); centroidHist = centroidHist.filter(([, tt]) => now - tt < 400); }
+    if (centroidHist.length > 5) { const dx = centroidHist[centroidHist.length - 1][0] - centroidHist[0][0]; if (Math.abs(dx) > GW * .45) { act(dx < 0 ? "Swipe →" : "← Swipe"); centroidHist = []; } }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

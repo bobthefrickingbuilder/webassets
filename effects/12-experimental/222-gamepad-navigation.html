@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gamepad-controlled Navigation</title>
+<meta name="description" content="A console-style tile menu you can drive with a gamepad (D-pad / left stick to move, A to open, B to go back, bumpers to switch rows) via the Gamepad API, with spatial focus that also works with arrow keys. A live controller diagram shows input.">
+<meta name="tech" content="Gamepad API, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; background: radial-gradient(circle at 30% 0%, #23305a, #0b0c10 60%); overflow-x: hidden; }
+  main { padding: 90px 5vw 140px; }
+  h2 { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 28px 0 12px; }
+  .row { display: flex; flex-wrap: nowrap; gap: 16px; overflow-x: auto; padding: 14px 14px 18px; margin: -14px -14px 0; scrollbar-width: none; }
+  .tile { flex: 0 0 auto; width: clamp(140px, 18vw, 220px); aspect-ratio: 16 / 10; border-radius: 16px; background-size: cover; background-position: center; border: 0; padding: 12px; color: #fff; font-weight: 800; text-align: left; display: flex; align-items: flex-end; cursor: pointer;
+          transition: transform .2s cubic-bezier(.3, 1.4, .5, 1), box-shadow .2s; box-shadow: 0 10px 30px rgb(0 0 0 / .4); text-shadow: 0 2px 10px rgb(0 0 0 / .6); }
+  .tile:focus-visible, .tile.focus { outline: none; transform: scale(1.1); box-shadow: 0 0 0 4px #fff, 0 20px 50px rgb(0 0 0 / .6); z-index: 1; }
+  .overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .7); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  .overlay div { padding: 30px 40px; border-radius: 20px; background: var(--bg-2); text-align: center; font-size: 28px; font-weight: 800; }
+  .pad { position: fixed; bottom: 16px; right: 16px; display: flex; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 16px; background: rgb(15 16 22 / .9); font-size: 12px; color: var(--muted); }
+  .pad svg { width: 120px; }
+  .pad .lit { fill: var(--accent-2); }
+</style>
+</head>
+<body>
+<main></main>
+<div class="overlay" aria-live="polite"><div></div></div>
+<div class="pad"><svg viewBox="0 0 120 70" aria-hidden="true">
+  <rect x="2" y="8" width="116" height="54" rx="27" fill="#20232d"/>
+  <g fill="#3a3f4f"><rect class="up" x="22" y="18" width="10" height="11"/><rect class="down" x="22" y="41" width="10" height="11"/><rect class="left" x="11" y="29" width="11" height="12"/><rect class="right" x="32" y="29" width="11" height="12"/></g>
+  <circle class="b3" cx="92" cy="22" r="6" fill="#3a3f4f"/><circle class="b1" cx="104" cy="35" r="6" fill="#3a3f4f"/><circle class="b0" cx="92" cy="48" r="6" fill="#3a3f4f"/><circle class="b2" cx="80" cy="35" r="6" fill="#3a3f4f"/>
+  <circle class="stick" cx="50" cy="52" r="7" fill="#3a3f4f"/>
+</svg><span class="gp">No gamepad — press any button on one, or use arrow keys + Enter / Esc.</span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const ROWS = [["Continue playing", 5], ["New releases", 7], ["Because you liked Puzzles", 6], ["Arcade classics", 8]];
+  const main = document.querySelector("main"), grid = [];
+  let seed = 1;
+  ROWS.forEach(([title, n], r) => {
+    const h = document.createElement("h2"); h.textContent = title; main.appendChild(h);
+    const row = document.createElement("div"); row.className = "row"; main.appendChild(row); grid.push([]);
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement("button"); b.className = "tile"; b.textContent = Demo.lorem(2, seed).replace(/\.$/, ""); b.style.backgroundImage = `url(${Demo.artURL(320, 200, seed++)})`;
+      b.onclick = () => openTile(b); row.appendChild(b); grid[r].push(b);
+    }
+  });
+  let r = 0, c = 0, overlayOpen = false;
+  const overlay = document.querySelector(".overlay");
+  function focus() { grid[r][c].focus({ preventScroll: true }); grid[r][c].scrollIntoView({ block: "center", inline: "center", behavior: Demo.reduced ? "auto" : "smooth" }); }
+  function move(dr, dc) {
+    if (overlayOpen) return;
+    if (dr) { const x = grid[r][c].getBoundingClientRect().left; r = Math.max(0, Math.min(grid.length - 1, r + dr)); // keep the same horizontal position when changing rows
+      c = grid[r].reduce((best, el, i) => (Math.abs(el.getBoundingClientRect().left - x) < Math.abs(grid[r][best].getBoundingClientRect().left - x) ? i : best), 0); }
+    if (dc) c = Math.max(0, Math.min(grid[r].length - 1, c + dc));
+    focus();
+  }
+  function openTile(b) { overlay.firstElementChild.textContent = "▶ " + b.textContent; overlay.classList.add("open"); overlayOpen = true; }
+  function back() { overlay.classList.remove("open"); overlayOpen = false; focus(); }
+  addEventListener("keydown", (e) => {
+    const k = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+    if (k) { e.preventDefault(); move(...k); } else if (e.key === "Escape") back();
+  });
+  main.addEventListener("focusin", (e) => { grid.forEach((row, ri) => { const ci = row.indexOf(e.target); if (ci >= 0) { r = ri; c = ci; } }); });
+  // --- Gamepad polling with key-repeat (initial delay, then a faster rate) ---
+  const held = {}, svg = document.querySelector(".pad svg"), gpLabel = document.querySelector(".gp");
+  addEventListener("gamepadconnected", (e) => (gpLabel.textContent = e.gamepad.id.slice(0, 40)));
+  addEventListener("gamepaddisconnected", () => (gpLabel.textContent = "Gamepad disconnected"));
+  function repeat(name, on, fn, now) {
+    if (!on) { held[name] = 0; return; }
+    if (!held[name]) { held[name] = now + 380; fn(); } else if (now > held[name]) { held[name] = now + 110; fn(); }
+  }
+  function poll(now) {
+    const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(Boolean);
+    if (gp) {
+      const B = (i) => gp.buttons[i] && gp.buttons[i].pressed, ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+      const up = B(12) || ay < -.5, down = B(13) || ay > .5, left = B(14) || ax < -.5, right = B(15) || ax > .5;
+      repeat("u", up, () => move(-1, 0), now); repeat("d", down, () => move(1, 0), now); repeat("l", left, () => move(0, -1), now); repeat("r", right, () => move(0, 1), now);
+      repeat("lb", B(4), () => move(-1, 0), now); repeat("rb", B(5), () => move(1, 0), now);
+      repeat("a", B(0), () => (overlayOpen ? back() : openTile(grid[r][c])), now); repeat("b", B(1), back, now);
+      const lit = { up, down, left, right, b0: B(0), b1: B(1), b2: B(2), b3: B(3) };
+      for (const k in lit) svg.querySelector("." + k).classList.toggle("lit", lit[k]);
+      svg.querySelector(".stick").setAttribute("transform", `translate(${ax * 5} ${ay * 5})`);
+    }
+    requestAnimationFrame(poll);
+  }
+  requestAnimationFrame(poll);
+  focus();
+</script>
+</body>
+</html>

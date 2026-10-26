@@ -2570,5 +2570,247 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "11-physics",
   "path": "effects/11-physics/216-magnet-field.html"
+ },
+ {
+  "num": 217,
+  "title": "Konami Code Easter Eggs",
+  "description": "A tiny plug-in framework for secret key sequences: register any sequence with a surprise (the Konami code rains unicorns, 'barrel' does a barrel roll, 'disco' starts a party, 'matrix' goes green). Live progress dots show how far into a code you are.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/217-konami-code.html"
+ },
+ {
+  "num": 218,
+  "title": "Audio-reactive Page",
+  "description": "A whole landing page that dances: an AnalyserNode writes bass, mid, treble and beat values into CSS custom properties every frame, and ordinary CSS scales the headline, glows buttons, bends a gradient and bounces equaliser bars. Built-in beat or your mic.",
+  "tech": [
+   "Web Audio",
+   "CSS variables"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/218-audio-reactive-page.html"
+ },
+ {
+  "num": 219,
+  "title": "Device-tilt Parallax",
+  "description": "A layered postcard scene that shifts with your phone's tilt via DeviceOrientation (with the iOS permission prompt), with a holographic sheen that follows the angle. On desktop the pointer stands in for the gyroscope. Includes calibration and smoothing.",
+  "tech": [
+   "DeviceOrientation",
+   "CSS 3D"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/219-device-tilt-parallax.html"
+ },
+ {
+  "num": 220,
+  "title": "Generative Hover Sounds",
+  "description": "A grid of tiles that play soft synthesized notes as you hover across them, mapped to a pentatonic scale so any path sounds musical, through a shared reverb and delay bus. Sound is opt-in, with volume and scale controls and a drone pad.",
+  "tech": [
+   "Web Audio",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/220-hover-sounds.html"
+ },
+ {
+  "num": 221,
+  "title": "Haptic Feedback Buttons",
+  "description": "Buttons, toggles and a slider with vibration patterns via the Vibration API (tap, success, error, heavy, detents on a slider), each paired with a matching visual 'buzz' so the feedback reads on devices without a vibration motor.",
+  "tech": [
+   "Vibration API",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/221-haptic-buttons.html"
+ },
+ {
+  "num": 222,
+  "title": "Gamepad-controlled Navigation",
+  "description": "A console-style tile menu you can drive with a gamepad (D-pad / left stick to move, A to open, B to go back, bumpers to switch rows) via the Gamepad API, with spatial focus that also works with arrow keys. A live controller diagram shows input.",
+  "tech": [
+   "Gamepad API",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/222-gamepad-navigation.html"
+ },
+ {
+  "num": 223,
+  "title": "Speech-controlled Navigation",
+  "description": "Say 'scroll down', 'go to pricing', 'top', 'dark mode' or 'stop': the Web Speech API's continuous recognition drives scrolling and navigation, with live interim captions, a command cheat-sheet and a typed fallback where speech isn't supported.",
+  "tech": [
+   "Web Speech API",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/223-speech-navigation.html"
+ },
+ {
+  "num": 224,
+  "title": "Webcam Motion Detection",
+  "description": "Wave at your webcam to trigger animations: frame differencing on a downscaled video finds where motion happens, a heat map shows it, and waving over on-screen 'air buttons' (or swiping left/right) fires effects. A simulated mover stands in when there's no camera.",
+  "tech": [
+   "getUserMedia",
+   "Canvas"
+  ],
+  "complexity": 3,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/224-webcam-motion.html"
+ },
+ {
+  "num": 225,
+  "title": "Multiplayer Cursors Across Tabs",
+  "description": "Open this page in several tabs or windows: every tab broadcasts its cursor, name, colour, clicks and chat bubbles over BroadcastChannel, so you see the others' cursors glide around with interpolation, like Figma presence, with no server.",
+  "tech": [
+   "BroadcastChannel",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/225-multi-tab-cursors.html"
+ },
+ {
+  "num": 226,
+  "title": "Game of Life Background",
+  "description": "Conway's Game of Life running as a page background on the GPU (WebGL2 ping-pong textures) with fading trails and age colouring. Draw live cells with the pointer, stamp gliders and Gosper guns, pause and step, while content sits on top.",
+  "tech": [
+   "WebGL2",
+   "GLSL"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/226-game-of-life.html"
+ },
+ {
+  "num": 227,
+  "title": "Mandelbrot &amp; Julia Explorer",
+  "description": "A GPU fractal explorer: drag to pan and wheel or pinch to zoom deep into the Mandelbrot set with smooth iteration colouring and palettes. A live Julia-set inset follows the point under your cursor; click to swap them. Uses emulated double precision for deeper zooms.",
+  "tech": [
+   "WebGL2",
+   "GLSL"
+  ],
+  "complexity": 3,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/227-fractal-explorer.html"
+ },
+ {
+  "num": 228,
+  "title": "Time-of-day Sky Theme",
+  "description": "The page theme follows the real sun: solar elevation is computed from the date, time and your (approximate or geolocated) position, and drives sky gradients, the sun and moon arc, stars and light/dark UI colours. Scrub through a day to preview dawn, noon, golden hour and night.",
+  "tech": [
+   "JS",
+   "CSS variables",
+   "Geolocation"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/228-time-of-day-sky.html"
+ },
+ {
+  "num": 229,
+  "title": "Battery &amp; Network-aware Animation",
+  "description": "Animation that degrades gracefully: reads the Battery Status API, Network Information (effectiveType, saveData), reduced-motion and a measured frame rate to pick a quality tier (full, lite, minimal), and the particle scene adapts live. Simulator toggles let you try every condition.",
+  "tech": [
+   "Battery API",
+   "Network Information API",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/229-battery-network-aware.html"
+ },
+ {
+  "num": 230,
+  "title": "Hacker Terminal Portfolio",
+  "description": "A portfolio as an interactive shell: boot sequence, typed output, commands (help, about, projects, skills, contact, ls, cat, theme, clear, sudo, matrix), tab completion, command history with arrow keys and a CRT glow. Fully keyboard-driven, works on mobile.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/230-hacker-terminal.html"
+ },
+ {
+  "num": 231,
+  "title": "Retro OS Desktop",
+  "description": "A 90s-style desktop in the browser: draggable, resizable, focusable windows with minimise/maximise/close, desktop icons, a taskbar with clock, a Start menu, a working Notepad, Paint, Minesweeper-lite and an About box, all with chunky bevelled chrome.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 3,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/231-retro-os-desktop.html"
+ },
+ {
+  "num": 232,
+  "title": "404 Page with Mini-games",
+  "description": "A 404 page where the missing page's '404' becomes the game: play Breakout against bricks that spell 404, or switch to Snake. Keyboard, mouse and touch controls, score and best score, and a 'take me home' link that's always one click away.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/232-game-404.html"
+ },
+ {
+  "num": 233,
+  "title": "Scratch-off Reveal Card",
+  "description": "A lottery-style scratch card: a foil layer drawn on canvas is erased with destination-out strokes as you drag, with metallic shimmer, scratch particles and a progress meter that auto-reveals the prize (with confetti) once 55% is cleared.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/233-scratch-card.html"
+ },
+ {
+  "num": 234,
+  "title": "Shake to Undo",
+  "description": "Shake your phone to undo, like iOS: DeviceMotion acceleration is high-pass filtered and a burst of direction reversals counts as a shake, which pops an undo sheet for the last action in a small to-do list. Also 'shake for a surprise'. Desktop: shake the window by dragging the pointer back and forth fast, or press Ctrl/⌘+Z.",
+  "tech": [
+   "DeviceMotion",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/234-shake-to-undo.html"
+ },
+ {
+  "num": 235,
+  "title": "Text-to-Particles Generator",
+  "description": "Type anything and thousands of particles fly into the shape of your words: the text is rasterised to an offscreen canvas, sampled into target points, and particles steer there with arrive behaviour, colour gradients and pointer repulsion. Emoji and shapes work too.",
+  "tech": [
+   "Canvas",
+   "Particles"
+  ],
+  "complexity": 3,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/235-text-to-particles.html"
+ },
+ {
+  "num": 236,
+  "title": "Pixel-art Canvas with Replay",
+  "description": "A 32×32 pixel-art editor (pencil, eraser, fill bucket, eyedropper, mirror mode, undo/redo, palette) that records every stroke, so you can replay your drawing as an animated timelapse at adjustable speed and export it as a PNG.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "12-experimental",
+  "path": "effects/12-experimental/236-pixel-art-replay.html"
  }
 ];

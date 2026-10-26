@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Device-tilt Parallax</title>
+<meta name="description" content="A layered postcard scene that shifts with your phone's tilt via DeviceOrientation (with the iOS permission prompt), with a holographic sheen that follows the angle. On desktop the pointer stands in for the gyroscope. Includes calibration and smoothing.">
+<meta name="tech" content="DeviceOrientation, CSS 3D">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; overflow: hidden; background: #11101a; perspective: 1000px; }
+  .card { position: relative; width: min(86vw, 420px, 60vh); aspect-ratio: 3 / 4; border-radius: 26px; overflow: hidden; transform-style: preserve-3d; box-shadow: 0 30px 80px rgb(0 0 0 / .6); transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); }
+  .layer { position: absolute; inset: -12%; transform: translate(calc(var(--x, 0) * var(--d) * 1px), calc(var(--y, 0) * var(--d) * 1px)); }
+  .sky { background: linear-gradient(#ffb48a, #ff6f91 45%, #6d4aff); }
+  .sun { left: 30%; top: 18%; width: 40%; aspect-ratio: 1; inset: auto; position: absolute; border-radius: 50%; background: radial-gradient(#fff6c8, #ffd36e 60%, transparent 62%); }
+  .mtn svg { position: absolute; bottom: 0; width: 100%; height: 70%; }
+  .title { position: absolute; inset: auto 0 9% 0; text-align: center; font: 900 clamp(34px, 9vw, 54px)/1 var(--font); letter-spacing: -.04em; color: #fff; text-shadow: 0 4px 20px rgb(0 0 0 / .4); transform: translateZ(60px) translate(calc(var(--x, 0) * 30px), calc(var(--y, 0) * 30px)); }
+  .sheen { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: .5;
+           background: linear-gradient(calc(115deg + var(--x, 0) * 60deg), transparent 30%, hsl(calc(var(--x, 0) * 180 + 200) 100% 70% / .7) 45%, hsl(calc(var(--y, 0) * 180 + 300) 100% 70% / .7) 55%, transparent 70%); }
+  .ui { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; }
+  .ui button { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .status { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<p class="status" aria-live="polite">Desktop: move the pointer. Phone: tap “Enable tilt”.</p>
+<div class="card" role="img" aria-label="Parallax postcard that responds to device tilt">
+  <div class="layer sky" style="--d:4"></div>
+  <div class="layer" style="--d:10"><div class="sun"></div></div>
+  <div class="layer mtn" style="--d:20"><svg viewBox="0 0 100 70" preserveAspectRatio="none"><path d="M0 70 L0 40 L18 22 L30 34 L46 14 L62 32 L75 20 L100 42 L100 70Z" fill="#5b3a8f"/></svg></div>
+  <div class="layer mtn" style="--d:34"><svg viewBox="0 0 100 70" preserveAspectRatio="none"><path d="M0 70 L0 52 L14 42 L28 50 L44 36 L60 48 L78 38 L100 50 L100 70Z" fill="#3a2363"/></svg></div>
+  <div class="layer mtn" style="--d:52"><svg viewBox="0 0 100 70" preserveAspectRatio="none"><path d="M0 70 L0 60 Q20 52 40 60 T80 58 T100 56 L100 70Z" fill="#1d1236"/></svg></div>
+  <div class="title">Wander<br>further.</div>
+  <div class="sheen"></div>
+</div>
+<div class="ui"><button class="enable">📱 Enable tilt</button><button class="cal">Recalibrate</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const card = document.querySelector(".card"), status = document.querySelector(".status");
+  let tx = 0, ty = 0, x = 0, y = 0, base = null, usingGyro = false;
+  // pointer fallback
+  addEventListener("pointermove", (e) => { if (usingGyro) return; tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1; });
+  function onTilt(e) {
+    if (e.beta == null) return;
+    usingGyro = true;
+    // treat the first reading as "level" so it works however the phone is held
+    if (!base) base = { b: e.beta, g: e.gamma };
+    const clamp = (v) => Math.max(-1, Math.min(1, v));
+    tx = clamp((e.gamma - base.g) / 25); ty = clamp((e.beta - base.b) / 25);
+    status.textContent = `β ${e.beta.toFixed(0)}°  γ ${e.gamma.toFixed(0)}°`;
+  }
+  document.querySelector(".enable").onclick = async () => {
+    try {
+      // iOS 13+ requires an explicit permission request from a user gesture
+      if (typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission) {
+        const r = await DeviceOrientationEvent.requestPermission(); if (r !== "granted") throw new Error("permission " + r);
+      }
+      addEventListener("deviceorientation", onTilt);
+      status.textContent = "Tilt your device…";
+      setTimeout(() => { if (!usingGyro) status.textContent = "No gyroscope detected — the pointer still works."; }, 1500);
+    } catch (err) { status.textContent = "Tilt unavailable: " + err.message; }
+  };
+  document.querySelector(".cal").onclick = () => { base = null; tx = ty = 0; };
+  function frame() {
+    const k = Demo.reduced ? .3 : 1;
+    x += (tx - x) * .08; y += (ty - y) * .08;   // low-pass filter: gyros are noisy
+    card.style.setProperty("--x", (x * k).toFixed(4)); card.style.setProperty("--y", (y * k).toFixed(4));
+    card.style.setProperty("--ry", (x * 14 * k).toFixed(2) + "deg"); card.style.setProperty("--rx", (-y * 14 * k).toFixed(2) + "deg");
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

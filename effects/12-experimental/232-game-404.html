@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 Page with Mini-games</title>
+<meta name="description" content="A 404 page where the missing page's '404' becomes the game: play Breakout against bricks that spell 404, or switch to Snake. Keyboard, mouse and touch controls, score and best score, and a 'take me home' link that's always one click away.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; background: #0e0f1a; padding: 70px 12px 20px; }
+  .wrap { width: min(720px, 100%); text-align: center; }
+  h1 { margin: 0 0 6px; font-size: clamp(22px, 4vw, 34px); }
+  p { color: var(--muted); margin: 0 0 14px; }
+  canvas { width: 100%; aspect-ratio: 4 / 3; max-height: 62vh; border-radius: 16px; background: #05060c; border: 1px solid var(--line); touch-action: none; cursor: none; }
+  .bar { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .bar button, .bar a { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: inherit; cursor: pointer; text-decoration: none; font-size: 14px; }
+  .bar button[aria-pressed="true"] { background: #fff; color: #000; }
+  .bar a.home { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .score { font: 14px var(--mono); color: var(--muted); min-width: 160px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>404 — this page wandered off.</h1>
+  <p>While you're here, break the 404 (or feed the snake).</p>
+  <canvas width="640" height="480" aria-label="Mini-game. Arrow keys or pointer to play."></canvas>
+  <div class="bar"><button data-g="breakout" aria-pressed="true">🧱 Breakout</button><button data-g="snake" aria-pressed="false">🐍 Snake</button><span class="score" aria-live="polite"></span><a class="home" href="../../index.html">Take me home</a></div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d"), W = 640, H = 480;
+  const scoreEl = document.querySelector(".score");
+  const keys = {};
+  addEventListener("keydown", (e) => { keys[e.key] = true; if (e.key.startsWith("Arrow") || e.key === " ") e.preventDefault(); game?.key?.(e.key); });
+  addEventListener("keyup", (e) => (keys[e.key] = false));
+  const toCanvas = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+  let best = {};
+  try { best = JSON.parse(localStorage.getItem("404-best") || "{}"); } catch {}
+  const saveBest = (g, s) => { if (s > (best[g] || 0)) { best[g] = s; try { localStorage.setItem("404-best", JSON.stringify(best)); } catch {} } };
+  // "404" as a 3×5 pixel font → brick positions
+  const FONT = { 4: ["101", "101", "111", "001", "001"], 0: ["111", "101", "101", "101", "111"] };
+  function breakout() {
+    const bricks = [], bw = 28, bh = 20, gap = 4, ox = (W - (3 * 3 + 2) * (bw + gap)) / 2 + 2;
+    ["4", "0", "4"].forEach((d, di) => FONT[d].forEach((row, y) => [...row].forEach((c, x) => c === "1" && bricks.push({ x: ox + (di * 4 + x) * (bw + gap), y: 50 + y * (bh + gap), alive: true, hue: [340, 200, 50][di] }))));
+    let px = W / 2, ball = null, score = 0, lives = 3, parts = [], msg = "Click or press Space to launch";
+    const PW = 90;
+    const serve = () => (ball = null);
+    cv.onpointermove = (e) => (px = toCanvas(e)[0]);
+    cv.onpointerdown = () => launch();
+    const launch = () => { if (!ball) { const a = -Math.PI / 2 + (Math.random() - .5) * .8; ball = { x: px, y: H - 44, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360 }; msg = ""; } };
+    return {
+      key: (k) => k === " " && launch(),
+      update(dt) {
+        if (keys.ArrowLeft) px -= 520 * dt; if (keys.ArrowRight) px += 520 * dt; px = Math.max(PW / 2, Math.min(W - PW / 2, px));
+        if (ball) {
+          ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+          if (ball.x < 8 || ball.x > W - 8) { ball.vx *= -1; ball.x = Math.max(8, Math.min(W - 8, ball.x)); }
+          if (ball.y < 8) { ball.vy = Math.abs(ball.vy); }
+          // paddle: bounce angle depends on where it hits
+          if (ball.vy > 0 && ball.y > H - 36 && ball.y < H - 20 && Math.abs(ball.x - px) < PW / 2 + 8) { const k = (ball.x - px) / (PW / 2), sp = Math.hypot(ball.vx, ball.vy) * 1.02; ball.vx = Math.sin(k * 1.1) * sp; ball.vy = -Math.cos(k * 1.1) * sp; }
+          for (const b of bricks) if (b.alive && ball.x > b.x - 8 && ball.x < b.x + bw + 8 && ball.y > b.y - 8 && ball.y < b.y + bh + 8) {
+            b.alive = false; score += 10;
+            const ox2 = Math.min(ball.x - (b.x - 8), b.x + bw + 8 - ball.x), oy2 = Math.min(ball.y - (b.y - 8), b.y + bh + 8 - ball.y);
+            if (ox2 < oy2) ball.vx *= -1; else ball.vy *= -1;
+            for (let i = 0; i < 10; i++) parts.push({ x: b.x + bw / 2, y: b.y + bh / 2, vx: (Math.random() - .5) * 300, vy: (Math.random() - .5) * 300, life: 1, hue: b.hue });
+            break;
+          }
+          if (ball.y > H + 20) { lives--; serve(); msg = lives ? "Missed! Click to relaunch" : "Game over — click to retry"; if (!lives) { saveBest("breakout", score); Object.assign(this, breakout()); return; } }
+          if (bricks.every((b) => !b.alive)) { msg = "You fixed the 404 🎉 (not really)"; saveBest("breakout", score + lives * 100); ball = null; }
+        }
+        parts.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt * 1.5; }); parts = parts.filter((p) => p.life > 0);
+        scoreEl.textContent = `score ${score} · lives ${"♥".repeat(lives)} · best ${best.breakout || 0}`;
+      },
+      draw() {
+        for (const b of bricks) if (b.alive) { ctx.fillStyle = `hsl(${b.hue} 85% 60%)`; ctx.fillRect(b.x, b.y, bw, bh); ctx.fillStyle = "rgb(255 255 255 / .25)"; ctx.fillRect(b.x, b.y, bw, 3); }
+        parts.forEach((p) => { ctx.fillStyle = `hsl(${p.hue} 85% 60% / ${p.life})`; ctx.fillRect(p.x, p.y, 4, 4); });
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(px - PW / 2, H - 30, PW, 12, 6); ctx.fill();
+        const b = ball || { x: px, y: H - 44 }; ctx.beginPath(); ctx.arc(b.x, b.y, 7, 0, 7); ctx.fill();
+        if (msg) { ctx.fillStyle = "#aab"; ctx.font = "16px system-ui"; ctx.textAlign = "center"; ctx.fillText(msg, W / 2, H / 2 + 60); }
+      },
+    };
+  }
+  function snake() {
+    const S = 20, CW = W / S, CH = H / S;
+    let body = [[8, 12], [7, 12], [6, 12]], dir = [1, 0], next = [1, 0], food, acc = 0, score = 0, dead = false, started = false;
+    const place = () => { do food = [Math.floor(Math.random() * CW), Math.floor(Math.random() * CH)]; while (body.some(([x, y]) => x === food[0] && y === food[1])); };
+    place();
+    const turn = (d) => { if (d[0] !== -dir[0] || d[1] !== -dir[1]) next = d; started = true; };
+    // pointer / swipe: steer toward the side of the head you tap
+    cv.onpointerdown = (e) => { if (dead) { Object.assign(game, snake()); return; } const [x, y] = toCanvas(e), [hx, hy] = body[0], dx = x - (hx + .5) * S, dy = y - (hy + .5) * S; turn(Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)]); };
+    cv.onpointermove = null;
+    return {
+      key(k) { const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[k]; if (d) turn(d); if (k === " " && dead) Object.assign(game, snake()); },
+      update(dt) {
+        if (!started || dead) { scoreEl.textContent = `score ${score} · best ${best.snake || 0}`; return; }
+        acc += dt; const speed = Math.max(.05, .12 - score * .002);
+        while (acc > speed) {
+          acc -= speed; dir = next;
+          const head = [(body[0][0] + dir[0] + CW) % CW, (body[0][1] + dir[1] + CH) % CH];
+          if (body.some(([x, y]) => x === head[0] && y === head[1])) { dead = true; saveBest("snake", score); return; }
+          body.unshift(head);
+          if (head[0] === food[0] && head[1] === food[1]) { score++; place(); } else body.pop();
+        }
+        scoreEl.textContent = `score ${score} · best ${best.snake || 0}`;
+      },
+      draw() {
+        ctx.fillStyle = "rgb(255 255 255 / .03)"; for (let x = 0; x < CW; x++) for (let y = 0; y < CH; y++) if ((x + y) % 2) ctx.fillRect(x * S, y * S, S, S);
+        ctx.font = `${S}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🍎", (food[0] + .5) * S, (food[1] + .55) * S);
+        body.forEach(([x, y], i) => { ctx.fillStyle = `hsl(${140 - i * 3} 70% ${55 - i * .5}%)`; ctx.beginPath(); ctx.roundRect(x * S + 1, y * S + 1, S - 2, S - 2, 6); ctx.fill(); });
+        ctx.fillStyle = "#aab"; ctx.font = "16px system-ui";
+        if (!started) ctx.fillText("Arrow keys / WASD, or tap where to turn", W / 2, H / 2 + 60);
+        if (dead) ctx.fillText("Ouch. Space or tap to restart", W / 2, H / 2);
+      },
+    };
+  }
+  let game = breakout();
+  document.querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => { game = b.dataset.g === "snake" ? snake() : breakout(); document.querySelectorAll("[data-g]").forEach((x) => x.setAttribute("aria-pressed", x === b)); cv.focus(); }));
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    game.update(dt); ctx.clearRect(0, 0, W, H); game.draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hacker Terminal Portfolio</title>
+<meta name="description" content="A portfolio as an interactive shell: boot sequence, typed output, commands (help, about, projects, skills, contact, ls, cat, theme, clear, sudo, matrix), tab completion, command history with arrow keys and a CRT glow. Fully keyboard-driven, works on mobile.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  :root { --t-fg: #39ff88; --t-dim: #1f9c55; --t-bg: #020a05; }
+  body.amber { --t-fg: #ffb000; --t-dim: #a06c00; --t-bg: #0a0600; }
+  body.ice { --t-fg: #8be9fd; --t-dim: #4a90a8; --t-bg: #020812; }
+  body { background: var(--t-bg); }
+  .term { position: fixed; inset: 56px 0 0; padding: 18px 22px 40px; overflow-y: auto; font: 15px/1.55 var(--mono); color: var(--t-fg); text-shadow: 0 0 6px color-mix(in srgb, var(--t-fg) 60%, transparent); cursor: text; }
+  .term::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(transparent 0 2px, rgb(0 0 0 / .18) 2px 3px), radial-gradient(ellipse at center, transparent 60%, rgb(0 0 0 / .5)); }
+  .line { white-space: pre-wrap; word-break: break-word; }
+  .dim { color: var(--t-dim); }
+  .prompt { color: var(--t-dim); }
+  .in { display: flex; }
+  .in input { flex: 1; background: transparent; border: 0; outline: 0; color: inherit; font: inherit; text-shadow: inherit; caret-color: var(--t-fg); padding: 0; }
+  a { color: inherit; }
+  .ascii { line-height: 1.1; font-size: clamp(7px, 1.6vw, 13px); }
+</style>
+</head>
+<body>
+<div class="term" role="log" aria-live="polite"><div class="out"></div><label class="in"><span class="prompt">guest@portfolio:~$&nbsp;</span><input autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal command"></label></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const out = document.querySelector(".out"), input = document.querySelector("input"), term = document.querySelector(".term");
+  const FILES = { "about.txt": "I build interactive things for the web: shaders, motion, physics and\ninterfaces that feel alive. 8 years of front-end, 3 of WebGL.", "projects.md": "", "resume.pdf": "(binary) — try `open resume.pdf`", ".secret": "You found it. The cake is real. 🎂" };
+  const PROJECTS = [["aurora", "WebGL aurora background, 60fps on phones"], ["sandbox", "Falling-sand sim with 9 materials"], ["inkwell", "Variable-font playground"], ["orbit", "3D product configurator in Three.js"]];
+  const SKILLS = [["JavaScript", 95], ["CSS / Motion", 92], ["WebGL / GLSL", 80], ["Three.js", 78], ["Rust / WASM", 45]];
+  const bar = (v) => "█".repeat(Math.round(v / 5)) + "░".repeat(20 - Math.round(v / 5));
+  const COMMANDS = {
+    help: () => "Available commands:\n" + Object.keys(COMMANDS).filter((k) => k !== "sudo").map((k) => "  " + k.padEnd(10) + (HELP[k] || "")).join("\n"),
+    about: () => FILES["about.txt"],
+    projects: () => PROJECTS.map(([n, d], i) => `  [${i + 1}] ${n.padEnd(10)} ${d}`).join("\n") + "\n\n  type `open <name>` for details",
+    skills: () => SKILLS.map(([n, v]) => `  ${n.padEnd(14)} ${bar(v)} ${v}%`).join("\n"),
+    contact: () => "  email   hello@example.com\n  github  github.com/example\n  site    example.com",
+    ls: (a) => Object.keys(FILES).filter((f) => a.includes("-a") || !f.startsWith(".")).join("   "),
+    cat: (a) => (a[0] ? FILES[a[0]] ?? `cat: ${a[0]}: No such file` : "usage: cat <file>"),
+    open: (a) => { const p = PROJECTS.find(([n]) => n === a[0]); return p ? `Opening ${p[0]}…\n${p[1]}.\n(${Demo.lorem(20, p[0].length)})` : a[0] === "resume.pdf" ? "Downloading… just kidding." : "usage: open <project>"; },
+    theme: (a) => { const t = a[0]; if (!["green", "amber", "ice"].includes(t)) return "usage: theme green|amber|ice"; document.body.className = t === "green" ? "" : t; return "theme set to " + t; },
+    echo: (a) => a.join(" "),
+    date: () => new Date().toString(),
+    whoami: () => "guest (but we can be friends)",
+    history: () => hist.map((h, i) => `  ${String(i + 1).padStart(3)}  ${h}`).join("\n"),
+    clear: () => { out.innerHTML = ""; return null; },
+    matrix: () => { matrix(); return null; },
+    sudo: () => "guest is not in the sudoers file. This incident will be reported. 👮",
+  };
+  const HELP = { help: "show this list", about: "who I am", projects: "things I've built", skills: "what I'm good at", contact: "say hi", ls: "list files (-a for all)", cat: "print a file", open: "open a project", theme: "green | amber | ice", echo: "repeat after me", date: "current date", whoami: "who are you", history: "previous commands", clear: "clear the screen", matrix: "follow the white rabbit" };
+  // Typed output: characters appear quickly; the next command can start as soon as it finishes.
+  let typing = Promise.resolve();
+  function print(text, cls = "", instant = false) {
+    const el = document.createElement("div"); el.className = "line " + cls; out.appendChild(el);
+    if (instant || Demo.reduced) { el.textContent = text; scroll(); return Promise.resolve(); }
+    return new Promise((res) => { let i = 0; const step = () => { i = Math.min(text.length, i + Math.max(2, text.length / 60)); el.textContent = text.slice(0, i); scroll(); i < text.length ? requestAnimationFrame(step) : res(); }; step(); });
+  }
+  const scroll = () => (term.scrollTop = term.scrollHeight);
+  const hist = []; let hi = 0;
+  function run(raw) {
+    const line = raw.trim(); print(`guest@portfolio:~$ ${line}`, "prompt", true);
+    if (!line) return;
+    hist.push(line); hi = hist.length;
+    const [cmd, ...args] = line.split(/\s+/);
+    const fn = COMMANDS[cmd.toLowerCase()];
+    const res = fn ? fn(args) : `command not found: ${cmd}. Try \`help\`.`;
+    if (res != null) typing = typing.then(() => print(res));
+  }
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { run(input.value); input.value = ""; }
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (hi > 0) input.value = hist[--hi]; }
+    else if (e.key === "ArrowDown") { e.preventDefault(); hi = Math.min(hist.length, hi + 1); input.value = hist[hi] || ""; }
+    else if (e.key === "Tab") {
+      e.preventDefault();
+      // complete commands, or file / project names after a space
+      const parts = input.value.split(" "), last = parts.pop(), pool = parts.length ? [...Object.keys(FILES), ...PROJECTS.map((p) => p[0]), "green", "amber", "ice"] : Object.keys(COMMANDS);
+      const m = pool.filter((k) => k.startsWith(last));
+      if (m.length === 1) input.value = [...parts, m[0]].join(" ") + " "; else if (m.length > 1) print(m.join("   "), "dim", true);
+    } else if (e.key === "l" && e.ctrlKey) { e.preventDefault(); out.innerHTML = ""; }
+  });
+  term.addEventListener("click", () => getSelection().isCollapsed && input.focus());
+  function matrix() {
+    const cv = document.createElement("canvas"); cv.style.cssText = "position:fixed;inset:0;width:100%;height:100%;z-index:20"; document.body.appendChild(cv);
+    const g = cv.getContext("2d"); cv.width = innerWidth; cv.height = innerHeight; const cols = Math.floor(innerWidth / 14), ys = Array(cols).fill(0);
+    let n = 0; const col = getComputedStyle(document.body).getPropertyValue("--t-fg");
+    (function f() { g.fillStyle = "rgb(0 0 0 / .08)"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = col; g.font = "14px monospace"; ys.forEach((y, i) => { g.fillText(String.fromCharCode(0x30a0 + Math.random() * 96), i * 14, y); ys[i] = y > cv.height && Math.random() > .97 ? 0 : y + 14; }); if (++n < 240) requestAnimationFrame(f); else cv.remove(); })();
+  }
+  // Boot sequence
+  (async () => {
+    const boot = ["[  OK  ] Loading kernel modules", "[  OK  ] Mounting /dev/creativity", "[  OK  ] Starting coffee.service", "[  OK  ] Reached target Portfolio"];
+    for (const l of boot) await print(l, "dim");
+    await print(`
+ ██████╗  ██████╗ ██████╗ ████████╗
+ ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝
+ ██████╔╝██║   ██║██████╔╝   ██║
+ ██╔═══╝ ██║   ██║██╔══██╗   ██║
+ ██║     ╚██████╔╝██║  ██║   ██║
+ ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝`, "ascii");
+    await print("Welcome. Type `help` to get started (Tab completes, ↑ ↓ for history).");
+    input.focus({ preventScroll: true });
+  })();
+</script>
+</body>
+</html>

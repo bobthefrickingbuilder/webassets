@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Speech-controlled Navigation</title>
+<meta name="description" content="Say 'scroll down', 'go to pricing', 'top', 'dark mode' or 'stop': the Web Speech API's continuous recognition drives scrolling and navigation, with live interim captions, a command cheat-sheet and a typed fallback where speech isn't supported.">
+<meta name="tech" content="Web Speech API, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body.light { --bg: #f7f7f9; --bg-2: #fff; --fg: #111; --muted: #666; --line: #ddd; background: var(--bg); color: var(--fg); }
+  section { min-height: 90vh; padding: 100px 8vw 40px; border-bottom: 1px solid var(--line); scroll-margin-top: 0; transition: background .4s; }
+  section h2 { font-size: clamp(40px, 7vw, 90px); margin: 0 0 12px; letter-spacing: -.04em; }
+  section p { max-width: 620px; color: var(--muted); }
+  section.flash { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .mic { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; padding: 10px 12px 10px 10px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); box-shadow: 0 10px 40px rgb(0 0 0 / .4); max-width: 94vw; z-index: 5; }
+  .mic button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; font-size: 20px; cursor: pointer; flex: none; }
+  .mic.on button { animation: pulse 1.2s infinite; background: #ef4444; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 12px rgb(239 68 68 / .2); } }
+  .cap { font-size: 14px; min-width: 200px; } .cap i { color: var(--muted); }
+  .mic input { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: inherit; width: 180px; }
+  .cheat { position: fixed; top: 64px; right: 16px; padding: 12px 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); font: 12px/1.8 var(--mono); color: var(--muted); }
+  .cheat b { color: var(--fg); }
+</style>
+</head>
+<body>
+<div class="cheat" aria-label="Voice commands"><b>Say:</b><br>“scroll down / up”<br>“go to features / pricing / contact”<br>“top” · “bottom” · “stop”<br>“dark mode” · “light mode”</div>
+<section id="home"><h2>Hands-free.</h2><p>Press the mic and speak. Recognition runs continuously; commands fire on final results and the caption shows what it heard.</p></section>
+<section id="features"><h2>Features</h2><p></p></section>
+<section id="pricing"><h2>Pricing</h2><p></p></section>
+<section id="contact"><h2>Contact</h2><p></p></section>
+<div class="mic"><button aria-label="Start listening" aria-pressed="false">🎙</button><span class="cap" aria-live="polite">Tap to talk</span><input placeholder="…or type a command" aria-label="Type a command"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelectorAll("section p:empty").forEach((p, i) => (p.textContent = Demo.lorem(60, i + 3)));
+  const cap = document.querySelector(".cap"), bar = document.querySelector(".mic"), btn = bar.querySelector("button");
+  const behavior = Demo.reduced ? "auto" : "smooth";
+  let autoScroll = 0;
+  // Command table: regex → action. Synonyms make it forgiving.
+  const go = (id) => { const s = document.getElementById(id); s.scrollIntoView({ behavior }); s.classList.add("flash"); setTimeout(() => s.classList.remove("flash"), 900); };
+  const COMMANDS = [
+    [/scroll down|down|next/, () => scrollBy({ top: innerHeight * .7, behavior })],
+    [/scroll up|up|previous|back/, () => scrollBy({ top: -innerHeight * .7, behavior })],
+    [/keep scrolling|auto ?scroll/, () => (autoScroll = 2)],
+    [/stop|pause|halt/, () => (autoScroll = 0)],
+    [/top|home|start/, () => scrollTo({ top: 0, behavior })],
+    [/bottom|end/, () => scrollTo({ top: document.body.scrollHeight, behavior })],
+    [/feature/, () => go("features")], [/pric|cost|plan/, () => go("pricing")], [/contact|email|reach/, () => go("contact")],
+    [/dark/, () => document.body.classList.remove("light")], [/light/, () => document.body.classList.add("light")],
+  ];
+  function run(text) {
+    const t = text.toLowerCase().trim();
+    // check longer phrases first so "scroll down" doesn't hit "down" from a different rule order
+    const hit = COMMANDS.find(([re]) => re.test(t));
+    cap.innerHTML = hit ? `✓ <b>${t}</b>` : `<i>“${t}” — not a command</i>`;
+    if (hit) hit[1]();
+  }
+  (function tick() { if (autoScroll) scrollBy(0, autoScroll); requestAnimationFrame(tick); })();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false;
+  if (!SR) { cap.textContent = "Speech recognition isn't supported here — type commands instead."; btn.disabled = true; btn.style.opacity = .4; }
+  else {
+    rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) run(r[0].transcript); else cap.innerHTML = `<i>${r[0].transcript}…</i>`;
+      }
+    };
+    rec.onerror = (e) => (cap.textContent = "Mic error: " + e.error);
+    rec.onend = () => { if (listening) rec.start(); };   // Chrome stops after silence; restart while toggled on
+    btn.onclick = () => {
+      listening = !listening; bar.classList.toggle("on", listening); btn.setAttribute("aria-pressed", listening);
+      if (listening) { rec.start(); cap.textContent = "Listening…"; } else { rec.stop(); cap.textContent = "Tap to talk"; }
+    };
+  }
+  bar.querySelector("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.value) { run(e.target.value); e.target.value = ""; } });
+</script>
+</body>
+</html>

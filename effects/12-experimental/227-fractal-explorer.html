@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mandelbrot &amp; Julia Explorer</title>
+<meta name="description" content="A GPU fractal explorer: drag to pan and wheel or pinch to zoom deep into the Mandelbrot set with smooth iteration colouring and palettes. A live Julia-set inset follows the point under your cursor; click to swap them. Uses emulated double precision for deeper zooms.">
+<meta name="tech" content="WebGL2, GLSL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #000; }
+  canvas.main { cursor: grab; touch-action: none; }
+  canvas.julia { position: fixed; right: 16px; bottom: 16px; width: min(30vw, 240px); aspect-ratio: 1; border-radius: 14px; border: 1px solid rgb(255 255 255 / .2); box-shadow: 0 10px 40px #000; cursor: pointer; }
+  .hud { position: fixed; top: 64px; left: 16px; padding: 10px 12px; border-radius: 12px; background: rgb(0 0 0 / .6); font: 12px/1.7 var(--mono); color: #ccc; }
+  .ui { position: fixed; bottom: 16px; left: 16px; display: flex; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 300px); }
+  .ui button { padding: 8px 12px; border-radius: 999px; border: 1px solid #333; background: rgb(0 0 0 / .7); cursor: pointer; font-size: 13px; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas class="main full-canvas" aria-label="Mandelbrot set. Drag to pan, scroll to zoom."></canvas>
+<canvas class="julia" aria-label="Julia set for the point under the cursor. Click to explore it."></canvas>
+<div class="hud" aria-live="polite"></div>
+<div class="ui"><button data-p="0" aria-pressed="true">Ember</button><button data-p="1" aria-pressed="false">Ocean</button><button data-p="2" aria-pressed="false">Neon</button><button class="tour">✈ Auto-zoom</button><button class="home">Reset</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  // Shared fractal shader. Mode 0 = Mandelbrot (c = pixel), mode 1 = Julia (z0 = pixel, c = u_c).
+  // The centre is passed as hi + lo floats ("double-single") and the pixel offset is added in that space,
+  // which keeps the image sharp a few orders of magnitude deeper than plain floats.
+  const FRAG = `
+    uniform vec2 u_res; uniform vec4 u_center; uniform float u_scale, u_iter, u_mode, u_pal, u_time; uniform vec2 u_c;
+    vec2 ds_add(vec2 a, vec2 b){ float t1 = a.x + b.x; float e = t1 - a.x; float t2 = ((b.x - e) + (a.x - (t1 - e))) + a.y + b.y; float hi = t1 + t2; return vec2(hi, t2 - (hi - t1)); }
+    vec3 pal(float t){
+      if (u_pal < .5) return .5 + .5 * cos(6.2831 * (t * vec3(1.) + vec3(0., .1, .2)) + vec3(0., .6, 1.2));
+      if (u_pal < 1.5) return .5 + .5 * cos(6.2831 * (t + vec3(.5, .6, .7)));
+      return .5 + .5 * cos(6.2831 * (t * 2. + vec3(.8, .2, .5)));
+    }
+    void main(){
+      vec2 p = (gl_FragCoord.xy - .5 * u_res) / u_res.y * u_scale;
+      vec2 x = ds_add(u_center.xy, vec2(p.x, 0.)), y = ds_add(u_center.zw, vec2(p.y, 0.));
+      vec2 pos = vec2(x.x + x.y, y.x + y.y);
+      vec2 z = u_mode < .5 ? vec2(0.) : pos, c = u_mode < .5 ? pos : u_c;
+      float i = 0., MAX = u_iter;
+      for (float k = 0.; k < 2000.; k++){
+        if (k >= MAX) break;
+        z = vec2(z.x * z.x - z.y * z.y, 2. * z.x * z.y) + c;
+        if (dot(z, z) > 256.) break;
+        i++;
+      }
+      if (i >= MAX) { o = vec4(0, 0, 0, 1); return; }
+      float sm = i - log2(log2(dot(z, z))) + 4.;   // smooth (continuous) iteration count
+      vec3 col = pal(log(sm) * .35 + u_time * .02);   // log scale keeps bands visible at every zoom
+      o = vec4(pow(col, vec3(.9)), 1.);
+    }`;
+  function makeView(canvas) {
+    const gl = GL.context(canvas); const prog = GL.program(gl, FRAG);
+    return { canvas, gl, prog, draw(u) {
+      const dpr = Math.min(devicePixelRatio, 1.5), w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      prog.use(); for (const k in u) prog.set(k, u[k]); prog.set("u_res", [w, h]); GL.draw(gl, null);
+    } };
+  }
+  const main = makeView(document.querySelector("canvas.main")), julia = makeView(document.querySelector("canvas.julia"));
+  const split = (v) => { const hi = Math.fround(v); return [hi, v - hi]; };
+  const HOME = { cx: -0.6, cy: 0, scale: 2.6 };
+  let cx = HOME.cx, cy = HOME.cy, scale = HOME.scale, mode = 0, juliaC = [-0.8, 0.156], pal = 0, mouseC = [-0.75, 0.1], tour = false, dirty = true;
+  const toWorld = (px, py) => { const r = main.canvas.getBoundingClientRect(); return [cx + (px - r.width / 2) / r.height * scale, cy - (py - r.height / 2) / r.height * scale]; };
+  // pan / zoom with inertia-free direct manipulation
+  const pointers = new Map(); let pinch = 0;
+  main.canvas.addEventListener("pointerdown", (e) => { pointers.set(e.pointerId, [e.clientX, e.clientY]); main.canvas.setPointerCapture(e.pointerId); tour = false; });
+  main.canvas.addEventListener("pointermove", (e) => {
+    if (mode === 0) { mouseC = toWorld(e.clientX, e.clientY); dirty = true; }
+    if (!pointers.has(e.pointerId)) return;
+    const [px, py] = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, pinch / d); pinch = d; return; }
+    const h = main.canvas.clientHeight; cx -= (e.clientX - px) / h * scale; cy += (e.clientY - py) / h * scale; dirty = true;
+  });
+  const up = (e) => { pointers.delete(e.pointerId); pinch = 0; };
+  main.canvas.addEventListener("pointerup", up); main.canvas.addEventListener("pointercancel", up);
+  function zoomAt(px, py, f) { const [wx, wy] = toWorld(px, py); scale *= f; cx = wx + (cx - wx) * f; cy = wy + (cy - wy) * f; dirty = true; }
+  main.canvas.addEventListener("wheel", (e) => { e.preventDefault(); tour = false; zoomAt(e.clientX, e.clientY, Math.exp(e.deltaY * .0015)); }, { passive: false });
+  // click the inset to swap: explore the Julia set full-screen (or go back)
+  julia.canvas.onclick = () => { if (mode === 0) { juliaC = mouseC.slice(); mode = 1; cx = 0; cy = 0; scale = 3.2; } else { mode = 0; ({ cx, cy, scale } = HOME); } dirty = true; };
+  document.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { pal = +b.dataset.p; dirty = true; document.querySelectorAll("[data-p]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  document.querySelector(".home").onclick = () => { mode = 0; ({ cx, cy, scale } = HOME); tour = false; dirty = true; };
+  // Auto-zoom into Seahorse Valley
+  document.querySelector(".tour").onclick = () => { mode = 0; cx = -0.743643887037151; cy = 0.13182590420533; scale = 2.6; tour = true; };
+  const hud = document.querySelector(".hud");
+  let t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    if (tour) { scale *= .985; dirty = true; if (scale < 2e-10) tour = false; }
+    const iter = Math.min(1800, Math.floor(120 + 60 * Math.log2(3 / scale)));
+    const [xh, xl] = split(cx), [yh, yl] = split(cy);
+    if (dirty || !Demo.reduced) {
+      main.draw({ u_center: [xh, xl, yh, yl], u_scale: scale, u_iter: iter, u_mode: mode, u_c: juliaC, u_pal: pal, u_time: Demo.reduced ? 0 : t });
+      // inset: Julia for the cursor point while browsing Mandelbrot; Mandelbrot overview while browsing a Julia
+      julia.draw(mode === 0 ? { u_center: [0, 0, 0, 0], u_scale: 3.2, u_iter: 160, u_mode: 1, u_c: mouseC, u_pal: pal, u_time: 0 }
+                             : { u_center: [-0.6, 0, 0, 0], u_scale: 2.8, u_iter: 160, u_mode: 0, u_c: [0, 0], u_pal: pal, u_time: 0 });
+      dirty = false;
+    }
+    hud.innerHTML = `${mode ? "Julia c = " + juliaC.map((v) => v.toFixed(4)).join(", ") : "Mandelbrot"}<br>centre ${cx.toPrecision(10)}, ${cy.toPrecision(10)}<br>zoom ×${(2.6 / scale).toExponential(2)} · ${iter} iterations`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

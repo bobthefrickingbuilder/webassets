@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Time-of-day Sky Theme</title>
+<meta name="description" content="The page theme follows the real sun: solar elevation is computed from the date, time and your (approximate or geolocated) position, and drives sky gradients, the sun and moon arc, stars and light/dark UI colours. Scrub through a day to preview dawn, noon, golden hour and night.">
+<meta name="tech" content="JS, CSS variables, Geolocation">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  :root { --sky-top: #0b1026; --sky-bot: #2b2f5e; --ink: #fff; --card: rgb(255 255 255 / .08); }
+  body { min-height: 100vh; overflow: hidden; color: var(--ink); background: linear-gradient(var(--sky-top), var(--sky-bot)); }
+  .stars { position: fixed; inset: 0; opacity: var(--stars, 1); background-image: radial-gradient(1.2px 1.2px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.4px 1.4px at 40% 70%, #fff, transparent), radial-gradient(1px 1px at 85% 55%, #fff, transparent), radial-gradient(1px 1px at 10% 85%, #fff, transparent); background-size: 300px 300px; }
+  .orb { position: fixed; width: 80px; height: 80px; margin: -40px; border-radius: 50%; left: var(--x); top: var(--y); }
+  .sun { background: radial-gradient(#fffbe6, #ffd36e 50%, rgb(255 180 80 / 0) 70%); box-shadow: 0 0 120px 40px rgb(255 200 120 / var(--glow, .5)); }
+  .moon { width: 56px; height: 56px; margin: -28px; background: radial-gradient(circle at 35% 35%, #fff, #cfd6e6 60%); box-shadow: inset -12px -6px 0 rgb(0 0 0 / .18), 0 0 40px rgb(220 230 255 / .4); }
+  .hills { position: fixed; left: 0; right: 0; bottom: 0; height: 30vh; }
+  .card { position: relative; max-width: 520px; margin: 18vh auto 0; padding: 28px; border-radius: 22px; background: var(--card); backdrop-filter: blur(10px); text-align: center; }
+  .card h1 { margin: 0 0 8px; font-size: clamp(32px, 5vw, 52px); letter-spacing: -.03em; }
+  .card p { margin: 4px 0; opacity: .8; }
+  .ui { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: min(560px, 92vw); display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 16px; background: var(--card); backdrop-filter: blur(10px); font-size: 13px; }
+  .ui input { flex: 1; }
+  .ui button { padding: 6px 12px; border-radius: 999px; border: 1px solid rgb(127 127 127 / .4); background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="stars" aria-hidden="true"></div>
+<div class="orb sun" aria-hidden="true"></div><div class="orb moon" aria-hidden="true"></div>
+<svg class="hills" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 V18 Q15 8 30 16 T60 14 T100 12 V30Z" class="h1"/><path d="M0 30 V24 Q20 16 45 23 T100 20 V30Z" class="h2"/></svg>
+<div class="card"><h1 class="phase">Night</h1><p class="when"></p><p class="where"></p></div>
+<div class="ui"><span class="clock">--:--</span><input type="range" min="0" max="1439" step="1" aria-label="Time of day"><button class="now">Now</button><button class="loc">📍 Use my location</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // NOAA-style solar position (good to ~1°): returns elevation and azimuth in degrees.
+  function sunPosition(date, lat, lon) {
+    const rad = Math.PI / 180, day = (Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - Date.UTC(date.getUTCFullYear(), 0, 0)) / 864e5;
+    const hour = date.getUTCHours() + date.getUTCMinutes() / 60;
+    const g = (2 * Math.PI / 365) * (day - 1 + (hour - 12) / 24);
+    const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    const eqt = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    const tst = hour * 60 + eqt + 4 * lon, ha = (tst / 4 - 180) * rad;
+    const cosZ = Math.sin(lat * rad) * Math.sin(decl) + Math.cos(lat * rad) * Math.cos(decl) * Math.cos(ha);
+    const el = 90 - Math.acos(Math.max(-1, Math.min(1, cosZ))) / rad;
+    return { el, ha: ha / rad };
+  }
+  // Key frames of sky colour by solar elevation.
+  const STOPS = [
+    { el: -18, top: "#05071a", bot: "#141a3a", ink: "#e8ecff", card: "rgb(255 255 255 / .07)", stars: 1, hill: ["#0a0d22", "#05061a"], name: "Night" },
+    { el: -8, top: "#141a46", bot: "#5b3f78", ink: "#fff", card: "rgb(255 255 255 / .08)", stars: .6, hill: ["#1b1a3d", "#100f2a"], name: "Twilight" },
+    { el: -2, top: "#3a4a8c", bot: "#ff9a76", ink: "#fff", card: "rgb(255 255 255 / .12)", stars: .1, hill: ["#3d2c55", "#2a1e3e"], name: "Dawn / dusk" },
+    { el: 6, top: "#6aa5e8", bot: "#ffc58f", ink: "#1b1530", card: "rgb(255 255 255 / .35)", stars: 0, hill: ["#5b7a4a", "#3f5a34"], name: "Golden hour" },
+    { el: 25, top: "#3d8ef0", bot: "#bfe1ff", ink: "#0d1b2e", card: "rgb(255 255 255 / .5)", stars: 0, hill: ["#5e9a52", "#467a3c"], name: "Daytime" },
+    { el: 60, top: "#2d7fe8", bot: "#a9d6ff", ink: "#0d1b2e", card: "rgb(255 255 255 / .55)", stars: 0, hill: ["#64a356", "#4a8140"], name: "Midday" },
+  ];
+  const hex = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const mixHex = (a, b, t) => `rgb(${hex(a).map((v, i) => Math.round(v + (hex(b)[i] - v) * t)).join(" ")})`;
+  function skyFor(el) {
+    let i = 0; while (i < STOPS.length - 2 && el > STOPS[i + 1].el) i++;
+    const a = STOPS[i], b = STOPS[i + 1], t = Math.max(0, Math.min(1, (el - a.el) / (b.el - a.el)));
+    return { top: mixHex(a.top, b.top, t), bot: mixHex(a.bot, b.bot, t), ink: t < .5 ? a.ink : b.ink, card: t < .5 ? a.card : b.card, stars: a.stars + (b.stars - a.stars) * t, hill: [mixHex(a.hill[0], b.hill[0], t), mixHex(a.hill[1], b.hill[1], t)], name: (t < .5 ? a : b).name };
+  }
+  // Default location: estimated from the time-zone offset (longitude) and a mid latitude, until the user shares theirs.
+  let lat = 45, lon = -new Date().getTimezoneOffset() / 4, place = "approximate location from your time zone";
+  const slider = document.querySelector("input"), root = document.documentElement.style;
+  let override = null;
+  const now = () => new Date();
+  slider.oninput = () => (override = +slider.value);
+  document.querySelector(".now").onclick = () => (override = null);
+  document.querySelector(".loc").onclick = () => navigator.geolocation?.getCurrentPosition((p) => { lat = p.coords.latitude; lon = p.coords.longitude; place = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`; }, (e) => (place = "location denied — using time zone"));
+  function frame() {
+    const d = now();
+    if (override != null) { d.setHours(0, override, 0, 0); } else slider.value = d.getHours() * 60 + d.getMinutes();
+    const sun = sunPosition(d, lat, lon), moonEl = -sun.el;   // a simple opposite-the-sun moon
+    const s = skyFor(sun.el);
+    root.setProperty("--sky-top", s.top); root.setProperty("--sky-bot", s.bot); root.setProperty("--ink", s.ink); root.setProperty("--card", s.card); root.setProperty("--stars", s.stars.toFixed(2));
+    root.setProperty("--glow", Math.max(0, Math.min(.7, (sun.el + 4) / 20)).toFixed(2));
+    document.querySelector(".h1").setAttribute("fill", s.hill[0]); document.querySelector(".h2").setAttribute("fill", s.hill[1]);
+    // place the orbs on an arc: hour angle → x, elevation → y
+    const placeOrb = (el, ha, sel) => { const x = 50 + (ha / 180) * 55, y = 80 - el * 1.1; const o = document.querySelector(sel); o.style.setProperty("--x", x + "vw"); o.style.setProperty("--y", y + "vh"); o.style.opacity = el > -6 ? 1 : 0; };
+    placeOrb(sun.el, sun.ha, ".sun"); placeOrb(moonEl, sun.ha > 0 ? sun.ha - 180 : sun.ha + 180, ".moon");
+    document.querySelector(".phase").textContent = s.name;
+    document.querySelector(".clock").textContent = d.toTimeString().slice(0, 5);
+    document.querySelector(".when").textContent = `Sun elevation ${sun.el.toFixed(1)}°`;
+    document.querySelector(".where").textContent = place;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

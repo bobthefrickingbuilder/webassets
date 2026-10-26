@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pixel-art Canvas with Replay</title>
+<meta name="description" content="A 32×32 pixel-art editor (pencil, eraser, fill bucket, eyedropper, mirror mode, undo/redo, palette) that records every stroke, so you can replay your drawing as an animated timelapse at adjustable speed and export it as a PNG.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; padding: 70px 12px 20px; }
+  .app { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; width: min(760px, 100%); }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .tools { flex-direction: row !important; flex-wrap: wrap; } }
+  .tools { display: flex; flex-direction: column; gap: 6px; }
+  .tools button { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 13px; text-align: left; }
+  .tools button[aria-pressed="true"] { background: #fff; color: #000; }
+  .board { position: relative; }
+  canvas.px { width: 100%; max-width: 70vh; aspect-ratio: 1; image-rendering: pixelated; background: repeating-conic-gradient(#2a2b35 0 25%, #22232c 0 50%) 0 0 / 6.25% 6.25%; border-radius: 10px; cursor: crosshair; touch-action: none; display: block; }
+  .pal { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin-top: 10px; max-width: 70vh; }
+  .pal button { aspect-ratio: 1; border-radius: 4px; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .pal button[aria-pressed="true"] { border-color: #fff; transform: scale(1.15); }
+  .replay { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 70vh; }
+  .replay input { flex: 1; }
+  .replay button { padding: 8px 14px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tools" role="toolbar" aria-label="Tools">
+    <button data-t="pen" aria-pressed="true">✏️ Pencil</button><button data-t="erase" aria-pressed="false">🧽 Eraser</button><button data-t="fill" aria-pressed="false">🪣 Fill</button><button data-t="pick" aria-pressed="false">💧 Pick</button>
+    <button class="mirror" aria-pressed="false">🪞 Mirror</button><button class="undo">↶ Undo</button><button class="redo">↷ Redo</button><button class="clear">🗑 Clear</button><button class="png">⬇ PNG</button>
+  </div>
+  <div class="board">
+    <canvas class="px" width="32" height="32" aria-label="Pixel canvas"></canvas>
+    <div class="pal" aria-label="Palette"></div>
+    <div class="replay"><button class="play">▶ Replay</button><label>Speed</label><input type="range" min="1" max="40" value="12" aria-label="Replay speed"><span class="count"></span></div>
+  </div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const N = 32, cv = document.querySelector(".px"), g = cv.getContext("2d");
+  // PICO-8 palette
+  const PAL = ["#000000", "#1d2b53", "#7e2553", "#008751", "#ab5236", "#5f574f", "#c2c3c7", "#fff1e8", "#ff004d", "#ffa300", "#ffec27", "#00e436", "#29adff", "#83769c", "#ff77a8", "#ffccaa"];
+  let pix = new Array(N * N).fill(null), color = PAL[8], tool = "pen", mirror = false;
+  const ops = [];        // the recording: every pixel change in order, with stroke ids
+  let undoStack = [], redoStack = [], stroke = 0;
+  function draw() { g.clearRect(0, 0, N, N); pix.forEach((c, i) => { if (c) { g.fillStyle = c; g.fillRect(i % N, (i / N) | 0, 1, 1); } }); }
+  function setPx(x, y, c, rec) {
+    if (x < 0 || y < 0 || x >= N || y >= N) return;
+    const i = y * N + x; if (pix[i] === c) return;
+    rec.push([i, pix[i], c]); pix[i] = c; ops.push({ i, c, s: stroke });
+  }
+  function apply(x, y, rec) {
+    const c = tool === "erase" ? null : color;
+    if (tool === "pick") { if (pix[y * N + x]) selectColor(pix[y * N + x]); return; }
+    if (tool === "fill") { flood(x, y, c, rec); if (mirror) flood(N - 1 - x, y, c, rec); return; }
+    setPx(x, y, c, rec); if (mirror) setPx(N - 1 - x, y, c, rec);
+  }
+  function flood(x, y, c, rec) {
+    const from = pix[y * N + x]; if (from === c) return;
+    const q = [[x, y]];
+    while (q.length) { const [px, py] = q.pop(); if (px < 0 || py < 0 || px >= N || py >= N || pix[py * N + px] !== from) continue; setPx(px, py, c, rec); q.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]); }
+  }
+  let cur = null, lx, ly;
+  const cell = (e) => { const r = cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * N), Math.floor((e.clientY - r.top) / r.height * N)]; };
+  cv.addEventListener("pointerdown", (e) => { if (playing) return; stroke++; cur = []; [lx, ly] = cell(e); apply(lx, ly, cur); draw(); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", (e) => {
+    if (!cur || tool === "fill" || tool === "pick") return;
+    const [x, y] = cell(e), n = Math.max(Math.abs(x - lx), Math.abs(y - ly));
+    for (let k = 1; k <= n; k++) apply(Math.round(lx + (x - lx) * k / n), Math.round(ly + (y - ly) * k / n), cur);   // Bresenham-ish line, no gaps
+    lx = x; ly = y; draw();
+  });
+  addEventListener("pointerup", () => { if (cur && cur.length) { undoStack.push(cur); redoStack = []; } cur = null; count(); });
+  const undo = () => { const s = undoStack.pop(); if (!s) return; for (let k = s.length - 1; k >= 0; k--) { pix[s[k][0]] = s[k][1]; ops.push({ i: s[k][0], c: s[k][1], s: ++stroke }); } redoStack.push(s); draw(); count(); };
+  const redo = () => { const s = redoStack.pop(); if (!s) return; for (const [i, , c] of s) { pix[i] = c; ops.push({ i, c, s: ++stroke }); } undoStack.push(s); draw(); count(); };
+  document.querySelector(".undo").onclick = undo; document.querySelector(".redo").onclick = redo;
+  addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); } });
+  document.querySelector(".clear").onclick = () => { stroke++; const rec = []; pix.forEach((c, i) => c && setPx(i % N, (i / N) | 0, null, rec)); undoStack.push(rec); draw(); count(); };
+  document.querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => { tool = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  const mb = document.querySelector(".mirror"); mb.onclick = () => { mirror = !mirror; mb.setAttribute("aria-pressed", mirror); };
+  const pal = document.querySelector(".pal");
+  PAL.forEach((c) => { const b = document.createElement("button"); b.style.background = c; b.setAttribute("aria-label", c); b.onclick = () => selectColor(c); pal.appendChild(b); });
+  function selectColor(c) { color = c; pal.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.getAttribute("aria-label") === c)); if (tool === "pick" || tool === "erase") document.querySelector('[data-t="pen"]').click(); }
+  selectColor(color);
+  document.querySelector(".png").onclick = () => {
+    // upscale ×16 with nearest neighbour for a crisp export
+    const out = document.createElement("canvas"); out.width = out.height = N * 16; const o = out.getContext("2d"); o.imageSmoothingEnabled = false; o.drawImage(cv, 0, 0, N * 16, N * 16);
+    const a = document.createElement("a"); a.download = "pixel-art.png"; a.href = out.toDataURL(); a.click();
+  };
+  // --- Replay: start from blank and re-apply recorded ops, a few per frame ---
+  let playing = false;
+  const count = () => (document.querySelector(".count").textContent = ops.length + " strokes of pixels recorded");
+  document.querySelector(".play").onclick = () => {
+    if (playing || !ops.length) return; playing = true; const final = pix.slice(); pix.fill(null); draw();
+    let k = 0; const speed = () => +document.querySelector(".replay input").value;
+    (function step() {
+      for (let n = 0; n < speed() && k < ops.length; n++, k++) pix[ops[k].i] = ops[k].c;
+      draw(); document.querySelector(".count").textContent = `${k} / ${ops.length}`;
+      if (k < ops.length) requestAnimationFrame(step); else { pix = final; draw(); playing = false; count(); }
+    })();
+  };
+  // Seed a small sprite (drawn through the recorder) so Replay has something to show immediately.
+  const HEART = ["..XX...XX..", ".XXXX.XXXX.", "XXXXXXXXXXX", "XXXXXXXXXXX", ".XXXXXXXXX.", "..XXXXXXX..", "...XXXXX...", "....XXX....", ".....X....."];
+  stroke++; const rec = []; HEART.forEach((row, y) => [...row].forEach((ch, x) => ch === "X" && setPx(10 + x, 11 + y, x < 3 && y < 3 ? "#ffccaa" : "#ff004d", rec))); undoStack.push(rec);
+  draw(); count();
+</script>
+</body>
+</html>
