@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clip-path Expanding Image</title>
+<meta name="description" content="An image grows from a small rounded window to full-bleed as you scroll, using an animated clip-path inset.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .clip-wrap { height: 300vh; position: relative; }
+  .clip-sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .clip-img {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+    --p: 0;
+    clip-path: inset(calc((1 - var(--p)) * 30%) calc((1 - var(--p)) * 34%) round calc((1 - var(--p)) * 32px));
+    transform: scale(calc(1.25 - var(--p) * .25));
+  }
+  .clip-label { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  .clip-label h2 { font-size: clamp(40px, 8vw, 120px); letter-spacing: -.05em; margin: 0; color: #fff; mix-blend-mode: difference; }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓</div>
+<div class="clip-wrap">
+  <div class="clip-sticky">
+    <div class="clip-img"></div>
+    <div class="clip-label"><h2>Open up</h2></div>
+  </div>
+</div>
+<div class="spacer">Full bleed achieved</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const img = document.querySelector(".clip-img");
+  img.style.backgroundImage = `url(${Demo.artURL(1600, 1000, 2)})`;
+  const wrap = document.querySelector(".clip-wrap");
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  function update() {
+    const r = wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    img.style.setProperty("--p", ease(p).toFixed(4));
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

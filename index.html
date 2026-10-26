@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Web Assets Gallery</title>
+<meta name="description" content="A gallery of 250 self-contained web animations, effects and interactive features.">
+<link rel="stylesheet" href="assets/demo.css">
+<style>
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 48px 16px 96px; }
+  header h1 {
+    font-size: clamp(40px, 7vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 0 0 16px;
+    background: linear-gradient(100deg, #fff 20%, var(--accent) 50%, var(--accent-2) 80%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: var(--muted); max-width: 640px; margin: 0 0 32px; font-size: 18px; }
+  .controls { display: grid; gap: 14px; position: sticky; top: 0; z-index: 5; padding: 14px 0; background: linear-gradient(var(--bg) 80%, transparent); }
+  .search {
+    width: 100%; max-width: 520px; padding: 14px 18px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg-2); color: var(--fg); font: inherit; font-size: 16px;
+  }
+  .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 7px 14px;
+    font-size: 13px; cursor: pointer; color: var(--muted); transition: all .2s;
+  }
+  .chip:hover { color: var(--fg); border-color: #3a4050; }
+  .chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .count { color: var(--muted); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
+  .card {
+    position: relative; display: flex; flex-direction: column; gap: 8px; text-decoration: none;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2);
+    padding: 16px; min-height: 170px; overflow: hidden;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s;
+  }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: #3d4356; }
+  .card:focus-visible { outline: 2px solid var(--accent); }
+  .card .top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .card h3 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; flex: 1; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgb(255 255 255 / .06); color: #c3c8d6; }
+  .dots { letter-spacing: 2px; color: var(--accent-2); }
+  .preview {
+    position: absolute; inset: 0; border: 0; width: 100%; height: 100%;
+    opacity: 0; pointer-events: none; transition: opacity .3s; background: var(--bg);
+  }
+  .card.previewing .preview { opacity: 1; }
+  .cat-label { font-size: 12px; color: var(--accent); }
+  .empty { color: var(--muted); padding: 48px 0; text-align: center; }
+  @media (hover: none) { .preview { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Web Assets</h1>
+    <p><span id="total"></span> self-contained animations, effects and interactive features. Each one is a single HTML page you can open, read and copy into any site. Hover a card for a live preview.</p>
+  </header>
+  <div class="controls">
+    <input class="search" type="search" placeholder="Search effects… (e.g. scroll, glitch, particles)" aria-label="Search effects">
+    <div class="chips" role="group" aria-label="Filter by category"></div>
+    <div class="count" aria-live="polite"></div>
+  </div>
+  <div class="grid"></div>
+</div>
+<script src="effects/manifest.js"></script>
+<script>
+  const effects = window.EFFECTS || [];
+  const cats = window.EFFECT_CATEGORIES || {};
+  const grid = document.querySelector(".grid");
+  const chips = document.querySelector(".chips");
+  const search = document.querySelector(".search");
+  const count = document.querySelector(".count");
+  document.getElementById("total").textContent = effects.length;
+  let active = "all";
+
+  const all = [["all", "All"], ...Object.entries(cats)];
+  for (const [id, label] of all) {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = label; b.dataset.cat = id;
+    b.setAttribute("aria-pressed", id === active);
+    b.onclick = () => { active = id; chips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", c.dataset.cat === id)); render(); };
+    chips.appendChild(b);
+  }
+
+  function card(e) {
+    const a = document.createElement("a");
+    a.className = "card"; a.href = e.path;
+    a.innerHTML = `<div class="top"><span>#${String(e.num).padStart(3, "0")}</span><span class="dots" title="Complexity">${"●".repeat(e.complexity)}</span></div>
+      <span class="cat-label"></span><h3></h3><p></p><div class="badges"></div>`;
+    a.querySelector(".cat-label").textContent = cats[e.category];
+    a.querySelector("h3").textContent = e.title;
+    a.querySelector("p").textContent = e.description;
+    const badges = a.querySelector(".badges");
+    for (const t of e.tech) { const s = document.createElement("span"); s.className = "badge"; s.textContent = t; badges.appendChild(s); }
+    // Live preview: load the demo in an iframe after a short hover.
+    let timer;
+    a.addEventListener("mouseenter", () => {
+      timer = setTimeout(() => {
+        if (!a.querySelector("iframe")) {
+          const f = document.createElement("iframe");
+          f.className = "preview"; f.loading = "lazy"; f.tabIndex = -1; f.setAttribute("aria-hidden", "true");
+          f.src = e.path + "?preview";
+          a.appendChild(f);
+        }
+        a.classList.add("previewing");
+      }, 350);
+    });
+    a.addEventListener("mouseleave", () => {
+      clearTimeout(timer); a.classList.remove("previewing");
+      const f = a.querySelector("iframe"); if (f) setTimeout(() => { if (!a.classList.contains("previewing")) f.remove(); }, 300);
+    });
+    return a;
+  }
+
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    const list = effects.filter((e) =>
+      (active === "all" || e.category === active) &&
+      (!q || (e.title + " " + e.description + " " + e.tech.join(" ") + " " + cats[e.category]).toLowerCase().includes(q)));
+    grid.replaceChildren(...list.map(card));
+    count.textContent = `${list.length} effect${list.length === 1 ? "" : "s"}`;
+    if (!list.length) grid.innerHTML = '<div class="empty">No effects match that search.</div>';
+  }
+  search.addEventListener("input", render);
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-layer Parallax Hero</title>
+<meta name="description" content="Layered mountain landscape where each layer moves at its own speed on scroll and drifts with the mouse.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .hero { position: relative; height: 100vh; overflow: hidden; background: linear-gradient(#1e1b4b, #7c3aed 55%, #f472b6); }
+  .layer { position: absolute; left: -5%; right: -5%; bottom: 0; will-change: transform; }
+  .layer svg { width: 100%; height: auto; display: block; }
+  .sun { position: absolute; left: 50%; top: 22%; width: 22vmin; height: 22vmin; margin-left: -11vmin; border-radius: 50%;
+         background: radial-gradient(#fff7d6, #fde68a 40%, #fb923c); box-shadow: 0 0 120px 40px rgb(253 230 138 / .45); }
+  .title { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; z-index: 2; pointer-events: none; }
+  .title h1 { font-size: clamp(48px, 10vw, 140px); margin: 0; letter-spacing: -.05em; color: #fff; text-shadow: 0 10px 40px rgb(0 0 0 / .3); }
+  .after { background: #0d0a1f; padding: 120px 16px; min-height: 100vh; }
+  .after p { max-width: 640px; margin: 0 auto 20px; color: var(--muted); font-size: 18px; }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div class="layer sun" data-depth="0.15"></div>
+  <div class="layer" data-depth="0.25"><svg viewBox="0 0 1440 500" preserveAspectRatio="none"><path fill="#9d4edd" d="M0 300 L180 160 L320 260 L520 90 L700 240 L900 120 L1100 260 L1280 150 L1440 250 V500 H0Z"/></svg></div>
+  <div class="title" data-depth="0.45"><h1>Parallax</h1></div>
+  <div class="layer" data-depth="0.5"><svg viewBox="0 0 1440 400" preserveAspectRatio="none"><path fill="#6d28d9" d="M0 260 L220 120 L420 240 L640 140 L860 260 L1060 110 L1260 230 L1440 160 V400 H0Z"/></svg></div>
+  <div class="layer" data-depth="0.75"><svg viewBox="0 0 1440 300" preserveAspectRatio="none"><path fill="#3b0764" d="M0 200 Q200 80 380 180 T760 160 T1120 190 T1440 140 V300 H0Z"/></svg></div>
+  <div class="layer" data-depth="1"><svg viewBox="0 0 1440 200" preserveAspectRatio="none"><path fill="#0d0a1f" d="M0 120 Q260 40 520 110 T1040 100 T1440 90 V200 H0Z"/></svg></div>
+</section>
+<section class="after"><p>Each layer has a <code>data-depth</code> between 0 and 1. Deeper layers (higher numbers) move faster, giving the illusion of distance.</p><p>Mouse movement adds a subtle horizontal drift with the same depth weighting.</p></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const layers = [...document.querySelectorAll("[data-depth]")];
+  let mx = 0, smx = 0;
+  addEventListener("pointermove", (e) => { mx = e.clientX / innerWidth - 0.5; });
+  function frame() {
+    smx += (mx - smx) * 0.06;
+    const y = scrollY;
+    for (const l of layers) {
+      const d = parseFloat(l.dataset.depth);
+      l.style.transform = `translate3d(${-smx * d * 60}px, ${y * d * 0.6}px, 0)`;
+    }
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Horizontal Scroll Section</title>
+<meta name="description" content="Vertical scrolling moves a pinned row of panels horizontally, then hands back to normal scrolling.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .h-wrap { position: relative; }                 /* height set by JS to match the track width */
+  .h-sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; align-items: center; }
+  .track { display: flex; gap: 4vw; padding: 0 8vw; will-change: transform; }
+  .panel { flex: 0 0 min(70vw, 560px); height: 64vh; border-radius: 28px; padding: 36px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; overflow: hidden; }
+  .panel h3 { font-size: clamp(28px, 4vw, 52px); margin: 0; letter-spacing: -.03em; position: relative; }
+  .panel span { font: 600 14px var(--mono); opacity: .7; position: relative; }
+  .panel .bg { position: absolute; inset: -10%; background-size: cover; background-position: center; }
+  .intro { flex: 0 0 auto; align-self: center; font-size: clamp(40px, 7vw, 96px); letter-spacing: -.05em; line-height: .95; margin-right: 4vw; }
+  .bar { position: absolute; left: 8vw; right: 8vw; bottom: 6vh; height: 2px; background: rgb(255 255 255 / .1); }
+  .bar b { display: block; height: 100%; background: var(--fg); transform-origin: left; }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ to enter the horizontal section</div>
+<div class="h-wrap">
+  <div class="h-sticky">
+    <div class="track">
+      <h2 class="intro">Sideways<br>stories →</h2>
+    </div>
+    <div class="bar"><b></b></div>
+  </div>
+</div>
+<div class="spacer">Back to vertical</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const track = document.querySelector(".track");
+  const names = ["Coastline", "Desert", "Canopy", "Bloom", "Twilight", "Aurora"];
+  names.forEach((n, i) => {
+    const p = document.createElement("article");
+    p.className = "panel";
+    p.innerHTML = `<div class="bg" style="background-image:url(${Demo.artURL(700, 600, i + 1)})"></div><span>0${i + 1}</span><h3>${n}</h3>`;
+    track.appendChild(p);
+  });
+  const wrap = document.querySelector(".h-wrap");
+  const bar = document.querySelector(".bar b");
+  const bgs = [...document.querySelectorAll(".panel .bg")];
+  let distance = 0;
+  function layout() {
+    distance = track.scrollWidth - innerWidth;
+    wrap.style.height = innerHeight + distance + "px";   // 1px of vertical scroll = 1px sideways
+    update();
+  }
+  function update() {
+    const top = -wrap.getBoundingClientRect().top;
+    const p = Math.min(1, Math.max(0, top / distance));
+    track.style.transform = `translate3d(${-p * distance}px,0,0)`;
+    bar.style.transform = `scaleX(${p})`;
+    // Inner parallax: each panel's image drifts a little against the movement.
+    bgs.forEach((bg) => {
+      const r = bg.parentElement.getBoundingClientRect();
+      bg.style.transform = `translateX(${((r.left + r.width / 2) / innerWidth - 0.5) * -40}px)`;
+    });
+  }
+  addEventListener("scroll", update, { passive: true });
+  addEventListener("resize", layout);
+  layout();
+</script>
+</body>
+</html>

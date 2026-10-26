@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reading Time Remaining</title>
+<meta name="description" content="A sticky pill estimates minutes left in an article from its word count and your scroll position, morphing to 'Done' at the end.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .pill {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20;
+    display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px;
+    background: rgb(20 22 29 / .9); border: 1px solid var(--line); backdrop-filter: blur(8px);
+    font: 500 14px var(--font); transition: background .4s, width .4s;
+  }
+  .pill .meter { width: 60px; height: 4px; border-radius: 2px; background: rgb(255 255 255 / .1); overflow: hidden; }
+  .pill .meter b { display: block; height: 100%; background: var(--accent-2); transform-origin: left; }
+  .pill.done { background: #065f46; }
+  .pill .txt { min-width: 90px; font-variant-numeric: tabular-nums; }
+  article { max-width: 680px; margin: 0 auto; padding: 120px 16px 160px; color: #cfd3df; font-size: 18px; }
+  article h1 { color: var(--fg); font-size: 44px; letter-spacing: -.03em; }
+</style>
+</head>
+<body>
+<article></article>
+<div class="pill" role="status" aria-live="polite"><span class="meter"><b></b></span><span class="txt"></span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const art = document.querySelector("article");
+  art.innerHTML = "<h1>An unhurried essay</h1>" + Array.from({ length: 30 }, (_, i) => `<p>${Demo.lorem(70, i + 3)}</p>`).join("");
+  const WPM = 230;
+  const words = art.innerText.trim().split(/\s+/).length;
+  const total = words / WPM;
+  const txt = document.querySelector(".pill .txt"), bar = document.querySelector(".pill .meter b"), pill = document.querySelector(".pill");
+  let lastLabel = "";
+  function update() {
+    const r = art.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, (innerHeight - r.top) / r.height));
+    bar.style.transform = `scaleX(${p})`;
+    const left = Math.ceil(total * (1 - p));
+    const label = p > 0.98 ? "Done ✓" : left <= 1 ? "< 1 min left" : left + " min left";
+    if (label !== lastLabel) { txt.textContent = label; lastLabel = label; }   // avoid spamming screen readers
+    pill.classList.toggle("done", p > 0.98);
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

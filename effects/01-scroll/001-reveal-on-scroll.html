@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reveal on Scroll</title>
+<meta name="description" content="Fade, slide, scale and blur reveals with stagger groups. Native CSS view() timelines with an IntersectionObserver fallback.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  /* Usage: add class="reveal" (+ optional data-reveal="up|left|right|scale|blur") and --i for stagger order. */
+  .reveal {
+    opacity: 0;
+    transition: opacity .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1), filter .9s;
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+  .reveal[data-reveal="up"]    { transform: translateY(48px); }
+  .reveal[data-reveal="left"]  { transform: translateX(-64px); }
+  .reveal[data-reveal="right"] { transform: translateX(64px); }
+  .reveal[data-reveal="scale"] { transform: scale(.85); }
+  .reveal[data-reveal="blur"]  { filter: blur(14px); transform: translateY(20px); }
+  .reveal.in { opacity: 1; transform: none; filter: none; }
+
+  /* Native, JS-free variant: the animation progresses as the element enters the viewport. */
+  @supports (animation-timeline: view()) {
+    .native {
+      animation: native-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 35%;
+    }
+    @keyframes native-in { from { opacity: 0; transform: translateY(60px) scale(.94); } }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+    .native { animation: none !important; }
+  }
+
+  section { max-width: 1100px; margin: 0 auto; padding: 120px 16px; }
+  h1 { font-size: clamp(40px, 7vw, 88px); letter-spacing: -.04em; margin: 0; line-height: 1; }
+  h2 { font-size: 32px; margin: 0 0 32px; letter-spacing: -.02em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+  .tile { border-radius: 16px; padding: 28px; min-height: 180px; background: var(--bg-2); border: 1px solid var(--line); }
+  .tile b { display: block; font-size: 20px; margin-bottom: 8px; }
+  .tile span { color: var(--muted); font-size: 14px; }
+  .hero { min-height: 90vh; display: grid; align-content: center; gap: 16px; }
+</style>
+</head>
+<body>
+<section class="hero">
+  <h1 class="reveal" data-reveal="up">Reveal on scroll</h1>
+  <p class="reveal hint" data-reveal="up" style="--i:1;text-align:left">Scroll down. Each group staggers its children.</p>
+</section>
+
+<section>
+  <h2 class="reveal" data-reveal="left">Fade up · stagger group</h2>
+  <div class="grid">
+    <div class="tile reveal" data-reveal="up" style="--i:0"><b>One</b><span>data-reveal="up"</span></div>
+    <div class="tile reveal" data-reveal="up" style="--i:1"><b>Two</b><span>--i: 1</span></div>
+    <div class="tile reveal" data-reveal="up" style="--i:2"><b>Three</b><span>--i: 2</span></div>
+    <div class="tile reveal" data-reveal="up" style="--i:3"><b>Four</b><span>--i: 3</span></div>
+  </div>
+</section>
+
+<section>
+  <h2 class="reveal" data-reveal="right">Scale · Blur · Slide</h2>
+  <div class="grid">
+    <div class="tile reveal" data-reveal="scale"><b>Scale</b><span>data-reveal="scale"</span></div>
+    <div class="tile reveal" data-reveal="blur" style="--i:1"><b>Blur</b><span>data-reveal="blur"</span></div>
+    <div class="tile reveal" data-reveal="left" style="--i:2"><b>Slide left</b><span>data-reveal="left"</span></div>
+    <div class="tile reveal" data-reveal="right" style="--i:3"><b>Slide right</b><span>data-reveal="right"</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Native CSS <code>animation-timeline: view()</code></h2>
+  <p class="hint" style="text-align:left;margin-bottom:24px">These are scrubbed by scroll position with zero JavaScript. Scroll back up to reverse.</p>
+  <div class="grid">
+    <div class="tile native"><b>Scrubbed</b><span>entry 0% → cover 35%</span></div>
+    <div class="tile native"><b>No JS</b><span>Pure CSS</span></div>
+    <div class="tile native"><b>Reversible</b><span>Tied to scroll</span></div>
+  </div>
+</section>
+<div class="spacer">End</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Adds .in once an element is 15% visible. Remove `io.unobserve` to replay on every entry.
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }, { threshold: 0.15 });
+  document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

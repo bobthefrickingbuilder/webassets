@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll Progress Indicators</title>
+<meta name="description" content="A top progress bar and a circular progress ring driven by CSS scroll() timelines, with a tiny JS fallback.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --p { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+  .progress-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 10000;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+    transform-origin: 0 50%;
+    transform: scaleX(var(--p));
+  }
+  .progress-ring {
+    position: fixed; right: 24px; bottom: 24px; width: 64px; height: 64px; border-radius: 50%;
+    background: conic-gradient(var(--accent-2) calc(var(--p) * 360deg), rgb(255 255 255 / .1) 0);
+    display: grid; place-items: center;
+  }
+  .progress-ring::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); }
+  .progress-ring span { position: relative; font: 600 13px var(--mono); }
+
+  /* Native: the whole document scroll drives --p. */
+  @supports (animation-timeline: scroll()) {
+    html { animation: progress linear both; animation-timeline: scroll(root); }
+    @keyframes progress { to { --p: 1; } }
+  }
+
+  article { max-width: 680px; margin: 0 auto; padding: 120px 16px; font-size: 19px; color: #cfd3df; }
+  article h1 { color: var(--fg); font-size: 48px; letter-spacing: -.03em; line-height: 1.05; }
+  article h2 { color: var(--fg); margin-top: 48px; }
+</style>
+</head>
+<body>
+<div class="progress-bar" aria-hidden="true"></div>
+<div class="progress-ring" aria-hidden="true"><span>0%</span></div>
+<article></article>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const art = document.querySelector("article");
+  art.innerHTML = "<h1>Scroll progress</h1>" +
+    Array.from({ length: 6 }, (_, s) => "<h2>Section " + (s + 1) + "</h2>" +
+      Array.from({ length: 4 }, (_, i) => "<p>" + Demo.lorem(60, s * 10 + i) + "</p>").join("")).join("");
+
+  // The label (and older browsers) need JS; the bar and ring are CSS-only where scroll() is supported.
+  const native = CSS.supports("animation-timeline: scroll()");
+  const label = document.querySelector(".progress-ring span");
+  function update() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? scrollY / max : 0;
+    if (!native) document.documentElement.style.setProperty("--p", p);
+    label.textContent = Math.round(p * 100) + "%";
+  }
+  addEventListener("scroll", update, { passive: true });
+  addEventListener("resize", update);
+  update();
+</script>
+</body>
+</html>

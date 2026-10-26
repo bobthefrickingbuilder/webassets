@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Back-to-top Progress Ring</title>
+<meta name="description" content="A floating back-to-top button that appears after scrolling, shows reading progress as a ring, and scrolls smoothly home.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .to-top {
+    position: fixed; right: 24px; bottom: 24px; width: 56px; height: 56px; border-radius: 50%;
+    border: 0; background: var(--bg-2); cursor: pointer; display: grid; place-items: center;
+    box-shadow: 0 10px 30px rgb(0 0 0 / .4);
+    opacity: 0; transform: translateY(20px) scale(.8); pointer-events: none;
+    transition: opacity .3s, transform .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+  .to-top:hover .arrow { transform: translateY(-3px); }
+  .to-top svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .to-top circle { fill: none; stroke-width: 3; }
+  .to-top .bg { stroke: rgb(255 255 255 / .1); }
+  .to-top .fg { stroke: var(--accent-2); stroke-linecap: round; transition: stroke-dashoffset .1s linear; }
+  .to-top .arrow { font-size: 20px; transition: transform .2s; }
+  article { max-width: 680px; margin: 0 auto; padding: 120px 16px; color: #cfd3df; font-size: 18px; }
+</style>
+</head>
+<body>
+<article></article>
+<button class="to-top" aria-label="Back to top">
+  <svg viewBox="0 0 56 56"><circle class="bg" cx="28" cy="28" r="25"/><circle class="fg" cx="28" cy="28" r="25"/></svg>
+  <span class="arrow">↑</span>
+</button>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector("article").innerHTML = "<h1>Keep scrolling</h1>" + Array.from({ length: 24 }, (_, i) => `<p>${Demo.lorem(55, i)}</p>`).join("");
+  const btn = document.querySelector(".to-top"), fg = btn.querySelector(".fg");
+  const C = 2 * Math.PI * 25;
+  fg.style.strokeDasharray = C;
+  function update() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? scrollY / max : 0;
+    fg.style.strokeDashoffset = C * (1 - p);
+    btn.classList.toggle("show", scrollY > 300);
+  }
+  btn.onclick = () => scrollTo({ top: 0, behavior: Demo.reduced ? "auto" : "smooth" });
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

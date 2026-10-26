@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scattered Grid Assembles</title>
+<meta name="description" content="Tiles start scattered, rotated and scaled across the screen, and snap into a tidy grid as you scroll.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .asm-wrap { height: 300vh; position: relative; }
+  .asm-sticky { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; overflow: hidden; }
+  .asm-grid { display: grid; grid-template-columns: repeat(5, min(15vw, 130px)); gap: 12px; }
+  .asm-grid div { aspect-ratio: 1; border-radius: 14px; background-size: cover; background-position: center; will-change: transform; }
+  .asm-title { position: absolute; font-size: clamp(36px, 7vw, 100px); font-weight: 800; letter-spacing: -.05em; pointer-events: none; mix-blend-mode: difference; }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ to assemble</div>
+<div class="asm-wrap">
+  <div class="asm-sticky"><div class="asm-grid"></div><div class="asm-title">Order</div></div>
+</div>
+<div class="spacer">Assembled</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const grid = document.querySelector(".asm-grid");
+  const r = Demo.rng(42);
+  const tiles = Array.from({ length: 20 }, (_, i) => {
+    const d = document.createElement("div");
+    d.style.backgroundImage = `url(${Demo.artURL(200, 200, i)})`;
+    grid.appendChild(d);
+    // Each tile's scattered start state.
+    return { d, x: (r() - .5) * 140, y: (r() - .5) * 140, rot: (r() - .5) * 120, s: .4 + r() * 1.2, delay: r() * .3 };
+  });
+  const wrap = document.querySelector(".asm-wrap"), title = document.querySelector(".asm-title");
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  function update() {
+    const rr = wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, -rr.top / (rr.height - innerHeight)));
+    for (const t of tiles) {
+      const k = ease(Math.min(1, Math.max(0, (p - t.delay) / (0.7))));
+      const inv = 1 - k;
+      t.d.style.transform = `translate(${t.x * inv}vw, ${t.y * inv}vh) rotate(${t.rot * inv}deg) scale(${1 + (t.s - 1) * inv})`;
+      t.d.style.opacity = 0.3 + k * 0.7;
+    }
+    title.style.opacity = Math.max(0, (p - .8) / .2);
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll Timeline Component</title>
+<meta name="description" content="A vertical timeline whose spine fills as you scroll, activating each milestone's dot and revealing its card.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .tl { position: relative; max-width: 900px; margin: 0 auto; padding: 0 16px 40vh; }
+  .tl::before, .tl .fill { content: ""; position: absolute; left: 50%; top: 0; width: 3px; margin-left: -1.5px; border-radius: 2px; }
+  .tl::before { bottom: 40vh; background: var(--line); }
+  .tl .fill { height: 0; background: linear-gradient(var(--accent), var(--accent-2)); box-shadow: 0 0 16px var(--accent-2); }
+  .ev { position: relative; width: 50%; padding: 0 48px 22vh; }
+  .ev:nth-child(odd) { margin-left: 50%; }
+  .ev:nth-child(even) { text-align: right; }
+  .ev .dot { position: absolute; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); border: 3px solid var(--line); transition: all .4s; }
+  .ev:nth-child(odd) .dot { left: -9px; }
+  .ev:nth-child(even) .dot { right: -9px; }
+  .ev.on .dot { border-color: var(--accent-2); background: var(--accent-2); box-shadow: 0 0 0 6px rgb(34 211 238 / .2); }
+  .ev .card { opacity: .15; transform: translateY(24px); transition: opacity .6s, transform .6s; }
+  .ev.on .card { opacity: 1; transform: none; }
+  .ev time { font: 600 13px var(--mono); color: var(--accent-2); }
+  .ev h3 { margin: 6px 0; font-size: 26px; }
+  .ev p { margin: 0; color: var(--muted); }
+  @media (max-width: 700px) {
+    .tl::before, .tl .fill { left: 24px; }
+    .ev, .ev:nth-child(odd) { width: auto; margin-left: 0; padding-left: 56px; padding-right: 0; text-align: left; }
+    .ev .dot, .ev:nth-child(even) .dot, .ev:nth-child(odd) .dot { left: 15px; right: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ through the timeline</div>
+<div class="tl"><div class="fill"></div></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const tl = document.querySelector(".tl"), fill = tl.querySelector(".fill");
+  [["2019", "Founded"], ["2020", "First product"], ["2021", "Series A"], ["2022", "Global launch"], ["2023", "1M users"], ["2024", "Open source"], ["2025", "Today"]]
+    .forEach(([y, t], i) => tl.insertAdjacentHTML("beforeend", `<div class="ev"><span class="dot"></span><div class="card"><time>${y}</time><h3>${t}</h3><p>${Demo.lorem(16, i)}</p></div></div>`));
+  const evs = [...tl.querySelectorAll(".ev")];
+  function update() {
+    const r = tl.getBoundingClientRect();
+    const line = innerHeight * 0.6;                      // the fill tip sits 60% down the viewport
+    const h = Math.max(0, Math.min(r.height - innerHeight * 0.4, line - r.top));
+    fill.style.height = h + "px";
+    evs.forEach((e) => e.classList.toggle("on", e.getBoundingClientRect().top + 10 < line));
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smooth Inertia Scrolling</title>
+<meta name="description" content="Lenis-style smooth scrolling: wheel input is eased with linear interpolation while native scroll position, scrollbar and keyboard keep working.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .toggle { position: fixed; right: 16px; top: 12px; z-index: 50; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .block { max-width: 900px; margin: 0 auto; padding: 24vh 16px; display: grid; gap: 24px; }
+  .block h2 { font-size: clamp(40px, 7vw, 96px); margin: 0; letter-spacing: -.05em; line-height: .95; }
+  .img { height: 60vh; border-radius: 24px; background-size: cover; background-position: center; }
+  .readout { position: fixed; left: 16px; bottom: 16px; font: 13px var(--mono); color: var(--muted); }
+</style>
+</head>
+<body>
+<button class="toggle" aria-pressed="true">Smooth: ON</button>
+<div class="readout"></div>
+<main></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const main = document.querySelector("main");
+  for (let i = 0; i < 6; i++) main.insertAdjacentHTML("beforeend",
+    `<section class="block"><h2>Glide ${i + 1}</h2><div class="img" style="background-image:url(${Demo.artURL(1200, 700, i)})"></div><p class="hint" style="text-align:left">${Demo.lorem(40, i)}</p></section>`);
+
+  /* SmoothScroll: intercepts wheel deltas, accumulates a target, and eases window scroll toward it.
+     lerp controls the "weight": lower = floatier. Touch and keyboard stay native. */
+  class SmoothScroll {
+    constructor({ lerp = 0.09 } = {}) {
+      this.lerp = lerp; this.enabled = true;
+      this.current = this.target = scrollY; this.animating = false;
+      this.onWheel = this.onWheel.bind(this); this.tick = this.tick.bind(this);
+      addEventListener("wheel", this.onWheel, { passive: false });
+      // If something else scrolls the page (keyboard, scrollbar, anchor), adopt that position.
+      addEventListener("scroll", () => { if (!this.animating) this.current = this.target = scrollY; }, { passive: true });
+    }
+    max() { return document.documentElement.scrollHeight - innerHeight; }
+    onWheel(e) {
+      if (!this.enabled || e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+      this.target = Math.max(0, Math.min(this.max(), this.target + delta));
+      if (!this.animating) { this.animating = true; requestAnimationFrame(this.tick); }
+    }
+    tick() {
+      this.current += (this.target - this.current) * this.lerp;
+      if (Math.abs(this.target - this.current) < 0.5) this.current = this.target;
+      window.scrollTo(0, this.current);
+      if (this.current !== this.target) requestAnimationFrame(this.tick);
+      else this.animating = false;
+    }
+  }
+
+  const smooth = new SmoothScroll();
+  smooth.enabled = !Demo.reduced;
+  const btn = document.querySelector(".toggle");
+  const sync = () => { btn.textContent = "Smooth: " + (smooth.enabled ? "ON" : "OFF"); btn.setAttribute("aria-pressed", smooth.enabled); };
+  btn.onclick = () => { smooth.enabled = !smooth.enabled; sync(); };
+  sync();
+  const out = document.querySelector(".readout");
+  (function loop() { out.textContent = `scrollY ${Math.round(scrollY)} → target ${Math.round(smooth.target)}`; requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

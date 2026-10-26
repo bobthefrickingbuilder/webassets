@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll-linked 3D Rotation</title>
+<meta name="description" content="A CSS 3D cube rotates face by face as you scroll, each face carrying its own message.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .cube-wrap { height: 500vh; position: relative; }
+  .cube-stage { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; perspective: 1200px; }
+  .cube { --s: min(46vmin, 360px); width: var(--s); height: var(--s); position: relative; transform-style: preserve-3d; will-change: transform; }
+  .face { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--s) * .16); font-weight: 800; letter-spacing: -.04em; border-radius: 18px; border: 1px solid rgb(255 255 255 / .25); backface-visibility: hidden; }
+  .f1 { transform: translateZ(calc(var(--s) / 2)); background: linear-gradient(135deg,#7c3aed,#4338ca); }
+  .f2 { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); background: linear-gradient(135deg,#0891b2,#0e7490); }
+  .f3 { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); background: linear-gradient(135deg,#db2777,#9d174d); }
+  .f4 { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); background: linear-gradient(135deg,#ea580c,#b45309); }
+  .f5 { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: linear-gradient(135deg,#16a34a,#166534); }
+  .f6 { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); background: #111; }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ to spin the cube</div>
+<div class="cube-wrap">
+  <div class="cube-stage">
+    <div class="cube">
+      <div class="face f1">Think</div><div class="face f2">Make</div><div class="face f3">Test</div>
+      <div class="face f4">Ship</div><div class="face f5">Repeat</div><div class="face f6">✦</div>
+    </div>
+  </div>
+</div>
+<div class="spacer">Done spinning</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const wrap = document.querySelector(".cube-wrap"), cube = document.querySelector(".cube");
+  // Keyframes of [rotateX, rotateY] the scroll interpolates between: front → right → back → left → top.
+  const keys = [[-10, 0], [-10, -90], [-10, -180], [-10, -270], [-90, -360]];
+  const ease = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function update() {
+    const r = wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))) * (keys.length - 1);
+    const i = Math.min(keys.length - 2, Math.floor(p)), t = ease(p - i);
+    const rx = keys[i][0] + (keys[i + 1][0] - keys[i][0]) * t;
+    const ry = keys[i][1] + (keys[i + 1][1] - keys[i][1]) * t;
+    cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

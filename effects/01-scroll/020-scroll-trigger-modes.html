@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll Trigger Modes</title>
+<meta name="description" content="A tiny scroll-trigger utility with GSAP-like modes: play once, play and reverse, restart on every entry, and scrub.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .modes { max-width: 1000px; margin: 0 auto; padding: 0 16px; display: grid; gap: 60vh; padding-bottom: 60vh; }
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+  .mode h3 { margin: 0 0 8px; font-size: 28px; }
+  .mode code { color: var(--accent-2); }
+  .mode p { color: var(--muted); margin: 0; }
+  .box { height: 220px; border-radius: 24px; background: linear-gradient(135deg, var(--accent), var(--accent-3)); display: grid; place-items: center; font-weight: 800; font-size: 28px; }
+  /* The animation is defined once; the trigger only decides when it plays and in which direction. */
+  @keyframes pop { from { opacity: 0; transform: translateX(120px) rotate(8deg) scale(.8); } to { opacity: 1; transform: none; } }
+  .box { animation: pop 1s cubic-bezier(.2,.8,.2,1) both paused; }
+  @media (prefers-reduced-motion: reduce) { .box { animation: none; } }
+  @media (max-width: 700px) { .mode { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ (then back up to compare modes)</div>
+<div class="modes">
+  <div class="mode"><div><h3>Once</h3><p><code>data-trigger="once"</code>. Plays the first time it enters, then stays.</p></div><div class="box" data-trigger="once">Once</div></div>
+  <div class="mode"><div><h3>Toggle</h3><p><code>data-trigger="toggle"</code>. Plays forward on enter, reverses on leave.</p></div><div class="box" data-trigger="toggle">Toggle</div></div>
+  <div class="mode"><div><h3>Restart</h3><p><code>data-trigger="restart"</code>. Replays from the beginning on every entry.</p></div><div class="box" data-trigger="restart">Restart</div></div>
+  <div class="mode"><div><h3>Scrub</h3><p><code>data-trigger="scrub"</code>. The animation's progress follows the scroll position.</p></div><div class="box" data-trigger="scrub">Scrub</div></div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* Uses the Web Animations API handle that every CSS animation exposes (el.getAnimations()),
+     so any @keyframes animation can be controlled without rewriting it in JS. */
+  function trigger(el) {
+    const mode = el.dataset.trigger;
+    const anim = el.getAnimations()[0];
+    if (!anim) return;
+    const dur = anim.effect.getComputedTiming().duration;
+    if (mode === "scrub") {
+      const update = () => {
+        const r = el.getBoundingClientRect();
+        const p = Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight * 0.6)));
+        anim.currentTime = p * dur;
+      };
+      addEventListener("scroll", update, { passive: true }); update();
+      return;
+    }
+    let played = false;
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        if (mode === "once" && played) return;
+        if (mode === "restart") anim.currentTime = 0;
+        anim.playbackRate = 1; anim.play(); played = true;
+      } else if (mode === "toggle" && played) {
+        anim.playbackRate = -1; anim.play();
+      } else if (mode === "restart") {
+        anim.pause(); anim.currentTime = 0;
+      }
+    }, { threshold: 0.4 }).observe(el);
+  }
+  document.querySelectorAll("[data-trigger]").forEach(trigger);
+</script>
+</body>
+</html>

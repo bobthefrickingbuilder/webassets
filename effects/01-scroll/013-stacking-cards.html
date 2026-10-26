@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stacking Cards</title>
+<meta name="description" content="Cards stick and pile on top of each other as you scroll; covered cards shrink and dim into a stack.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .stack-list { max-width: 900px; margin: 0 auto; padding: 0 16px 40vh; }
+  .stack-card {
+    position: sticky; top: calc(12vh + var(--i) * 18px);
+    height: 64vh; margin-bottom: 12vh; border-radius: 28px; padding: 40px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transform-origin: 50% 0; will-change: transform;
+    box-shadow: 0 -20px 60px rgb(0 0 0 / .35);
+  }
+  .stack-card h3 { font-size: clamp(32px, 5vw, 64px); margin: 0; letter-spacing: -.04em; }
+  .stack-card p { max-width: 460px; font-size: 18px; opacity: .85; margin: 0; }
+  .stack-card .n { font: 600 14px var(--mono); opacity: .7; }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓</div>
+<div class="stack-list"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const colors = [["#7c3aed", "#4c1d95"], ["#0ea5e9", "#075985"], ["#f59e0b", "#b45309"], ["#ec4899", "#9d174d"], ["#10b981", "#065f46"]];
+  const list = document.querySelector(".stack-list");
+  const titles = ["Discover", "Define", "Design", "Develop", "Deliver"];
+  titles.forEach((t, i) => list.insertAdjacentHTML("beforeend",
+    `<article class="stack-card" style="--i:${i};background:linear-gradient(135deg,${colors[i][0]},${colors[i][1]})"><span class="n">0${i + 1} / 05</span><div><h3>${t}</h3><p>${Demo.lorem(22, i)}</p></div></article>`));
+
+  // Once the next card starts covering a card, scale it down based on how covered it is.
+  const cards = [...document.querySelectorAll(".stack-card")];
+  function update() {
+    cards.forEach((card, i) => {
+      const next = cards[i + 1];
+      if (!next) return;
+      const cr = card.getBoundingClientRect(), nr = next.getBoundingClientRect();
+      const covered = Math.min(1, Math.max(0, (cr.bottom - nr.top) / cr.height));
+      card.style.transform = `scale(${1 - covered * 0.08})`;
+      card.style.filter = `brightness(${1 - covered * 0.45})`;
+    });
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

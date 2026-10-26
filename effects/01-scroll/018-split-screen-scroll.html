@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Split-screen Opposite Scroll</title>
+<meta name="description" content="Two columns move in opposite directions while you scroll, so matching image and text panels meet in the middle.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .split-wrap { height: 500vh; position: relative; }
+  .split { position: sticky; top: 0; height: 100vh; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+  .col { will-change: transform; }
+  .col > div { height: 100vh; display: grid; place-items: center; padding: 6vw; }
+  .left > div { background-size: cover; background-position: center; }
+  .right { display: flex; flex-direction: column-reverse; }  /* starts at the bottom */
+  .right h3 { font-size: clamp(32px, 5vw, 72px); margin: 0; letter-spacing: -.04em; line-height: 1; }
+  .right p { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓</div>
+<div class="split-wrap">
+  <div class="split"><div class="col left"></div><div class="col right"></div></div>
+</div>
+<div class="spacer">End</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const N = 5, left = document.querySelector(".left"), right = document.querySelector(".right");
+  const names = ["Horizon", "Ember", "Lagoon", "Verdant", "Dusk"];
+  for (let i = 0; i < N; i++) {
+    left.insertAdjacentHTML("beforeend", `<div style="background-image:url(${Demo.artURL(800, 900, i + 1)})"></div>`);
+    right.insertAdjacentHTML("beforeend", `<div><div><h3>${names[i]}</h3><p>Panel ${i + 1} — ${Demo.lorem(14, i)}</p></div></div>`);
+  }
+  const wrap = document.querySelector(".split-wrap");
+  function update() {
+    const r = wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    const travel = (N - 1) * innerHeight;
+    left.style.transform = `translateY(${-p * travel}px)`;
+    right.style.transform = `translateY(${-(1 - p) * travel}px)`;
+  }
+  addEventListener("scroll", update, { passive: true });
+  addEventListener("resize", update);
+  update();
+</script>
+</body>
+</html>

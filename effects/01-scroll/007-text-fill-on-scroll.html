@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Word-by-word Text Fill</title>
+<meta name="description" content="A paragraph lights up one word at a time as you scroll, scrubbed to the scroll position.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .fill-wrap { height: 300vh; position: relative; }
+  .fill-sticky { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; padding: 0 8vw; }
+  .fill-text { font-size: clamp(28px, 4.6vw, 64px); line-height: 1.15; font-weight: 700; letter-spacing: -.03em; max-width: 1100px; margin: 0; }
+  .fill-text .w { color: rgb(255 255 255 / .14); transition: color .15s; }
+  .fill-text .w.lit { color: var(--fg); }
+  .fill-text .w.accent.lit { color: var(--accent-2); }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓</div>
+<div class="fill-wrap">
+  <div class="fill-sticky">
+    <p class="fill-text">Great interfaces feel <em class="accent">inevitable</em>. Motion explains where things come from, where they go, and what just happened, so people never have to wonder. Every word you read here is lit by your <em class="accent">scroll</em>.</p>
+  </div>
+</div>
+<div class="spacer">Done</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Split into word spans (keeping accent wrappers) so each word can be lit independently.
+  const text = document.querySelector(".fill-text");
+  const words = [];
+  function split(node, accent) {
+    [...node.childNodes].forEach((n) => {
+      if (n.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        n.textContent.split(/(\s+)/).forEach((part) => {
+          if (!part.trim()) { frag.append(part); return; }
+          const s = document.createElement("span");
+          s.className = "w" + (accent ? " accent" : "");
+          s.textContent = part;
+          words.push(s); frag.append(s);
+        });
+        n.replaceWith(frag);
+      } else split(n, n.classList.contains("accent"));
+    });
+  }
+  split(text, false);
+  text.setAttribute("aria-label", text.textContent);
+
+  const wrap = document.querySelector(".fill-wrap");
+  function update() {
+    const r = wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    const lit = Math.round(p * words.length * 1.05);
+    words.forEach((w, i) => w.classList.toggle("lit", i < lit));
+  }
+  addEventListener("scroll", update, { passive: true });
+  update();
+</script>
+</body>
+</html>

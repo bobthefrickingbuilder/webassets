@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll-rotating Circular Text</title>
+<meta name="description" content="Badge text set on an SVG circular path spins with scroll, faster with scroll velocity, plus a slow idle rotation.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .badge-stage { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  .badge { width: min(60vmin, 420px); aspect-ratio: 1; position: relative; }
+  .badge svg { width: 100%; height: 100%; will-change: transform; }
+  .badge text { font: 700 15.5px var(--font); letter-spacing: 3.2px; fill: var(--fg); text-transform: uppercase; }
+  .badge .core { position: absolute; inset: 30%; border-radius: 50%; background: var(--accent); display: grid; place-items: center; font-size: clamp(32px, 7vmin, 56px); }
+  .long { height: 600vh; }
+  .corner { position: fixed; right: 24px; bottom: 24px; width: 120px; height: 120px; }
+</style>
+</head>
+<body>
+<div class="badge-stage">
+  <div class="badge">
+    <svg viewBox="0 0 200 200" class="ring" aria-label="Scroll to spin · made with SVG textPath">
+      <defs><path id="circ" d="M100,100 m-80,0 a80,80 0 1,1 160,0 a80,80 0 1,1 -160,0"/></defs>
+      <text><textPath href="#circ">Scroll to spin ✦ made with textPath ✦ scroll to spin ✦ </textPath></text>
+    </svg>
+    <div class="core">↓</div>
+  </div>
+</div>
+<div class="long"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const ring = document.querySelector(".ring");
+  let angle = 0, last = scrollY;
+  function frame() {
+    const v = scrollY - last; last = scrollY;
+    angle += 0.15 + v * 0.25;     // idle drift + scroll-driven spin (reverses when scrolling up)
+    ring.style.transform = `rotate(${angle}deg)`;
+    requestAnimationFrame(frame);
+  }
+  if (Demo.reduced) addEventListener("scroll", () => (ring.style.transform = `rotate(${scrollY * 0.2}deg)`), { passive: true });
+  else requestAnimationFrame(frame);
+</script>
+</body>
+</html>

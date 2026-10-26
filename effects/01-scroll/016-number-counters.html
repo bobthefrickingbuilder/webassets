@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Number Counters</title>
+<meta name="description" content="Stats count up with an ease-out curve when they scroll into view, formatted with Intl.NumberFormat and optional prefixes and suffixes.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  .stat { padding: 32px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg-2); }
+  .stat .num { font-size: clamp(40px, 5vw, 64px); font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .stat .lbl { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓ to the numbers</div>
+<div class="stats">
+  <div class="stat"><div class="num" data-to="12500" data-suffix="+">0</div><div class="lbl">Happy customers</div></div>
+  <div class="stat"><div class="num" data-to="99.98" data-decimals="2" data-suffix="%">0</div><div class="lbl">Uptime</div></div>
+  <div class="stat"><div class="num" data-to="4200000" data-prefix="$" data-compact>0</div><div class="lbl">Raised</div></div>
+  <div class="stat"><div class="num" data-to="48" data-suffix="ms">0</div><div class="lbl">Median latency</div></div>
+</div>
+<div class="spacer">Scroll back up and down: each counter runs once.</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* data-to (target), data-decimals, data-prefix, data-suffix, data-compact (1.2M style), data-duration (ms). */
+  const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+  function run(el) {
+    const to = parseFloat(el.dataset.to), dec = +el.dataset.decimals || 0;
+    const fmt = new Intl.NumberFormat(undefined, el.hasAttribute("data-compact")
+      ? { notation: "compact", maximumFractionDigits: 1 }
+      : { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const dur = +el.dataset.duration || 2000, pre = el.dataset.prefix || "", suf = el.dataset.suffix || "";
+    const start = performance.now();
+    el.setAttribute("aria-label", pre + fmt.format(to) + suf);
+    (function tick(now) {
+      const t = Demo.reduced ? 1 : Math.min(1, (now - start) / dur);
+      el.textContent = pre + fmt.format(to * easeOutExpo(t)) + suf;
+      if (t < 1) requestAnimationFrame(tick);
+    })(start);
+  }
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { run(e.target); io.unobserve(e.target); } }), { threshold: 0.5 });
+  document.querySelectorAll(".num").forEach((n) => io.observe(n));
+</script>
+</body>
+</html>
