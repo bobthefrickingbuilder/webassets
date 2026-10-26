@@ -2397,5 +2397,178 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "10-webgl",
   "path": "effects/10-webgl/202-webcam-ascii.html"
+ },
+ {
+  "num": 203,
+  "title": "Draggable Physics Playground",
+  "description": "Real DOM UI elements (buttons, cards, badges, avatars) fall, tumble and stack under a small rigid-body engine. Grab and throw anything; elements stay real, selectable HTML positioned by transforms.",
+  "tech": [
+   "JS",
+   "Physics",
+   "DOM"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/203-physics-playground.html"
+ },
+ {
+  "num": 204,
+  "title": "Spring Drag with Throw Inertia",
+  "description": "Drag cards with rubber-band springs, release to throw them with momentum. Thrown cards project their resting point from release velocity and spring into the nearest corner, like iOS picture-in-picture. Adjustable stiffness and damping.",
+  "tech": [
+   "JS",
+   "Springs"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/204-spring-throw.html"
+ },
+ {
+  "num": 205,
+  "title": "Jelly Soft-body Blobs",
+  "description": "Wobbly pressure soft bodies: each blob is a ring of Verlet points held by springs and an internal gas pressure, so it squashes, bounces and jiggles. Drag blobs around and fling them at each other; they have googly eyes.",
+  "tech": [
+   "Canvas",
+   "Verlet physics"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/205-jelly-blobs.html"
+ },
+ {
+  "num": 206,
+  "title": "Tearable Cloth",
+  "description": "A Verlet cloth pinned along its top edge that billows in a gentle wind. Drag to pull the fabric; right-click drag (or hold Shift) to cut, and over-stretched threads tear on their own. The image is texture-mapped onto the triangles.",
+  "tech": [
+   "Canvas",
+   "Verlet physics"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/206-tearable-cloth.html"
+ },
+ {
+  "num": 207,
+  "title": "Bouncing DVD Logo",
+  "description": "The classic screensaver: a logo drifts and bounces off the edges, changing colour on every hit. It predicts when it will hit a corner, counts down to it, and throws a confetti party when it does. Speed control and a 'cheat' button that aims for a corner.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "11-physics",
+  "path": "effects/11-physics/207-dvd-bounce.html"
+ },
+ {
+  "num": 208,
+  "title": "Ball Pit of Skill Tags",
+  "description": "A portfolio 'skills' section where tag balls pour into a container when it scrolls into view, pile up and can be grabbed, thrown and stirred with the pointer. Each ball is a real element with text.",
+  "tech": [
+   "JS",
+   "Physics",
+   "IntersectionObserver"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/208-tag-ball-pit.html"
+ },
+ {
+  "num": 209,
+  "title": "Pendulum Wave",
+  "description": "Fifteen pendulums whose lengths are tuned so they complete 51…65 swings in 60 seconds: they drift out of phase into travelling waves, snakes and chaos, then realign. Exact closed-form motion, a timeline scrubber and optional pluck tones.",
+  "tech": [
+   "Canvas",
+   "Web Audio"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/209-pendulum-wave.html"
+ },
+ {
+  "num": 210,
+  "title": "Gravity Easter Egg",
+  "description": "A normal-looking landing page until you press the 'don't press' button (or type 'gravity'): every element detaches, falls and piles up at the bottom as a rigid body you can throw around, Google Gravity style. 'Restore' animates everything back home.",
+  "tech": [
+   "JS",
+   "Physics",
+   "DOM"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/210-gravity-easter-egg.html"
+ },
+ {
+  "num": 211,
+  "title": "Rope Bridge &amp; Chains",
+  "description": "A plank rope bridge strung across a canyon and dangling chains, all Verlet constraints. Click to drop crates and boulders that land on the bridge and make it sag and sway; drag any link to yank it.",
+  "tech": [
+   "Canvas",
+   "Verlet physics"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/211-rope-bridge.html"
+ },
+ {
+  "num": 212,
+  "title": "Plinko Board",
+  "description": "A plinko board with a triangular peg field: drop balls that ricochet off pegs (pegs light up and ping) and land in multiplier buckets that build a live histogram, which converges on a bell curve. Hold to pour.",
+  "tech": [
+   "Canvas",
+   "Physics",
+   "Web Audio"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/212-plinko.html"
+ },
+ {
+  "num": 213,
+  "title": "Falling Sand Sandbox",
+  "description": "A falling-sand cellular automaton: paint sand, water, stone, wood, fire and acid. Sand piles, water flows and levels, fire burns wood into smoke, acid eats almost anything. Pixel buffer written straight into ImageData.",
+  "tech": [
+   "Canvas",
+   "Cellular automata"
+  ],
+  "complexity": 3,
+  "category": "11-physics",
+  "path": "effects/11-physics/213-falling-sand.html"
+ },
+ {
+  "num": 214,
+  "title": "Fireworks Show",
+  "description": "An automatic fireworks show over a skyline: rockets with smoky trails burst into peonies, willows, rings, crossettes and glitter, with drag, gravity, flicker, additive glow and delayed boom sounds. Click to launch your own.",
+  "tech": [
+   "Canvas",
+   "Particles",
+   "Web Audio"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/214-fireworks.html"
+ },
+ {
+  "num": 215,
+  "title": "Bubble Pop Field",
+  "description": "Iridescent soap bubbles drift upward, wobble, nudge each other and dodge your cursor. Click or swipe to pop them with a splash of droplets and a pop sound; a counter keeps score. Thin-film colours come from layered gradients.",
+  "tech": [
+   "Canvas",
+   "Web Audio"
+  ],
+  "complexity": 1,
+  "category": "11-physics",
+  "path": "effects/11-physics/215-bubble-pop.html"
+ },
+ {
+  "num": 216,
+  "title": "Magnet &amp; Repel Field",
+  "description": "Iron-filing particles on springs respond to your pointer as a magnet: in attract mode they swarm and align along field lines, in repel mode they scatter, and click-drag drops extra poles. Compass needles in a grid show the field direction.",
+  "tech": [
+   "Canvas",
+   "Particles"
+  ],
+  "complexity": 2,
+  "category": "11-physics",
+  "path": "effects/11-physics/216-magnet-field.html"
  }
 ];

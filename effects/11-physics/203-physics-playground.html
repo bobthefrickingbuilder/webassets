@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Draggable Physics Playground</title>
+<meta name="description" content="Real DOM UI elements (buttons, cards, badges, avatars) fall, tumble and stack under a small rigid-body engine. Grab and throw anything; elements stay real, selectable HTML positioned by transforms.">
+<meta name="tech" content="JS, Physics, DOM">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #f4f1ea; color: #1a1a1a; }
+  .stage { position: fixed; inset: 0; }
+  .el { position: absolute; left: 0; top: 0; will-change: transform; touch-action: none; cursor: grab; user-select: none; display: grid; place-items: center; font-weight: 700; }
+  .el:active { cursor: grabbing; }
+  .btn { border-radius: 12px; background: #111; color: #fff; font-size: 15px; }
+  .btn.alt { background: #7c5cff; }
+  .card { border-radius: 14px; background: #fff; box-shadow: 0 6px 20px rgb(0 0 0 / .12); padding: 12px; display: block; font-weight: 500; font-size: 13px; color: #555; }
+  .card b { display: block; color: #111; font-size: 15px; margin-bottom: 4px; }
+  .badge { border-radius: 8px; font-size: 13px; color: #111; }
+  .avatar { border-radius: 50%; color: #fff; font-size: 20px; }
+  .ctl { position: fixed; top: 64px; right: 16px; display: flex; gap: 8px; }
+  .ctl button { padding: 8px 14px; border-radius: 999px; border: 1px solid #ccc; background: #fff; color: #111; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="stage" aria-label="Physics playground: drag and throw the elements"></div>
+<div class="ctl"><button class="add">+ Drop more</button><button class="shake">Shake</button><button class="reset">Reset</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/physics2d.js"></script>
+<script>
+  const stage = document.querySelector(".stage");
+  const world = P2D.world({ gravity: 2000 });
+  world.walls(innerWidth, innerHeight);
+  addEventListener("resize", () => world.walls(innerWidth, innerHeight));
+  const COL = ["#ffd166", "#06d6a0", "#118ab2", "#ef476f", "#f4a261", "#a78bfa"];
+  const rng = Demo.rng(4);
+  const kinds = [
+    () => ({ cls: "btn", html: "Get started", w: 140, h: 48 }),
+    () => ({ cls: "btn alt", html: "Sign up", w: 110, h: 44 }),
+    () => ({ cls: "card", html: "<b>Physics card</b>" + Demo.lorem(9, Math.floor(rng() * 99)), w: 200, h: 110 }),
+    () => ({ cls: "badge", html: ["NEW", "Beta", "v2.0", "Pro", "Hot"][Math.floor(rng() * 5)], w: 64, h: 30, bg: COL[Math.floor(rng() * 6)] }),
+    () => ({ cls: "avatar", html: "ABCDEFGHJKLMN"[Math.floor(rng() * 13)], r: 30, bg: COL[Math.floor(rng() * 6)] }),
+  ];
+  const items = [];
+  function drop(n) {
+    for (let i = 0; i < n; i++) {
+      const k = kinds[Math.floor(rng() * kinds.length)]();
+      const el = document.createElement("div"); el.className = "el " + k.cls; el.innerHTML = k.html;
+      if (k.bg) el.style.background = k.bg;
+      const x = 80 + rng() * (innerWidth - 160), y = -100 - rng() * 600;
+      let body;
+      if (k.r) { el.style.width = el.style.height = k.r * 2 + "px"; body = world.circle(x, y, k.r, { restitution: .4, angle: rng() * 6 }); body.ox = k.r; body.oy = k.r; }
+      else { el.style.width = k.w + "px"; el.style.height = k.h + "px"; body = world.box(x, y, k.w, k.h, { angle: (rng() - .5) * 1.5, restitution: .15, friction: .6 }); body.ox = k.w / 2; body.oy = k.h / 2; }
+      body.el = el; stage.appendChild(el); items.push(body);
+    }
+  }
+  function reset() { items.splice(0).forEach((b) => { b.el.remove(); world.remove(b); }); drop(Math.round(Math.min(26, innerWidth * innerHeight / 40000))); }
+
+  // Drag: pointer events on the elements themselves, tracked on the window.
+  stage.addEventListener("pointerdown", (e) => {
+    const b = world.pick(e.clientX, e.clientY); if (!b) return;
+    world.grab(b, e.clientX, e.clientY); stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", (e) => world.drag(e.clientX, e.clientY));
+  const up = () => world.release();
+  stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+
+  document.querySelector(".add").onclick = () => drop(6);
+  document.querySelector(".reset").onclick = reset;
+  document.querySelector(".shake").onclick = () => items.forEach((b) => { b.vy -= 900 + Math.random() * 600; b.vx += (Math.random() - .5) * 900; b.w += (Math.random() - .5) * 8; });
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    for (let i = 0; i < 3; i++) world.step(dt / 3);
+    for (const b of items) b.el.style.transform = `translate(${b.x - b.ox}px, ${b.y - b.oy}px) rotate(${b.a}rad)`;
+    requestAnimationFrame(frame);
+  }
+  reset();
+  if (Demo.reduced) for (let i = 0; i < 600; i++) world.step(1 / 120);   // start already settled
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

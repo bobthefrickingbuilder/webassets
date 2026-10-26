@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fireworks Show</title>
+<meta name="description" content="An automatic fireworks show over a skyline: rockets with smoky trails burst into peonies, willows, rings, crossettes and glitter, with drag, gravity, flicker, additive glow and delayed boom sounds. Click to launch your own.">
+<meta name="tech" content="Canvas, Particles, Web Audio">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: linear-gradient(#02030a, #0d0f2a 70%, #1a1438); }
+  canvas { cursor: crosshair; }
+  .ui { position: fixed; bottom: 14px; right: 14px; }
+  .ui button { padding: 8px 14px; border-radius: 999px; border: 1px solid #333; background: #111; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Fireworks. Click to launch."></canvas>
+<div class="ui"><button class="snd" aria-pressed="false">🔈 Sound off</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, skyline;
+  function resize() {
+    dpr = Math.min(devicePixelRatio, 1.5); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // pre-rendered skyline layer
+    skyline = document.createElement("canvas"); skyline.width = W * dpr; skyline.height = H * dpr; const g = skyline.getContext("2d"); g.scale(dpr, dpr);
+    const rng = Demo.rng(9); let x = 0; g.fillStyle = "#05050c";
+    while (x < W) { const bw = 30 + rng() * 70, bh = 40 + rng() * H * .22; g.fillRect(x, H - bh, bw, bh); g.fillStyle = "rgb(255 220 140 / .5)"; for (let wy = H - bh + 8; wy < H - 8; wy += 12) for (let wx = x + 6; wx < x + bw - 6; wx += 10) if (rng() < .25) g.fillRect(wx, wy, 4, 6); g.fillStyle = "#05050c"; x += bw + 2; }
+  }
+  addEventListener("resize", resize); resize();
+  let audio = null;
+  const sndBtn = document.querySelector(".snd");
+  sndBtn.onclick = () => { if (audio) { audio.close(); audio = null; } else audio = new AudioContext(); sndBtn.setAttribute("aria-pressed", !!audio); sndBtn.textContent = audio ? "🔊 Sound on" : "🔈 Sound off"; };
+  function boom(dist) {
+    if (!audio) return;
+    // filtered noise burst, delayed by distance like real sound
+    const t = audio.currentTime + dist, len = 1.2, b = audio.createBuffer(1, audio.sampleRate * len, audio.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    s.buffer = b; f.type = "lowpass"; f.frequency.value = 400 + Math.random() * 400; g.gain.value = .5;
+    s.connect(f).connect(g).connect(audio.destination); s.start(t);
+  }
+  const rockets = [], sparks = [];
+  const TYPES = ["peony", "willow", "ring", "crossette", "glitter", "palm"];
+  function launch(tx, ty) {
+    const x = W * (.2 + Math.random() * .6), y = H;
+    tx = tx ?? W * (.15 + Math.random() * .7); ty = ty ?? H * (.15 + Math.random() * .3);
+    const T = 1.1 + Math.random() * .4, vx = (tx - x) / T, vy = (ty - y) / T - 0.5 * 220 * T;   // solve for apex at target (with gravity 220)
+    rockets.push({ x, y, vx, vy, t: 0, T, hue: Math.random() * 360, type: TYPES[Math.floor(Math.random() * TYPES.length)] });
+  }
+  function burst(r) {
+    const n = r.type === "ring" ? 70 : r.type === "palm" ? 12 : 120, hue = r.hue, speed = 140 + Math.random() * 120;
+    const tilt = Math.random() * Math.PI;
+    for (let i = 0; i < n; i++) {
+      let a = Math.random() * Math.PI * 2, s = speed * (r.type === "ring" ? 1 : Math.cbrt(Math.random()));
+      let vx = Math.cos(a) * s, vy = Math.sin(a) * s;
+      if (r.type === "ring") { a = (i / n) * Math.PI * 2; vx = Math.cos(a) * s; vy = Math.sin(a) * s * Math.cos(tilt) * .5; }
+      if (r.type === "palm") s *= 1.6, vx *= 1.6, vy = vy * 1.6 - 60;
+      sparks.push({ x: r.x, y: r.y, vx, vy, life: 1, decay: r.type === "willow" ? .25 : r.type === "palm" ? .4 : .55 + Math.random() * .3, hue: hue + (Math.random() - .5) * 30,
+        drag: r.type === "willow" ? .97 : .985, trail: r.type === "willow" || r.type === "palm", glitter: r.type === "glitter", split: r.type === "crossette" && Math.random() < .25, px: r.x, py: r.y });
+    }
+    // flash
+    sparks.push({ x: r.x, y: r.y, vx: 0, vy: 0, life: 1, decay: 4, flash: true, hue });
+    boom(Math.random() * .3 + .1);
+  }
+  cv.addEventListener("pointerdown", (e) => launch(e.clientX, e.clientY));
+  let last = performance.now(), auto = 0;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (!Demo.reduced && (auto -= dt) <= 0) { auto = .4 + Math.random() * 1.1; launch(); if (Math.random() < .2) setTimeout(launch, 120); }
+    // fade previous frame for trails
+    ctx.globalCompositeOperation = "destination-out"; ctx.fillStyle = "rgb(0 0 0 / .22)"; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i]; r.t += dt; r.vy += 220 * dt; r.x += r.vx * dt; r.y += r.vy * dt;
+      ctx.fillStyle = `hsl(${r.hue} 100% 80%)`; ctx.beginPath(); ctx.arc(r.x, r.y, 2, 0, 7); ctx.fill();
+      sparks.push({ x: r.x, y: r.y, vx: (Math.random() - .5) * 20, vy: 30, life: .5, decay: 1.6, hue: 35, smoke: true });
+      if (r.t >= r.T) { burst(r); rockets.splice(i, 1); }
+    }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.life -= s.decay * dt; if (s.life <= 0) { if (s.split) for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.random(); sparks.push({ x: s.x, y: s.y, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, life: .6, decay: 1, hue: s.hue + 40, drag: .97 }); } sparks.splice(i, 1); continue; }
+      if (s.flash) { const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 120); g.addColorStop(0, `hsl(${s.hue} 100% 85% / ${s.life * .5})`); g.addColorStop(1, "transparent"); ctx.fillStyle = g; ctx.fillRect(s.x - 120, s.y - 120, 240, 240); continue; }
+      s.px = s.x; s.py = s.y;
+      s.vx *= s.drag || .98; s.vy = s.vy * (s.drag || .98) + 120 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
+      const flick = s.glitter ? (Math.random() < .5 ? 1.6 : .2) : 1;
+      const light = s.smoke ? 40 : 55 + s.life * 30;
+      ctx.strokeStyle = `hsl(${s.hue} 100% ${light}% / ${Math.min(1, s.life * flick) * (s.smoke ? .3 : 1)})`;
+      ctx.lineWidth = s.smoke ? 2 : 1.6; ctx.beginPath(); ctx.moveTo(s.px, s.py); ctx.lineTo(s.x, s.y); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(skyline, 0, 0, W, H);
+    requestAnimationFrame(frame);
+  }
+  if (Demo.reduced) { launch(W * .3, H * .3); launch(W * .7, H * .25); }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bouncing DVD Logo</title>
+<meta name="description" content="The classic screensaver: a logo drifts and bounces off the edges, changing colour on every hit. It predicts when it will hit a corner, counts down to it, and throws a confetti party when it does. Speed control and a 'cheat' button that aims for a corner.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #000; }
+  .logo { position: fixed; left: 0; top: 0; width: 180px; height: 80px; will-change: transform; }
+  .logo svg { width: 100%; height: 100%; }
+  .stats { position: fixed; top: 64px; left: 16px; font: 13px var(--mono); color: #aaa; line-height: 1.7; }
+  .stats b { color: #fff; }
+  .ui { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; color: #aaa; font-size: 13px; }
+  .ui button { padding: 8px 14px; border-radius: 999px; border: 1px solid #333; background: #111; cursor: pointer; }
+  .party { position: fixed; inset: 0; display: grid; place-items: center; font: 900 clamp(40px, 9vw, 120px) var(--font); color: #fff; pointer-events: none; opacity: 0; }
+  .party.on { animation: party 2.4s ease-out; }
+  @keyframes party { 0% { opacity: 0; transform: scale(.5); } 15% { opacity: 1; transform: scale(1.1); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+  canvas.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="logo" aria-hidden="true"><svg viewBox="0 0 180 80"><text x="90" y="46" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-style="italic" font-size="50" fill="currentColor" letter-spacing="-2">DVD</text><ellipse cx="90" cy="64" rx="70" ry="10" fill="currentColor"/><text x="90" y="68" text-anchor="middle" font-family="system-ui" font-weight="800" font-size="11" fill="#000" letter-spacing="3">VIDEO</text></svg></div>
+<canvas class="confetti"></canvas>
+<div class="stats" aria-live="polite">Bounces <b class="b">0</b><br>Corner hits <b class="c">0</b><br><span class="eta"></span></div>
+<div class="party">CORNER!</div>
+<div class="ui"><label>Speed <input type="range" min="60" max="600" value="160" class="spd"></label><button class="cheat">Aim for a corner</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const logo = document.querySelector(".logo"), party = document.querySelector(".party");
+  const LW = 180, LH = 80;
+  let x = 40, y = 120, dx = 1, dy = 1, speed = 160, bounces = 0, corners = 0, hue = 0;
+  document.querySelector(".spd").oninput = (e) => (speed = +e.target.value);
+  const setColour = () => { hue = (hue + 67 + Math.random() * 60) % 360; logo.style.color = `hsl(${hue} 90% 60%)`; };
+  setColour();
+  // Brute-force forecast of the next corner hit (simulate edge hits until both axes coincide within a frame).
+  function nextCorner() {
+    let px = x, py = y, vx = dx, vy = dy, t = 0;
+    const w = innerWidth - LW, h = innerHeight - LH;
+    for (let i = 0; i < 400; i++) {
+      const tx = (vx > 0 ? w - px : px) / speed, ty = (vy > 0 ? h - py : py) / speed, s = Math.min(tx, ty);
+      if (Math.abs(tx - ty) < 0.012) return t + s;
+      t += s; px += vx * speed * s; py += vy * speed * s;
+      if (tx <= ty) vx = -vx; if (ty <= tx) vy = -vy;
+      if (t > 3600) break;
+    }
+    return null;
+  }
+  document.querySelector(".cheat").onclick = () => {
+    // Make the distances to the next x-wall and y-wall equal (both axes move at the same speed),
+    // adjusting whichever axis has room.
+    const w = innerWidth - LW, h = innerHeight - LH, toX = dx > 0 ? w - x : x, toY = dy > 0 ? h - y : y;
+    if (toX <= h) y = dy > 0 ? h - toX : toX;
+    else x = dx > 0 ? w - toY : toY;
+  };
+  // confetti
+  const cv = document.querySelector(".confetti"), ctx = cv.getContext("2d"); let bits = [];
+  const sizeCv = () => { cv.width = innerWidth; cv.height = innerHeight; }; sizeCv(); addEventListener("resize", sizeCv);
+  function celebrate() {
+    corners++; document.querySelector(".c").textContent = corners;
+    party.classList.remove("on"); void party.offsetWidth; party.classList.add("on");
+    for (let i = 0; i < 220; i++) bits.push({ x: x + LW / 2, y: y + LH / 2, vx: (Math.random() - .5) * 900, vy: (Math.random() - .8) * 900, r: Math.random() * 6, c: `hsl(${Math.random() * 360} 90% 60%)`, s: Math.random() * 6 });
+  }
+  let last = performance.now(), etaTimer = 0;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
+    if (!Demo.reduced) {
+      x += dx * speed * dt; y += dy * speed * dt;
+      const w = innerWidth - LW, h = innerHeight - LH;
+      let hitX = false, hitY = false;
+      if (x <= 0 || x >= w) { dx = -dx; x = Math.max(0, Math.min(w, x)); hitX = true; }
+      if (y <= 0 || y >= h) { dy = -dy; y = Math.max(0, Math.min(h, y)); hitY = true; }
+      if (hitX || hitY) { bounces++; document.querySelector(".b").textContent = bounces; setColour(); }
+      // corner = both axes hit within a few pixels of each other
+      if ((hitX && (y < 4 || y > h - 4)) || (hitY && (x < 4 || x > w - 4))) celebrate();
+    }
+    logo.style.transform = `translate(${x}px, ${y}px)`;
+    if ((etaTimer -= dt) <= 0) {
+      etaTimer = .5; const t = nextCorner();
+      document.querySelector(".eta").textContent = t == null ? "Next corner: not in the next hour" : `Next corner in ${t < 60 ? t.toFixed(1) + "s" : Math.floor(t / 60) + "m " + Math.round(t % 60) + "s"}`;
+    }
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    bits = bits.filter((b) => b.y < innerHeight + 20);
+    for (const b of bits) { b.vy += 900 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.s += dt * 8; ctx.fillStyle = b.c; ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.s); ctx.fillRect(-4, -2, 8, 4); ctx.restore(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

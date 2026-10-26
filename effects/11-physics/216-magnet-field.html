@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Magnet &amp; Repel Field</title>
+<meta name="description" content="Iron-filing particles on springs respond to your pointer as a magnet: in attract mode they swarm and align along field lines, in repel mode they scatter, and click-drag drops extra poles. Compass needles in a grid show the field direction.">
+<meta name="tech" content="Canvas, Particles">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #ece8df; }
+  canvas { touch-action: none; }
+  .ui { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+  .ui button { white-space: nowrap; padding: 8px 14px; border-radius: 999px; border: 1px solid #bbb; background: #fff; color: #111; cursor: pointer; }
+  .ui button[aria-pressed="true"] { background: #111; color: #fff; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Magnetic field particles following the pointer"></canvas>
+<div class="ui" role="group" aria-label="Mode">
+  <button data-m="1" aria-pressed="true">🧲 Attract</button><button data-m="-1" aria-pressed="false">💨 Repel</button><button class="filings" aria-pressed="false">Iron filings</button><button class="clear">Clear poles</button>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, parts = [];
+  function resize() {
+    dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    parts = []; const sp = Math.max(16, Math.sqrt(W * H / 1500));
+    for (let y = sp / 2; y < H; y += sp) for (let x = sp / 2; x < W; x += sp) parts.push({ hx: x, hy: y, x, y, vx: 0, vy: 0, a: 0 });
+  }
+  addEventListener("resize", resize); resize();
+  let mode = 1, filings = false, poles = [], mx = W / 2, my = H / 2, active = false;
+  // Poles: the pointer (sign = mode) plus any dropped ones (alternating N/S). Field = sum of 2D dipole-ish 1/r terms.
+  function field(x, y) {
+    let fx = 0, fy = 0;
+    const src = active ? [{ x: mx, y: my, s: mode }, ...poles] : poles;
+    for (const p of src) { const dx = p.x - x, dy = p.y - y, d2 = dx * dx + dy * dy + 400; fx += p.s * dx / d2; fy += p.s * dy / d2; }
+    return [fx, fy];
+  }
+  cv.addEventListener("pointerdown", (e) => { poles.push({ x: e.clientX, y: e.clientY, s: poles.length % 2 ? -1 : 1 }); if (poles.length > 6) poles.shift(); });
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; active = true; });
+  document.addEventListener("pointerleave", () => (active = false));
+  document.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { mode = +b.dataset.m; document.querySelectorAll("[data-m]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  const fb = document.querySelector(".filings"); fb.onclick = () => { filings = !filings; fb.setAttribute("aria-pressed", filings); };
+  document.querySelector(".clear").onclick = () => (poles = []);
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (Demo.reduced && !active) { active = true; mx = W * .5; my = H * .5; }
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      const [fx, fy] = field(p.x, p.y), mag = Math.hypot(fx, fy);
+      // force toward/away from the pole, a spring home, damping
+      p.vx += (fx * 9000 * (filings ? .4 : 1) - (p.x - p.hx) * 14) * dt; p.vy += (fy * 9000 * (filings ? .4 : 1) - (p.y - p.hy) * 14) * dt;
+      p.vx *= .88; p.vy *= .88; p.x += p.vx * dt; p.y += p.vy * dt;
+      // needle points along the field line (rotate 90° for iron-filing look)
+      const target = Math.atan2(fy, fx) + (filings ? Math.PI / 2 : 0);
+      let da = target - p.a; da = Math.atan2(Math.sin(da), Math.cos(da)); p.a += da * .2;
+      const len = 6 + Math.min(10, mag * 300), k = Math.min(1, mag * 60);
+      const c = Math.cos(p.a), sn = Math.sin(p.a); ctx.setTransform(c * dpr, sn * dpr, -sn * dpr, c * dpr, p.x * dpr, p.y * dpr);
+      if (filings) { ctx.strokeStyle = `rgb(40 40 46 / ${.35 + k * .6})`; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-len / 2, 0); ctx.lineTo(len / 2, 0); ctx.stroke(); }
+      else {
+        ctx.fillStyle = `rgb(230 57 70 / ${.4 + k * .6})`; ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(0, -2.5); ctx.lineTo(0, 2.5); ctx.fill();
+        ctx.fillStyle = `rgb(40 40 46 / ${.3 + k * .5})`; ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(0, -2.5); ctx.lineTo(0, 2.5); ctx.fill();
+      }
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (const p of poles) { ctx.fillStyle = p.s > 0 ? "#e63946" : "#1d3557"; ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.s > 0 ? "N" : "S", p.x, p.y + 1); }
+    if (active) { ctx.strokeStyle = mode > 0 ? "#e63946" : "#457b9d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mx, my, 16, 0, 7); ctx.stroke(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

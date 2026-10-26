@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tearable Cloth</title>
+<meta name="description" content="A Verlet cloth pinned along its top edge that billows in a gentle wind. Drag to pull the fabric; right-click drag (or hold Shift) to cut, and over-stretched threads tear on their own. The image is texture-mapped onto the triangles.">
+<meta name="tech" content="Canvas, Verlet physics">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #15161c; }
+  canvas { cursor: grab; touch-action: none; }
+  .ui { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+  .ui button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Cloth simulation. Drag to pull, cut mode to tear."></canvas>
+<div class="ui"><button class="mode" aria-pressed="false">✂ Cut mode</button><button class="reset">Rehang</button><span>Shift / right-drag also cuts</span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr;
+  function resize() { dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener("resize", resize); resize();
+  const img = Demo.art(512, 384, 7);
+  let pts, links, cols, rows, sp, ox, oy;
+  function build() {
+    cols = 32; rows = 24; sp = Math.min((W * .7) / cols, (H * .65) / rows); ox = (W - cols * sp) / 2; oy = 70;
+    pts = []; links = [];
+    for (let y = 0; y <= rows; y++) for (let x = 0; x <= cols; x++) {
+      const px = ox + x * sp, py = oy + y * sp;
+      pts.push({ x: px, y: py, px, py, pin: y === 0 && x % 3 === 0, u: x / cols, v: y / rows });
+    }
+    const id = (x, y) => y * (cols + 1) + x;
+    for (let y = 0; y <= rows; y++) for (let x = 0; x <= cols; x++) {
+      if (x < cols) links.push({ a: pts[id(x, y)], b: pts[id(x + 1, y)], on: true });
+      if (y < rows) links.push({ a: pts[id(x, y)], b: pts[id(x, y + 1)], on: true });
+    }
+    // each grid cell remembers its 4 links so a cut cell stops drawing
+    cells = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      cells.push({ p: [pts[id(x, y)], pts[id(x + 1, y)], pts[id(x + 1, y + 1)], pts[id(x, y + 1)]] });
+    }
+    // map from point pair to link for quick cell checks
+    linkOf = new Map(); links.forEach((l) => linkOf.set(l.a, (linkOf.get(l.a) || []).concat(l)));
+  }
+  let cells, linkOf;
+  const linked = (a, b) => (linkOf.get(a) || []).some((l) => l.on && l.b === b);
+  let mx = 0, my = 0, pmx = 0, pmy = 0, down = false, cutting = false, cutMode = false, grabbed = null;
+  function step(t) {
+    const g = 900 / 3600, wind = Math.sin(t * .7) * .06 + Math.sin(t * 2.3) * .03;
+    for (const p of pts) {
+      if (p.pin) continue;
+      const vx = (p.x - p.px) * .99, vy = (p.y - p.py) * .99;
+      p.px = p.x; p.py = p.y;
+      p.x += vx + (Demo.reduced ? 0 : wind * (1 + Math.sin(p.y * .02 + t * 3))); p.y += vy + g;
+      if (p.y > H - 4) { p.y = H - 4; p.px = p.x; }
+    }
+    if (grabbed) for (const g of grabbed) { g.p.x = mx + g.dx; g.p.y = my + g.dy; }
+    for (let it = 0; it < 4; it++) for (const l of links) {
+      if (!l.on) continue;
+      const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy);
+      if (d > sp * 4.5) { l.on = false; continue; }   // over-stretched: tear
+      const f = (d - sp) / d * .5;
+      if (!l.a.pin) { l.a.x += dx * f; l.a.y += dy * f; }
+      if (!l.b.pin) { l.b.x -= dx * f; l.b.y -= dy * f; }
+    }
+  }
+  function cut() {
+    // cut every link whose midpoint is near the pointer's path this frame
+    const r = 10, sx = mx - pmx, sy = my - pmy, L = sx * sx + sy * sy || 1;
+    for (const l of links) {
+      if (!l.on) continue;
+      const cx = (l.a.x + l.b.x) / 2, cy = (l.a.y + l.b.y) / 2;
+      const t = Math.max(0, Math.min(1, ((cx - pmx) * sx + (cy - pmy) * sy) / L));
+      if (Math.hypot(cx - (pmx + sx * t), cy - (pmy + sy * t)) < r) l.on = false;
+    }
+  }
+  // Draw each intact cell as two textured triangles via affine transforms.
+  function tri(p0, p1, p2) {
+    const u0 = p0.u * img.width, v0 = p0.v * img.height, u1 = p1.u * img.width, v1 = p1.v * img.height, u2 = p2.u * img.width, v2 = p2.v * img.height;
+    const den = u0 * (v1 - v2) + u1 * (v2 - v0) + u2 * (v0 - v1); if (!den) return;
+    const a = (p0.x * (v1 - v2) + p1.x * (v2 - v0) + p2.x * (v0 - v1)) / den, b = (p0.y * (v1 - v2) + p1.y * (v2 - v0) + p2.y * (v0 - v1)) / den;
+    const c = (p0.x * (u2 - u1) + p1.x * (u0 - u2) + p2.x * (u1 - u0)) / den, d = (p0.y * (u2 - u1) + p1.y * (u0 - u2) + p2.y * (u1 - u0)) / den;
+    const e = (p0.x * (u1 * v2 - u2 * v1) + p1.x * (u2 * v0 - u0 * v2) + p2.x * (u0 * v1 - u1 * v0)) / den, f = (p0.y * (u1 * v2 - u2 * v1) + p1.y * (u2 * v0 - u0 * v2) + p2.y * (u0 * v1 - u1 * v0)) / den;
+    ctx.save(); ctx.beginPath();
+    // expand the triangle by ~0.6px to hide hairline seams
+    const cx = (p0.x + p1.x + p2.x) / 3, cy = (p0.y + p1.y + p2.y) / 3, grow = (p) => { const dx = p.x - cx, dy = p.y - cy, l = Math.hypot(dx, dy) || 1; return [p.x + dx / l * .6, p.y + dy / l * .6]; };
+    ctx.moveTo(...grow(p0)); ctx.lineTo(...grow(p1)); ctx.lineTo(...grow(p2)); ctx.closePath(); ctx.clip();
+    ctx.transform(a, b, c, d, e, f); ctx.drawImage(img, 0, 0); ctx.restore();
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#555"; ctx.fillRect(ox - 20, oy - 8, cols * sp + 40, 6);   // rail
+    for (const c of cells) {
+      const [a, b, d, e] = c.p;
+      if (linked(a, b) && linked(b, d) && linked(e, d) && linked(a, e)) { tri(a, b, d); tri(a, d, e); }
+      else {
+        // partially torn cell: draw the remaining threads
+        ctx.strokeStyle = "rgb(255 255 255 / .35)"; ctx.lineWidth = 1; ctx.beginPath();
+        if (linked(a, b)) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+        if (linked(a, e)) { ctx.moveTo(a.x, a.y); ctx.lineTo(e.x, e.y); }
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = "#ddd"; for (const p of pts) if (p.pin) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill(); }
+  }
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
+  cv.addEventListener("pointerdown", (e) => {
+    mx = pmx = e.clientX; my = pmy = e.clientY; down = true; cv.setPointerCapture(e.pointerId);
+    cutting = cutMode || e.shiftKey || e.button === 2;
+    if (!cutting) grabbed = pts.filter((p) => !p.pin && Math.hypot(p.x - mx, p.y - my) < 30).map((p) => ({ p, dx: p.x - mx, dy: p.y - my }));
+  });
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  addEventListener("pointerup", () => { down = false; grabbed = null; cutting = false; });
+  const modeBtn = document.querySelector(".mode");
+  modeBtn.onclick = () => { cutMode = !cutMode; modeBtn.setAttribute("aria-pressed", cutMode); cv.style.cursor = cutMode ? "crosshair" : "grab"; };
+  document.querySelector(".reset").onclick = build;
+  addEventListener("resize", build);
+  build();
+  const t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    if (down && cutting) cut();
+    step(t); draw(); pmx = mx; pmy = my;
+    requestAnimationFrame(frame);
+  }
+  for (let i = 0; i < 120; i++) step(0);
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

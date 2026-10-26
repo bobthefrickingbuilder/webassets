@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pendulum Wave</title>
+<meta name="description" content="Fifteen pendulums whose lengths are tuned so they complete 51…65 swings in 60 seconds: they drift out of phase into travelling waves, snakes and chaos, then realign. Exact closed-form motion, a timeline scrubber and optional pluck tones.">
+<meta name="tech" content="Canvas, Web Audio">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #0d0e14; }
+  .ui { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 13px; width: min(640px, 92vw); }
+  .ui input { flex: 1; }
+  .ui button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; white-space: nowrap; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Pendulum wave animation"></canvas>
+<div class="ui"><button class="play" aria-pressed="true">Pause</button><input type="range" min="0" max="60" step=".01" value="0" aria-label="Time in the 60 second cycle"><span class="tm">0.0s</span><button class="snd" aria-pressed="false">♪ Sound</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr;
+  function resize() { dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener("resize", resize); resize();
+  const N = 15, T = 60, BASE = 51;   // pendulum i swings BASE+i times per T seconds
+  const amp = 0.45;
+  const scrub = document.querySelector("input"), tm = document.querySelector(".tm"), playBtn = document.querySelector(".play"), sndBtn = document.querySelector(".snd");
+  let t = 0, playing = !Demo.reduced, audio = null;
+  playBtn.setAttribute("aria-pressed", playing); playBtn.textContent = playing ? "Pause" : "Play";
+  playBtn.onclick = () => { playing = !playing; playBtn.setAttribute("aria-pressed", playing); playBtn.textContent = playing ? "Pause" : "Play"; };
+  scrub.oninput = () => (t = +scrub.value);
+  sndBtn.onclick = () => { if (audio) { audio.close(); audio = null; } else audio = new AudioContext(); sndBtn.setAttribute("aria-pressed", !!audio); };
+  // pentatonic scale, one note per pendulum, plucked as it passes the centre
+  const scale = [0, 2, 4, 7, 9]; const freq = (i) => 220 * Math.pow(2, (scale[i % 5] + 12 * Math.floor(i / 5)) / 12);
+  function pluck(i) {
+    if (!audio) return;
+    const o = audio.createOscillator(), g = audio.createGain(), now = audio.currentTime;
+    o.type = "sine"; o.frequency.value = freq(i); g.gain.setValueAtTime(.08, now); g.gain.exponentialRampToValueAtTime(.0001, now + .6);
+    o.connect(g).connect(audio.destination); o.start(); o.stop(now + .6);
+  }
+  const prevSign = new Array(N).fill(1);
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
+    if (playing) { t = (t + dt) % T; scrub.value = t; }
+    tm.textContent = t.toFixed(1) + "s";
+    ctx.clearRect(0, 0, W, H);
+    // view from above-front: pivots along a line, bobs swing toward/away from the viewer (rendered with perspective)
+    const top = 80, span = Math.min(W * .8, 900), x0 = (W - span) / 2;
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x0 - 20, top); ctx.lineTo(x0 + span + 20, top); ctx.stroke();
+    for (let i = 0; i < N; i++) {
+      const w = (2 * Math.PI * (BASE + i)) / T;
+      const theta = amp * Math.cos(w * t);
+      const L = Math.min(H - top - 120, 520) * Math.pow(BASE / (BASE + i), 2);   // L ∝ 1/f²
+      const px = x0 + (i + .5) * span / N;
+      const bx = px + Math.sin(theta) * L * .9, by = top + Math.cos(theta) * L;
+      const s = Math.sign(theta) || 1; if (s !== prevSign[i] && playing) pluck(i); prevSign[i] = s;
+      ctx.strokeStyle = "rgb(255 255 255 / .35)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(bx, by); ctx.stroke();
+      const hue = 200 + i * 10, r = 13;
+      // trail
+      ctx.fillStyle = `hsl(${hue} 90% 60% / .12)`;
+      for (let k = 1; k <= 6; k++) { const th = amp * Math.cos(w * (t - k * .03)); ctx.beginPath(); ctx.arc(px + Math.sin(th) * L * .9, top + Math.cos(th) * L, r * (1 - k * .1), 0, 7); ctx.fill(); }
+      const g = ctx.createRadialGradient(bx - 4, by - 4, 2, bx, by, r);
+      g.addColorStop(0, "#fff"); g.addColorStop(.4, `hsl(${hue} 90% 65%)`); g.addColorStop(1, `hsl(${hue} 80% 35%)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

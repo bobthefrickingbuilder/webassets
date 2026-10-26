@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spring Drag with Throw Inertia</title>
+<meta name="description" content="Drag cards with rubber-band springs, release to throw them with momentum. Thrown cards project their resting point from release velocity and spring into the nearest corner, like iOS picture-in-picture. Adjustable stiffness and damping.">
+<meta name="tech" content="JS, Springs">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: radial-gradient(circle at 50% 40%, #1d1f2b, #0b0c10); }
+  .slot { position: fixed; width: 220px; height: 140px; border: 2px dashed rgb(255 255 255 / .12); border-radius: 22px; }
+  .pip { position: fixed; left: 0; top: 0; width: 220px; height: 140px; border-radius: 22px; touch-action: none; cursor: grab; user-select: none;
+         background-size: cover; box-shadow: 0 20px 50px rgb(0 0 0 / .5); display: flex; align-items: flex-end; padding: 14px; font-weight: 700; }
+  .pip.drag { cursor: grabbing; }
+  .panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--muted); }
+  .panel label { display: block; margin: 8px auto; width: 260px; text-align: left; font-size: 13px; }
+  .panel input { width: 100%; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <p>Throw the video toward any corner.</p>
+  <label>Stiffness <span class="kv"></span><input class="k" type="range" min="50" max="900" value="300"></label>
+  <label>Damping <span class="dv"></span><input class="d" type="range" min="5" max="60" value="22"></label>
+</div>
+<div class="pip" role="img" aria-label="Draggable picture-in-picture card">▶ Now playing</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const pip = document.querySelector(".pip");
+  pip.style.backgroundImage = `linear-gradient(transparent 50%, rgb(0 0 0 / .6)), url(${Demo.artURL(440, 280, 3)})`;
+  const W = 220, H = 140, M = 24;
+  let k = 300, d = 22;
+  const kIn = document.querySelector(".k"), dIn = document.querySelector(".d");
+  const showKD = () => { k = +kIn.value; d = +dIn.value; document.querySelector(".kv").textContent = k; document.querySelector(".dv").textContent = d; };
+  kIn.oninput = dIn.oninput = showKD; showKD();
+  const corners = () => [[M, M + 50], [innerWidth - W - M, M + 50], [M, innerHeight - H - M], [innerWidth - W - M, innerHeight - H - M]];
+  // dashed slots show where it can land
+  const slots = corners().map(() => { const s = document.createElement("div"); s.className = "slot"; document.body.prepend(s); return s; });
+  const placeSlots = () => corners().forEach(([x, y], i) => { slots[i].style.left = x + "px"; slots[i].style.top = y + "px"; });
+  placeSlots();
+  let [x, y] = corners()[3], vx = 0, vy = 0, tx = x, ty = y, dragging = false, ox = 0, oy = 0, hist = [];
+  addEventListener("resize", () => { placeSlots(); [tx, ty] = nearest(tx, ty); });
+  function nearest(px, py) { return corners().reduce((b, c) => (Math.hypot(c[0] - px, c[1] - py) < Math.hypot(b[0] - px, b[1] - py) ? c : b)); }
+  pip.addEventListener("pointerdown", (e) => { dragging = true; ox = e.clientX - x; oy = e.clientY - y; hist = []; pip.setPointerCapture(e.pointerId); pip.classList.add("drag"); });
+  pip.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    // Rubber band: past the screen edge the card follows with diminishing distance.
+    const rb = (v, min, max) => (v < min ? min - Math.sqrt(min - v) * 6 : v > max ? max + Math.sqrt(v - max) * 6 : v);
+    x = rb(e.clientX - ox, 0, innerWidth - W); y = rb(e.clientY - oy, 0, innerHeight - H);
+    hist.push([e.clientX, e.clientY, performance.now()]); if (hist.length > 6) hist.shift();
+  });
+  pip.addEventListener("pointerup", () => {
+    if (!dragging) return; dragging = false; pip.classList.remove("drag");
+    // release velocity from the last ~80ms of pointer history
+    const a = hist[0], b = hist[hist.length - 1];
+    if (a && b && b[2] > a[2]) { vx = (b[0] - a[0]) / (b[2] - a[2]) * 1000; vy = (b[1] - a[1]) / (b[2] - a[2]) * 1000; } else vx = vy = 0;
+    // project where momentum would carry it (deceleration rate like iOS scroll), then snap to the closest corner
+    const proj = 0.2;
+    [tx, ty] = nearest(x + vx * proj, y + vy * proj);
+  });
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (!dragging) {
+      if (Demo.reduced) { x = tx; y = ty; vx = vy = 0; }
+      // semi-implicit Euler damped spring, sub-stepped for stiff settings
+      for (let i = 0; i < 4; i++) { const h = dt / 4; vx += (-(x - tx) * k - vx * d) * h; vy += (-(y - ty) * k - vy * d) * h; x += vx * h; y += vy * h; }
+    }
+    const speed = Math.hypot(vx, vy), tilt = dragging ? 0 : Math.max(-8, Math.min(8, vx / 200));
+    pip.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg) scale(${dragging ? 1.04 : 1 + Math.min(speed / 20000, .05)})`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

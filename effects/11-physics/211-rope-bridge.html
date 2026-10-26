@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rope Bridge &amp; Chains</title>
+<meta name="description" content="A plank rope bridge strung across a canyon and dangling chains, all Verlet constraints. Click to drop crates and boulders that land on the bridge and make it sag and sway; drag any link to yank it.">
+<meta name="tech" content="Canvas, Verlet physics">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: linear-gradient(#ffc78a, #ff8f6b 55%, #6b3e5e); }
+  canvas { touch-action: none; }
+  .hint { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); color: #4a2238; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Rope bridge simulation. Click to drop weights, drag to pull."></canvas>
+<p class="hint">Click to drop a crate · drag a plank or chain link</p>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, pts, cons, bridge, chains, rocks = [];
+  function P(x, y, pin) { return { x, y, px: x, py: y, pin }; }
+  function build() {
+    dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    pts = []; cons = []; bridge = []; chains = []; rocks = [];
+    const left = W * .18, right = W * .82, y = H * .55, n = 18, seg = (right - left) / n * 1.05;
+    for (let i = 0; i <= n; i++) { const p = P(left + (right - left) * i / n, y, i === 0 || i === n); pts.push(p); bridge.push(p); if (i) cons.push({ a: bridge[i - 1], b: p, len: seg }); }
+    // hand ropes: a second, higher line linked down to the deck with hangers
+    const rail = [];
+    for (let i = 0; i <= n; i++) { const p = P(left + (right - left) * i / n, y - 50, i === 0 || i === n); pts.push(p); rail.push(p); if (i) cons.push({ a: rail[i - 1], b: p, len: seg, rope: 1 }); cons.push({ a: p, b: bridge[i], len: 50, rope: 1 }); }
+    for (let c = 0; c < 3; c++) {
+      const cx = W * (.3 + c * .2), chain = [];
+      for (let i = 0; i < 12; i++) { const p = P(cx, 60 + i * 14, i === 0); pts.push(p); chain.push(p); if (i) cons.push({ a: chain[i - 1], b: p, len: 14, link: 1 }); }
+      chains.push(chain);
+    }
+  }
+  addEventListener("resize", build); build();
+  let grab = null, mx = 0, my = 0;
+  cv.addEventListener("pointerdown", (e) => {
+    mx = e.clientX; my = e.clientY;
+    let best = null, bd = 24; for (const p of pts) { const d = Math.hypot(p.x - mx, p.y - my); if (d < bd && !p.pin) { bd = d; best = p; } }
+    if (best) { grab = best; cv.setPointerCapture(e.pointerId); return; }
+    const s = 18 + Math.random() * 22; rocks.push({ x: mx, y: my, px: mx - (Math.random() - .5) * 4, py: my, r: s, m: s * s / 400, a: 0, col: Math.random() < .5 ? "#8b5a2b" : "#6b6b78", crate: Math.random() < .6 });
+    if (rocks.length > 25) rocks.shift();
+  });
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  addEventListener("pointerup", () => (grab = null));
+  const G = 1500;
+  function step(dt) {
+    for (const p of pts) { if (p.pin) continue; const vx = (p.x - p.px) * .995, vy = (p.y - p.py) * .995; p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + G * dt * dt; }
+    for (const r of rocks) { const vx = (r.x - r.px) * .998, vy = (r.y - r.py) * .998; r.px = r.x; r.py = r.y; r.x += vx; r.y += vy + G * dt * dt; r.a += vx * .02; }
+    if (grab) { grab.x += (mx - grab.x) * .6; grab.y += (my - grab.y) * .6; }
+    for (let it = 0; it < 12; it++) {
+      for (const c of cons) {
+        const dx = c.b.x - c.a.x, dy = c.b.y - c.a.y, d = Math.hypot(dx, dy) || 1;
+        if (c.rope && d < c.len) continue;   // ropes go slack, they don't push
+        const f = (d - c.len) / d * .5;
+        if (!c.a.pin) { c.a.x += dx * f; c.a.y += dy * f; } if (!c.b.pin) { c.b.x -= dx * f; c.b.y -= dy * f; }
+      }
+      // rocks vs bridge deck segments: push apart along the segment normal, weighting by mass
+      for (const r of rocks) {
+        for (let i = 1; i < bridge.length; i++) {
+          const a = bridge[i - 1], b = bridge[i], sx = b.x - a.x, sy = b.y - a.y, L = sx * sx + sy * sy;
+          const t = Math.max(0, Math.min(1, ((r.x - a.x) * sx + (r.y - a.y) * sy) / L));
+          const cx = a.x + sx * t, cy = a.y + sy * t, dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy), min = r.r + 6;
+          if (d < min && d > 0) {
+            const pen = (min - d), nx = dx / d, ny = dy / d, wr = 1 / (1 + r.m), wb = r.m / (1 + r.m);
+            r.x += nx * pen * wr; r.y += ny * pen * wr;
+            if (!a.pin) { a.x -= nx * pen * wb * (1 - t); a.y -= ny * pen * wb * (1 - t); }
+            if (!b.pin) { b.x -= nx * pen * wb * t; b.y -= ny * pen * wb * t; }
+            r.px += (r.x - r.px) * .1;   // friction on the planks
+          }
+        }
+        for (const o of rocks) { if (o === r) continue; const dx = r.x - o.x, dy = r.y - o.y, d = Math.hypot(dx, dy), min = r.r + o.r; if (d < min && d > 0) { const f = (min - d) / d * .5; r.x += dx * f; r.y += dy * f; o.x -= dx * f; o.y -= dy * f; } }
+        if (r.x < r.r) r.x = r.r; if (r.x > W - r.r) r.x = W - r.r;
+      }
+    }
+    rocks = rocks.filter((r) => r.y < H + 200);
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // canyon walls
+    ctx.fillStyle = "#4a2238";
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, H * .55); ctx.lineTo(W * .18, H * .55); ctx.lineTo(W * .14, H); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W, H); ctx.lineTo(W, H * .55); ctx.lineTo(W * .82, H * .55); ctx.lineTo(W * .86, H); ctx.fill();
+    // ropes
+    ctx.strokeStyle = "#3b2416"; ctx.lineWidth = 2;
+    for (const c of cons) if (c.rope) { ctx.beginPath(); ctx.moveTo(c.a.x, c.a.y); ctx.lineTo(c.b.x, c.b.y); ctx.stroke(); }
+    // planks
+    for (let i = 1; i < bridge.length; i++) {
+      const a = bridge[i - 1], b = bridge[i]; ctx.save(); ctx.translate((a.x + b.x) / 2, (a.y + b.y) / 2); ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
+      const len = Math.hypot(b.x - a.x, b.y - a.y); ctx.fillStyle = i % 2 ? "#a86b3c" : "#94592f"; ctx.fillRect(-len / 2 - 1, -5, len + 2, 10); ctx.restore();
+    }
+    // chains
+    for (const ch of chains) for (let i = 1; i < ch.length; i++) {
+      const a = ch[i - 1], b = ch[i]; ctx.save(); ctx.translate((a.x + b.x) / 2, (a.y + b.y) / 2); ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x) + (i % 2 ? 0 : 0));
+      ctx.strokeStyle = "#cfd3da"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, 10, i % 2 ? 5 : 2, 0, 0, 7); ctx.stroke(); ctx.restore();
+    }
+    for (const ch of chains) { const e = ch[ch.length - 1]; ctx.fillStyle = "#cfd3da"; ctx.beginPath(); ctx.arc(e.x, e.y + 6, 8, 0, 7); ctx.fill(); }
+    for (const r of rocks) {
+      ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.a);
+      if (r.crate) { ctx.fillStyle = "#c48a4a"; ctx.fillRect(-r.r * .85, -r.r * .85, r.r * 1.7, r.r * 1.7); ctx.strokeStyle = "#7a4d22"; ctx.lineWidth = 3; ctx.strokeRect(-r.r * .85, -r.r * .85, r.r * 1.7, r.r * 1.7); ctx.beginPath(); ctx.moveTo(-r.r * .85, -r.r * .85); ctx.lineTo(r.r * .85, r.r * .85); ctx.stroke(); }
+      else { ctx.fillStyle = r.col; ctx.beginPath(); ctx.arc(0, 0, r.r, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+  function frame() {
+    if (!Demo.reduced || grab || rocks.length) for (let i = 0; i < 2; i++) step(1 / 120);
+    draw(); requestAnimationFrame(frame);
+  }
+  for (let i = 0; i < 200; i++) step(1 / 120);
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

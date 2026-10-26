@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gravity Easter Egg</title>
+<meta name="description" content="A normal-looking landing page until you press the 'don't press' button (or type 'gravity'): every element detaches, falls and piles up at the bottom as a rigid body you can throw around, Google Gravity style. 'Restore' animates everything back home.">
+<meta name="tech" content="JS, Physics, DOM">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #fff; color: #111; overflow: hidden; }
+  .page { max-width: 980px; margin: 0 auto; padding: 72px 24px 24px; }
+  header { display: flex; align-items: center; gap: 22px; margin-bottom: 60px; }
+  .brand { font-weight: 900; font-size: 22px; padding: 6px 12px; background: #111; color: #fff; border-radius: 10px; }
+  nav { display: flex; gap: 8px; margin-left: auto; }
+  nav a { color: #333; text-decoration: none; padding: 8px 12px; border-radius: 8px; background: #f1f1f4; }
+  h1 { font-size: clamp(38px, 6vw, 76px); letter-spacing: -.04em; margin: 0 0 12px; line-height: 1; }
+  .lead { color: #555; font-size: 18px; max-width: 520px; margin: 0 0 24px; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { padding: 14px 22px; border-radius: 12px; border: 0; font-weight: 700; cursor: pointer; font-size: 15px; }
+  .btn.primary { background: #7c5cff; color: #fff; }
+  .btn.danger { background: #ff4d4f; color: #fff; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 50px; }
+  .card { padding: 18px; border-radius: 16px; background: #f6f5fb; }
+  .card b { display: block; margin-bottom: 6px; }
+  .card p { margin: 0; color: #666; font-size: 14px; }
+  .phys { position: fixed !important; left: 0; top: 0; margin: 0 !important; will-change: transform; cursor: grab; touch-action: none; user-select: none; box-sizing: border-box; z-index: 1; }
+  .restore { position: fixed; top: 64px; right: 16px; z-index: 5; display: none; }
+  body.falling .restore { display: block; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header><span class="brand fall">Acme</span><nav><a class="fall" href="#">Product</a><a class="fall" href="#">Pricing</a><a class="fall" href="#">Docs</a><a class="fall" href="#">Blog</a></nav></header>
+  <h1><span class="fall">Ship</span> <span class="fall">things</span> <span class="fall">that</span> <span class="fall">stay</span> <span class="fall">put.</span></h1>
+  <p class="lead fall">Rock-solid infrastructure for teams who like their layouts exactly where they left them.</p>
+  <div class="cta"><button class="btn primary fall">Start free trial</button><button class="btn danger trigger fall">Don't press this</button></div>
+  <div class="cards">
+    <div class="card fall"><b>⚡ Fast</b><p>Edge-rendered in 12 regions.</p></div>
+    <div class="card fall"><b>🔒 Secure</b><p>SOC 2 and end-to-end encryption.</p></div>
+    <div class="card fall"><b>📈 Scales</b><p>From side project to IPO.</p></div>
+  </div>
+</div>
+<button class="btn primary restore">↺ Restore layout</button>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/physics2d.js"></script>
+<script>
+  const world = P2D.world({ gravity: 2200 });
+  let bodies = [], running = false, restoring = 0;
+  function fall() {
+    if (running) return; running = true; document.body.classList.add("falling");
+    world.walls(innerWidth, innerHeight);
+    const els = [...document.querySelectorAll(".fall")];
+    // measure everything first, then detach (so layout doesn't shift while measuring)
+    const rects = els.map((el) => el.getBoundingClientRect());
+    els.forEach((el, i) => {
+      const r = rects[i];
+      el.style.width = r.width + "px"; el.style.height = r.height + "px"; el.classList.add("phys");
+      const b = world.box(r.left + r.width / 2, r.top + r.height / 2, r.width, r.height, { restitution: .2, friction: .6, vx: (Math.random() - .5) * 120, w: (Math.random() - .5) * 1.5 });
+      b.el = el; b.home = { x: b.x, y: b.y }; bodies.push(b);
+      el.style.transform = `translate(${r.left}px, ${r.top}px)`;
+    });
+  }
+  function restore() { restoring = 1; world.release(); }
+  document.querySelector(".trigger").addEventListener("click", (e) => { if (!running) { e.preventDefault(); fall(); } });
+  document.querySelector(".restore").onclick = restore;
+  let typed = "";
+  addEventListener("keydown", (e) => { typed = (typed + e.key).slice(-7).toLowerCase(); if (typed === "gravity") fall(); });
+  addEventListener("pointerdown", (e) => { if (!running || restoring) return; const b = world.pick(e.clientX, e.clientY); if (b) { e.preventDefault(); world.grab(b, e.clientX, e.clientY); } });
+  addEventListener("pointermove", (e) => world.drag(e.clientX, e.clientY));
+  addEventListener("pointerup", () => world.release());
+  addEventListener("click", (e) => { if (running && e.target.closest(".phys")) e.preventDefault(); }, true);
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (running) {
+      if (restoring) {
+        // ease every body back home, then hand the elements back to normal layout
+        restoring = Math.max(0, restoring - dt * 1.4);
+        const k = 1 - Math.pow(restoring, 3);
+        for (const b of bodies) { b.x += (b.home.x - b.x) * k * .25; b.y += (b.home.y - b.y) * k * .25; b.a += (Math.round(b.a / (2 * Math.PI)) * 2 * Math.PI - b.a) * k * .25; }
+        if (!restoring) {
+          for (const b of bodies) { b.el.classList.remove("phys"); b.el.style.cssText = ""; world.remove(b); }
+          bodies = []; running = false; document.body.classList.remove("falling");
+        }
+      } else for (let i = 0; i < 3; i++) world.step(dt / 3);
+      for (const b of bodies) { const w = b.shape.hw, h = b.shape.hh; b.el.style.transform = `translate(${b.x - w}px, ${b.y - h}px) rotate(${b.a}rad)`; }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

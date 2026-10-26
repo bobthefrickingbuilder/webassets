@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bubble Pop Field</title>
+<meta name="description" content="Iridescent soap bubbles drift upward, wobble, nudge each other and dodge your cursor. Click or swipe to pop them with a splash of droplets and a pop sound; a counter keeps score. Thin-film colours come from layered gradients.">
+<meta name="tech" content="Canvas, Web Audio">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: linear-gradient(160deg, #a8e0ff, #6a8dff 60%, #8a5cff); }
+  canvas { cursor: pointer; touch-action: none; }
+  .score { position: fixed; top: 64px; right: 18px; font: 800 28px var(--font); color: #fff; text-shadow: 0 2px 10px rgb(0 0 0 / .2); }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Floating bubbles. Click or swipe to pop."></canvas>
+<div class="score" aria-live="polite">0 popped</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr;
+  function resize() { dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener("resize", resize); resize();
+  // One pre-rendered bubble sprite (thin-film rainbow rim + highlights), drawn scaled for every bubble.
+  const S = 256, sprite = document.createElement("canvas"); sprite.width = sprite.height = S;
+  (() => {
+    const g = sprite.getContext("2d"), c = S / 2, R = S / 2 - 4;
+    const body = g.createRadialGradient(c, c, R * .6, c, c, R);
+    body.addColorStop(0, "rgb(255 255 255 / .02)"); body.addColorStop(.75, "rgb(255 255 255 / .08)"); body.addColorStop(1, "rgb(255 255 255 / .5)");
+    g.fillStyle = body; g.beginPath(); g.arc(c, c, R, 0, 7); g.fill();
+    const film = g.createConicGradient(0, c, c);
+    ["#ff7ad9", "#ffd36e", "#7dffb2", "#6ed3ff", "#b48cff", "#ff7ad9"].forEach((col, i) => film.addColorStop(i / 5, col));
+    g.globalAlpha = .45; g.lineWidth = 10; g.strokeStyle = film; g.beginPath(); g.arc(c, c, R - 5, 0, 7); g.stroke();
+    g.globalAlpha = .9; g.fillStyle = "#fff"; g.beginPath(); g.ellipse(c - R * .42, c - R * .42, R * .18, R * .09, -Math.PI / 4, 0, 7); g.fill();
+    g.globalAlpha = .5; g.beginPath(); g.arc(c + R * .45, c + R * .4, R * .05, 0, 7); g.fill();
+  })();
+  let bubbles = [], drops = [], popped = 0, audio, mx = -999, my = -999, down = false;
+  const spawn = (y) => bubbles.push({ x: Math.random() * W, y: y ?? H + 60, r: 18 + Math.random() * 46, vx: 0, vy: -(20 + Math.random() * 40), ph: Math.random() * 7, rot: Math.random() * 7 });
+  for (let i = 0; i < 28; i++) spawn(Math.random() * H);
+  function pop(b) {
+    b.dead = true; popped++; document.querySelector(".score").textContent = popped + " popped";
+    for (let i = 0; i < 14; i++) { const a = Math.random() * 7, s = 80 + Math.random() * 160; drops.push({ x: b.x + Math.cos(a) * b.r, y: b.y + Math.sin(a) * b.r, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1 }); }
+    drops.push({ ring: true, x: b.x, y: b.y, r: b.r, life: 1 });
+    if (audio) {
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime, f = 900 - b.r * 8;
+      o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 2.5, t + .05);
+      g.gain.setValueAtTime(.15, t); g.gain.exponentialRampToValueAtTime(.0001, t + .08); o.connect(g).connect(audio.destination); o.start(); o.stop(t + .1);
+    }
+  }
+  const hit = (x, y) => bubbles.forEach((b) => !b.dead && Math.hypot(b.x - x, b.y - y) < b.r && pop(b));
+  cv.addEventListener("pointerdown", (e) => { audio = audio || new AudioContext(); down = true; hit(e.clientX, e.clientY); });
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; if (down) hit(mx, my); });
+  addEventListener("pointerup", () => (down = false));
+  let last = performance.now(), t = 0;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now; t += dt;
+    const k = Demo.reduced ? 0 : 1;
+    ctx.clearRect(0, 0, W, H);
+    for (const b of bubbles) {
+      // buoyancy + wander, gentle cursor avoidance (the air you push)
+      b.vx += Math.sin(t * .8 + b.ph) * 12 * dt; b.vx *= .98;
+      const dx = b.x - mx, dy = b.y - my, d = Math.hypot(dx, dy);
+      if (d < b.r + 90 && !down) { b.vx += dx / d * 260 * dt; b.vy += dy / d * 160 * dt; }
+      b.vy += (-(20 + 60 / b.r * 20) - b.vy) * dt * .8;
+      b.x += b.vx * dt * k; b.y += b.vy * dt * k;
+    }
+    // soft bubble-bubble separation
+    for (let i = 0; i < bubbles.length; i++) for (let j = i + 1; j < bubbles.length; j++) {
+      const a = bubbles[i], c = bubbles[j], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy), min = a.r + c.r;
+      if (d < min && d > 0) { const f = (min - d) / d * .05; a.x -= dx * f; a.y -= dy * f; c.x += dx * f; c.y += dy * f; }
+    }
+    bubbles = bubbles.filter((b) => !b.dead && b.y > -100);
+    while (bubbles.length < 28) spawn();
+    for (const b of bubbles) {
+      const wob = 1 + Math.sin(t * 3 + b.ph) * .04;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.sin(t * .5 + b.rot) * .3); ctx.scale(wob, 2 - wob);
+      ctx.drawImage(sprite, -b.r, -b.r, b.r * 2, b.r * 2); ctx.restore();
+    }
+    for (const d of drops) {
+      d.life -= dt * (d.ring ? 4 : 2);
+      if (d.ring) { ctx.strokeStyle = `rgb(255 255 255 / ${Math.max(0, d.life) * .7})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(d.x, d.y, d.r * (1.4 - d.life * .4), 0, 7); ctx.stroke(); continue; }
+      d.vy += 500 * dt; d.x += d.vx * dt; d.y += d.vy * dt;
+      ctx.fillStyle = `rgb(255 255 255 / ${Math.max(0, d.life)})`; ctx.beginPath(); ctx.arc(d.x, d.y, 2.2, 0, 7); ctx.fill();
+    }
+    drops = drops.filter((d) => d.life > 0);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

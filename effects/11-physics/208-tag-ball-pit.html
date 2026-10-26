@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ball Pit of Skill Tags</title>
+<meta name="description" content="A portfolio 'skills' section where tag balls pour into a container when it scrolls into view, pile up and can be grabbed, thrown and stirred with the pointer. Each ball is a real element with text.">
+<meta name="tech" content="JS, Physics, IntersectionObserver">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #fbf7f0; color: #111; }
+  .intro { min-height: 80vh; display: grid; place-content: center; text-align: center; }
+  .intro h1 { font-size: clamp(40px, 7vw, 90px); margin: 0; letter-spacing: -.04em; }
+  .pit { position: relative; height: 80vh; margin: 0 5vw 20vh; border-radius: 28px; background: #111; overflow: hidden; touch-action: none; }
+  .pit h2 { position: absolute; top: 24px; left: 28px; margin: 0; color: #fff; font-size: clamp(28px, 4vw, 52px); opacity: .9; pointer-events: none; }
+  .ball { position: absolute; left: 0; top: 0; border-radius: 50%; display: grid; place-items: center; text-align: center; font-weight: 800; user-select: none; cursor: grab; will-change: transform; line-height: 1.05; padding: 6px; }
+</style>
+</head>
+<body>
+<section class="intro"><h1>Things I do</h1><p>Scroll down to fill the pit.</p></section>
+<section class="pit" aria-label="Skill tags you can grab and throw"><h2>Skills</h2></section>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/physics2d.js"></script>
+<script>
+  const pit = document.querySelector(".pit");
+  const TAGS = ["JavaScript", "TypeScript", "CSS", "WebGL", "React", "Svelte", "Three.js", "GLSL", "Node", "Figma", "Motion", "A11y", "SVG", "Canvas", "Rust", "WASM", "GSAP", "Physics", "UX", "Design systems", "Shaders", "Testing", "Vite", "HTML"];
+  const COLS = [["#ff5d73", "#fff"], ["#ffd23f", "#111"], ["#3bceac", "#111"], ["#7c5cff", "#fff"], ["#f6f4f1", "#111"], ["#3a86ff", "#fff"]];
+  const world = P2D.world({ gravity: 1600 });
+  let PW, PH;
+  const size = () => { PW = pit.clientWidth; PH = pit.clientHeight; world.walls(PW, PH); };
+  size(); addEventListener("resize", size);
+  const balls = [];
+  let poured = false;
+  function pour() {
+    if (poured) return; poured = true;
+    TAGS.forEach((t, i) => setTimeout(() => {
+      const r = Math.max(36, Math.min(70, 22 + t.length * 4)) * Math.min(1, PW / 1200 + .2);
+      const el = document.createElement("div"); el.className = "ball"; el.textContent = t;
+      const [bg, fg] = COLS[i % COLS.length]; el.style.cssText += `width:${r * 2}px;height:${r * 2}px;background:${bg};color:${fg};font-size:${Math.max(11, r / 3.6)}px`;
+      pit.appendChild(el);
+      const b = world.circle(PW * (.3 + Math.random() * .4), -r - 10, r, { restitution: .45, friction: .4, vx: (Math.random() - .5) * 400 });
+      b.el = el; b.r = r; balls.push(b);
+    }, Demo.reduced ? 0 : i * 90));
+  }
+  new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && pour()), { threshold: .4 }).observe(pit);
+  const local = (e) => { const r = pit.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  let last = null;
+  pit.addEventListener("pointerdown", (e) => { const [x, y] = local(e), b = world.pick(x, y); if (b) { world.grab(b, x, y); pit.setPointerCapture(e.pointerId); } });
+  pit.addEventListener("pointermove", (e) => {
+    const [x, y] = local(e); world.drag(x, y);
+    // stirring: balls near a moving pointer get nudged
+    if (last && !world.joint) { const vx = x - last[0], vy = y - last[1]; for (const b of balls) { const d = Math.hypot(b.x - x, b.y - y); if (d < b.r + 30) { b.vx += vx * 18; b.vy += vy * 18; } } }
+    last = [x, y];
+  });
+  pit.addEventListener("pointerleave", () => (last = null));
+  pit.addEventListener("pointerup", () => world.release());
+  let t = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - t) / 1000, 1 / 30); t = now;
+    for (let i = 0; i < 3; i++) world.step(dt / 3);
+    for (const b of balls) b.el.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px) rotate(${b.a}rad)`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

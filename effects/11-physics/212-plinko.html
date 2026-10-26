@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plinko Board</title>
+<meta name="description" content="A plinko board with a triangular peg field: drop balls that ricochet off pegs (pegs light up and ping) and land in multiplier buckets that build a live histogram, which converges on a bell curve. Hold to pour.">
+<meta name="tech" content="Canvas, Physics, Web Audio">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { overflow: hidden; background: #120a24; }
+  canvas { cursor: pointer; touch-action: none; }
+  .hud { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); text-align: center; color: #cbb8ff; font: 14px var(--mono); }
+  .hud b { color: #fff; font-size: 20px; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Plinko board. Click or hold to drop balls."></canvas>
+<div class="hud" aria-live="polite">Score <b class="score">0</b> · balls <span class="n">0</span> · click or hold to drop</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, pegs, gap, rows = 12, topY, bottom, x0, buckets;
+  const MULTS = [10, 5, 3, 1.5, 1, .5, .3, .5, 1, 1.5, 3, 5, 10];
+  function layout() {
+    dpr = Math.min(devicePixelRatio, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gap = Math.min((H - 230) / (rows + 1.5), W / (rows + 3)); topY = 130; pegs = [];
+    for (let r = 0; r < rows; r++) for (let i = 0; i <= r + 2; i++) pegs.push({ x: W / 2 + (i - (r + 2) / 2) * gap, y: topY + r * gap, glow: 0 });
+    bottom = topY + rows * gap; x0 = W / 2 - (MULTS.length / 2) * gap;
+    buckets = MULTS.map((m) => ({ m, n: 0, bump: 0 }));
+  }
+  addEventListener("resize", layout); layout();
+  let balls = [], score = 0, total = 0, audio;
+  const ping = (f) => {
+    if (!audio) return;
+    const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+    o.frequency.value = f; o.type = "triangle"; g.gain.setValueAtTime(.04, t); g.gain.exponentialRampToValueAtTime(.0001, t + .15); o.connect(g).connect(audio.destination); o.start(); o.stop(t + .15);
+  };
+  function drop() { balls.push({ x: W / 2 + (Math.random() - .5) * gap * .3, y: topY - gap, vx: 0, vy: 0, r: gap * .2, hue: 280 + Math.random() * 80 }); }
+  let pouring = 0;
+  cv.addEventListener("pointerdown", () => { audio = audio || new AudioContext(); drop(); pouring = 1; });
+  addEventListener("pointerup", () => (pouring = 0));
+  const G = 1400, pr = () => gap * .09;
+  function step(dt) {
+    for (const b of balls) {
+      b.vy += G * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+      for (const p of pegs) {
+        const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), min = b.r + pr();
+        if (d < min) {
+          const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
+          b.x = p.x + nx * min; b.y = p.y + ny * min;
+          if (vn < 0) { b.vx -= 1.5 * vn * nx; b.vy -= 1.5 * vn * ny; b.vx += (Math.random() - .5) * 30; if (p.glow < .5) ping(600 + (p.y - topY) * 1.2); p.glow = 1; }
+        }
+      }
+      // side walls follow the triangle
+      const row = (b.y - topY) / gap, half = ((row + 2) / 2 + .6) * gap;
+      if (b.y > topY - gap && b.y < bottom) { if (b.x < W / 2 - half) { b.x = W / 2 - half; b.vx = Math.abs(b.vx) * .5; } if (b.x > W / 2 + half) { b.x = W / 2 + half; b.vx = -Math.abs(b.vx) * .5; } }
+      if (b.y > bottom + gap * .8 && !b.done) {
+        b.done = true; const k = Math.max(0, Math.min(MULTS.length - 1, Math.floor((b.x - x0) / gap)));
+        buckets[k].n++; buckets[k].bump = 1; score += buckets[k].m; total++; ping(300 + buckets[k].m * 60);
+        document.querySelector(".score").textContent = score.toFixed(1); document.querySelector(".n").textContent = total;
+      }
+    }
+    balls = balls.filter((b) => b.y < H + 40 && !(b.done && b.y > bottom + gap * 1.6));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of pegs) {
+      p.glow *= .9;
+      ctx.fillStyle = `rgb(${200 + p.glow * 55} ${190 + p.glow * 60} 255)`; ctx.beginPath(); ctx.arc(p.x, p.y, pr() * (1 + p.glow * .6), 0, 7); ctx.fill();
+      if (p.glow > .05) { ctx.fillStyle = `rgb(255 120 220 / ${p.glow * .35})`; ctx.beginPath(); ctx.arc(p.x, p.y, pr() * 4, 0, 7); ctx.fill(); }
+    }
+    const maxN = Math.max(1, ...buckets.map((b) => b.n));
+    buckets.forEach((b, i) => {
+      b.bump *= .9;
+      const x = x0 + i * gap, y = bottom + gap * .9, hue = 360 - Math.min(b.m, 10) * 12;
+      ctx.fillStyle = `hsl(${hue} 85% ${55 + b.bump * 20}%)`;
+      ctx.beginPath(); ctx.roundRect(x + 2, y - b.bump * 6, gap - 4, gap * .7, 6); ctx.fill();
+      ctx.fillStyle = "#1a0f33"; ctx.font = `bold ${Math.max(9, gap * .26)}px system-ui`; ctx.textAlign = "center"; ctx.fillText(b.m + "×", x + gap / 2, y + gap * .45 - b.bump * 6);
+      // histogram below
+      const hh = (b.n / maxN) * Math.min(120, H - y - gap - 20);
+      ctx.fillStyle = `hsl(${hue} 85% 60% / .5)`; ctx.fillRect(x + 4, y + gap * .8, gap - 8, hh);
+    });
+    for (const b of balls) { ctx.fillStyle = `hsl(${b.hue} 100% 70%)`; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); }
+  }
+  let last = performance.now(), pourT = 0;
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (pouring && (pourT += dt) > .08) { pourT = 0; drop(); }
+    for (let i = 0; i < 4; i++) step(dt / 4);
+    draw(); requestAnimationFrame(frame);
+  }
+  // a few demo balls so the board isn't empty
+  if (!Demo.reduced) for (let i = 0; i < 8; i++) setTimeout(drop, 300 + i * 250);
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
