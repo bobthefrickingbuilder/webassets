@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>macOS Magnifying Dock</title>
+<meta name="description" content="A macOS-style dock: icons grow smoothly based on distance from the pointer with a cosine falloff, show tooltips, and bounce when launched.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: linear-gradient(160deg, #0ea5e9, #6366f1 50%, #db2777); }
+  .dock { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 8px 10px; height: 76px;
+          border-radius: 22px; background: rgb(255 255 255 / .18); border: 1px solid rgb(255 255 255 / .3); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); }
+  .dock button { --s: 56px; position: relative; width: var(--s); height: var(--s); flex: none; border: 0; padding: 0; border-radius: 22%; cursor: pointer; display: grid; place-items: center;
+                 font-size: calc(var(--s) * .5); box-shadow: 0 4px 12px rgb(0 0 0 / .25); transition: width .08s, height .08s; }
+  .dock button .tip { position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); padding: 4px 10px; border-radius: 6px; background: rgb(30 30 36 / .9); color: #fff; font: 500 13px var(--font); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+  .dock button:hover .tip, .dock button:focus-visible .tip { opacity: 1; }
+  .dock button::after { content: ""; position: absolute; bottom: -7px; width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: 0; }
+  .dock button.running::after { opacity: .9; }
+  .dock button.launch { animation: bounce .6s cubic-bezier(.3,.6,.5,1) 2; }
+  @keyframes bounce { 50% { transform: translateY(-26px); } }
+  .sep { width: 1px; align-self: stretch; margin: 6px 2px; background: rgb(255 255 255 / .35); }
+</style>
+</head>
+<body>
+<main class="center"><h1 style="font-size:clamp(36px,6vw,70px);letter-spacing:-.04em;margin:0;color:#fff">Hover the dock</h1></main>
+<nav class="dock" aria-label="Applications"></nav>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const apps = [["Finder", "😀", "#38bdf8"], ["Mail", "✉️", "#60a5fa"], ["Music", "🎵", "#fb7185"], ["Photos", "🌸", "#fde68a"], ["Maps", "🗺️", "#86efac"], ["Notes", "📝", "#fef08a"], ["Terminal", "⌨️", "#1f2937"], "|", ["Trash", "🗑️", "#e5e7eb"]];
+  const dock = document.querySelector(".dock");
+  apps.forEach((a) => {
+    if (a === "|") { dock.insertAdjacentHTML("beforeend", '<span class="sep"></span>'); return; }
+    dock.insertAdjacentHTML("beforeend", `<button style="background:linear-gradient(160deg,${a[2]},color-mix(in srgb,${a[2]} 60%,#000))" aria-label="${a[0]}">${a[1]}<span class="tip">${a[0]}</span></button>`);
+  });
+  const icons = [...dock.querySelectorAll("button")];
+  const BASE = 56, MAX = 110, RANGE = 170;
+  let mx = null;
+  function update() {
+    icons.forEach((b) => {
+      const r = b.getBoundingClientRect(), c = r.left + r.width / 2;
+      const d = mx === null ? Infinity : Math.abs(mx - c);
+      // Cosine bell: smooth peak under the pointer, zero at RANGE.
+      const k = d < RANGE ? (Math.cos((d / RANGE) * Math.PI) + 1) / 2 : 0;
+      b.style.setProperty("--s", BASE + (MAX - BASE) * k + "px");
+    });
+  }
+  dock.addEventListener("pointermove", (e) => { if (!Demo.reduced) { mx = e.clientX; requestAnimationFrame(update); } });
+  dock.addEventListener("pointerleave", () => { mx = null; requestAnimationFrame(update); });
+  icons.forEach((b) => b.addEventListener("click", () => { b.classList.remove("launch"); void b.offsetWidth; b.classList.add("launch", "running"); }));
+</script>
+</body>
+</html>

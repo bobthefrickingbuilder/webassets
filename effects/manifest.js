@@ -1658,5 +1658,197 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "06-galleries",
   "path": "effects/06-galleries/140-holographic-card.html"
+ },
+ {
+  "num": 141,
+  "title": "Cross-document View Transitions",
+  "description": "Real multi-page navigation that animates like an app with zero JavaScript: @view-transition opts both pages in, and matching view-transition-names morph the hero between them.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/141-cross-document-view-transitions.html"
+ },
+ {
+  "num": 142,
+  "title": "SPA Page Transitions",
+  "description": "Four page-change transitions for single-page apps (wipe, curtain, slide and zoom), choreographed with an overlay so the content swap happens while the screen is covered.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/142-page-transitions.html"
+ },
+ {
+  "num": 143,
+  "title": "List to Detail Shared-element Morph",
+  "description": "Clicking a list card expands it into a full detail view: image, title and price morph into their new positions via the View Transitions API, with a hand-rolled FLIP fallback.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/143-shared-element-morph.html"
+ },
+ {
+  "num": 144,
+  "title": "Full-screen Overlay Menu",
+  "description": "A full-screen navigation overlay that slides down in layered panels, then staggers in huge links that rise from behind a mask, with focus trapping and Escape to close.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/144-fullscreen-menu.html"
+ },
+ {
+  "num": 145,
+  "title": "Circular Reveal Menu",
+  "description": "The menu panel bursts out of the button as an expanding clip-path circle, sized to exactly cover the farthest corner, and collapses back into it on close.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/145-circular-reveal-menu.html"
+ },
+ {
+  "num": 146,
+  "title": "Perspective Tilt-back Menu",
+  "description": "Opening the menu pushes the whole page back in 3D, rotating it away to reveal navigation behind it; click the tilted page to return.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/146-perspective-menu.html"
+ },
+ {
+  "num": 147,
+  "title": "Gooey Navigation Indicator",
+  "description": "A navigation bar where the active blob oozes to the clicked item, flinging off droplets that merge back via an SVG goo filter.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/147-gooey-nav.html"
+ },
+ {
+  "num": 148,
+  "title": "macOS Magnifying Dock",
+  "description": "A macOS-style dock: icons grow smoothly based on distance from the pointer with a cosine falloff, show tooltips, and bounce when launched.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/148-magnifying-dock.html"
+ },
+ {
+  "num": 149,
+  "title": "Morphing Mega Menu",
+  "description": "Stripe-style navigation: one dropdown background morphs its size and position between menus while the content cross-fades in the direction you moved. Keyboard accessible.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/149-mega-menu.html"
+ },
+ {
+  "num": 150,
+  "title": "Command Palette (⌘K)",
+  "description": "A keyboard-first command palette: Cmd/Ctrl+K opens a spring-animated dialog with fuzzy search, highlighted matches, grouped results and arrow-key navigation.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/150-command-palette.html"
+ },
+ {
+  "num": 151,
+  "title": "Animated Stepper and Breadcrumbs",
+  "description": "A checkout progress stepper whose connector line fills and step badges morph into checkmarks, paired with breadcrumbs that slide new crumbs in and collapse old ones.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/151-stepper-breadcrumbs.html"
+ },
+ {
+  "num": 152,
+  "title": "Radial Pie Menu",
+  "description": "A game-style radial menu: hold right-click (or long-press) anywhere and items fan out in a ring; move toward an item to highlight its wedge and release to choose.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/152-radial-menu.html"
+ },
+ {
+  "num": 153,
+  "title": "Hide-on-scroll Smart Header",
+  "description": "A sticky header that slides away when scrolling down, returns on any upward scroll, and condenses with a blurred background once you leave the top.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/153-smart-header.html"
+ },
+ {
+  "num": 154,
+  "title": "Intro Preloader Sequences",
+  "description": "Three agency-style page intros: a big percentage counter that splits away, a logo that draws itself then scales out, and stacked colour curtains lifting off the page.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/154-preloaders.html"
+ },
+ {
+  "num": 155,
+  "title": "Morphing Mobile Tab Bar",
+  "description": "A bottom tab bar with a notch that slides to the active tab, carrying a floating bubble icon that pops up out of the bar, all in an SVG-masked shape.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/155-mobile-tab-bar.html"
+ },
+ {
+  "num": 156,
+  "title": "Circular Theme Switch Wipe",
+  "description": "Toggling dark mode reveals the new theme in an expanding circle from the switch, using the View Transitions API to animate a snapshot of the old page. Falls back to an instant switch.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "07-navigation",
+  "path": "effects/07-navigation/156-theme-toggle-wipe.html"
  }
 ];

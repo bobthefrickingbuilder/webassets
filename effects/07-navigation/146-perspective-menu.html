@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perspective Tilt-back Menu</title>
+<meta name="description" content="Opening the menu pushes the whole page back in 3D, rotating it away to reveal navigation behind it; click the tilted page to return.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .scene { position: fixed; inset: 0; perspective: 1500px; background: linear-gradient(135deg, #312e81, #0f172a); }
+  .side-nav { position: absolute; left: 8vw; top: 50%; transform: translate(-60px, -50%); opacity: 0; transition: all .6s cubic-bezier(.2,.8,.2,1); }
+  .side-nav a { display: block; text-decoration: none; font-size: clamp(28px, 4vw, 52px); font-weight: 700; letter-spacing: -.03em; padding: 6px 0; color: #c7d2fe; }
+  .side-nav a:hover { color: #fff; }
+  .page { position: absolute; inset: 0; background: var(--bg); overflow: auto; transform-origin: 0% 50%; transition: transform .7s cubic-bezier(.2,.8,.2,1), border-radius .7s, box-shadow .7s; }
+  .page header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 16px 220px; }
+  .page header button { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .page .content { max-width: 760px; margin: 0 auto; padding: 60px 16px; }
+  .page h1 { font-size: clamp(40px, 6vw, 80px); letter-spacing: -.04em; margin: 0; }
+  .menu-open .page { transform: translateX(45%) translateZ(-200px) rotateY(-28deg); border-radius: 20px; box-shadow: -30px 0 80px rgb(0 0 0 / .6); cursor: pointer; overflow: hidden; }
+  .menu-open .page > * { pointer-events: none; }
+  .menu-open .side-nav { transform: translate(0, -50%); opacity: 1; transition-delay: .15s; }
+  @media (prefers-reduced-motion: reduce) { .page, .side-nav { transition-duration: .01s; } }
+</style>
+</head>
+<body>
+<div class="scene">
+  <nav class="side-nav" aria-label="Main"><a href="#">Overview</a><a href="#">Features</a><a href="#">Changelog</a><a href="#">Careers</a><a href="#">Contact</a></nav>
+  <div class="page">
+    <header><b>Brand</b><button aria-expanded="false">☰ Menu</button></header>
+    <div class="content"><h1>Push the page away</h1><p class="hint" style="text-align:left"></p></div>
+  </div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const scene = document.querySelector(".scene"), page = document.querySelector(".page"), btn = page.querySelector("header button");
+  page.querySelector(".content p").textContent = Demo.lorem(120, 2);
+  const links = [...document.querySelectorAll(".side-nav a")];
+  function set(open) {
+    scene.classList.toggle("menu-open", open); btn.setAttribute("aria-expanded", open);
+    links.forEach((a) => (a.tabIndex = open ? 0 : -1));
+    if (open) setTimeout(() => links[0].focus(), 300);
+  }
+  btn.onclick = (e) => { e.stopPropagation(); set(true); };
+  page.addEventListener("click", () => scene.classList.contains("menu-open") && set(false));
+  links.forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); set(false); }));
+  addEventListener("keydown", (e) => e.key === "Escape" && set(false));
+  set(false);
+</script>
+</body>
+</html>

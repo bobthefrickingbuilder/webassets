@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morphing Mega Menu</title>
+<meta name="description" content="Stripe-style navigation: one dropdown background morphs its size and position between menus while the content cross-fades in the direction you moved. Keyboard accessible.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  header { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 18px; z-index: 30; }
+  .mm { position: relative; display: flex; gap: 4px; }
+  .mm > button { padding: 10px 16px; border: 0; background: none; color: #dbe0ec; font: 600 15px var(--font); cursor: pointer; border-radius: 8px; }
+  .mm > button:hover, .mm > button[aria-expanded="true"] { color: #fff; background: rgb(255 255 255 / .06); }
+  .dd { position: absolute; top: 54px; left: 0; width: 0; height: 0; opacity: 0; pointer-events: none; transform: rotateX(-15deg); transform-origin: 50% 0;
+        background: #fff; color: #111; border-radius: 14px; box-shadow: 0 30px 60px rgb(0 0 0 / .4); overflow: hidden;
+        transition: left .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1), height .35s cubic-bezier(.2,.8,.2,1), opacity .25s, transform .25s; }
+  .dd.open { opacity: 1; pointer-events: auto; transform: none; }
+  .dd .arrow { position: absolute; top: -6px; width: 12px; height: 12px; background: #fff; transform: rotate(45deg); transition: left .35s cubic-bezier(.2,.8,.2,1); }
+  .pane { position: absolute; top: 0; left: 0; padding: 22px; opacity: 0; transition: opacity .25s, transform .35s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
+  .pane.active { opacity: 1; transform: none !important; pointer-events: auto; }
+  .pane h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; }
+  .pane a { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: 10px; text-decoration: none; color: #111; }
+  .pane a:hover, .pane a:focus-visible { background: #f3f4f6; }
+  .pane a i { width: 34px; height: 34px; border-radius: 9px; flex: none; display: grid; place-items: center; font-style: normal; }
+  .pane a b { display: block; font-size: 14px; } .pane a span { font-size: 13px; color: #6b7280; }
+  .p1 { width: 520px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; } .p2 { width: 360px; } .p3 { width: 440px; }
+  .hero { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, #0f172a, #3b0764); }
+</style>
+</head>
+<body>
+<header><nav class="mm" aria-label="Main">
+  <button aria-expanded="false" data-p="0">Products</button><button aria-expanded="false" data-p="1">Solutions</button><button aria-expanded="false" data-p="2">Developers</button>
+  <div class="dd"><span class="arrow"></span>
+    <div class="pane p1"><a href="#"><i style="background:#ede9fe">💳</i><div><b>Payments</b><span>Accept money online</span></div></a><a href="#"><i style="background:#dbeafe">📊</i><div><b>Billing</b><span>Subscriptions & invoices</span></div></a><a href="#"><i style="background:#dcfce7">🔒</i><div><b>Identity</b><span>Verify users</span></div></a><a href="#"><i style="background:#fef3c7">⚡</i><div><b>Terminal</b><span>In-person sales</span></div></a></div>
+    <div class="pane p2"><h4>By stage</h4><a href="#"><i style="background:#fee2e2">🚀</i><div><b>Startups</b><span>Launch faster</span></div></a><a href="#"><i style="background:#e0e7ff">🏢</i><div><b>Enterprise</b><span>Scale globally</span></div></a></div>
+    <div class="pane p3"><h4>Build</h4><a href="#"><i style="background:#f3f4f6">📚</i><div><b>Documentation</b><span>Guides and API reference</span></div></a><a href="#"><i style="background:#ecfeff">🧪</i><div><b>Sandbox</b><span>Test without real money</span></div></a><a href="#"><i style="background:#fdf4ff">🧩</i><div><b>SDKs</b><span>Every major language</span></div></a></div>
+  </div>
+</nav></header>
+<section class="hero"><p class="hint" style="font-size:20px">Hover across the menu items: the panel morphs between them.</p></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const nav = document.querySelector(".mm"), dd = nav.querySelector(".dd"), arrow = dd.querySelector(".arrow");
+  const triggers = [...nav.querySelectorAll(":scope > button")], panes = [...dd.querySelectorAll(".pane")];
+  let cur = -1, closeT;
+  function openMenu(i) {
+    clearTimeout(closeT);
+    const dir = cur === -1 ? 0 : Math.sign(i - cur);
+    const t = triggers[i], p = panes[i];
+    const w = p.offsetWidth, h = p.offsetHeight;
+    const left = Math.max(-t.offsetLeft, t.offsetLeft + t.offsetWidth / 2 - w / 2);
+    if (cur === -1) dd.style.transition = "opacity .25s, transform .25s";   // first open: no morph, just appear
+    dd.style.left = left + "px"; dd.style.width = w + "px"; dd.style.height = h + "px";
+    dd.getBoundingClientRect(); dd.style.transition = "";
+    arrow.style.left = t.offsetLeft + t.offsetWidth / 2 - left - 6 + "px";
+    // Outgoing panes drift away from the direction of travel; the incoming one starts offset, then settles.
+    panes.forEach((x, k) => { if (k !== i) { x.classList.remove("active"); x.style.transform = `translateX(${(k < i ? -1 : 1) * 60}px)`; } });
+    if (!p.classList.contains("active")) {
+      p.style.transform = `translateX(${dir * 60}px)`;
+      p.getBoundingClientRect();
+      p.classList.add("active");
+    }
+    dd.classList.add("open");
+    triggers.forEach((x, k) => x.setAttribute("aria-expanded", k === i));
+    cur = i;
+  }
+  function close() { closeT = setTimeout(() => { dd.classList.remove("open"); triggers.forEach((x) => x.setAttribute("aria-expanded", false)); cur = -1; }, 150); }
+  triggers.forEach((t, i) => { t.addEventListener("mouseenter", () => openMenu(i)); t.addEventListener("click", () => (cur === i ? close() : openMenu(i))); t.addEventListener("focus", () => openMenu(i)); });
+  nav.addEventListener("mouseleave", close);
+  dd.addEventListener("mouseenter", () => clearTimeout(closeT));
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && cur >= 0) { triggers[cur].focus(); close(); } });
+</script>
+</body>
+</html>

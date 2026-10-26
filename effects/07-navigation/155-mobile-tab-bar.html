@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morphing Mobile Tab Bar</title>
+<meta name="description" content="A bottom tab bar with a notch that slides to the active tab, carrying a floating bubble icon that pops up out of the bar, all in an SVG-masked shape.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .phone { position: relative; width: 380px; max-width: 94vw; height: 680px; max-height: 82vh; border-radius: 40px; border: 8px solid #1d2029; overflow: hidden; background: linear-gradient(#312e81, #0f172a); }
+  .screen-title { position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: -.03em; transition: opacity .2s; }
+  .tabbar { --x: 0px; position: absolute; left: 0; right: 0; bottom: 0; height: 78px; }
+  /* The bar is a rectangle with a circular bite taken out at --x via a radial mask. */
+  .tabbar .bg { position: absolute; inset: 0; background: #fff;
+    -webkit-mask: radial-gradient(circle 38px at calc(var(--x) + var(--w) / 2) 0, transparent 37px, #000 38px);
+    mask: radial-gradient(circle 38px at calc(var(--x) + var(--w) / 2) 0, transparent 37px, #000 38px);
+  }
+  .tabbar .bubble { position: absolute; top: -28px; left: calc(var(--x) + var(--w) / 2 - 28px); width: 56px; height: 56px; border-radius: 50%; background: #f472b6; display: grid; place-items: center; font-size: 24px;
+                    box-shadow: 0 8px 20px rgb(244 114 182 / .5); transition: left .5s cubic-bezier(.4,1.6,.5,1); }
+  .tabbar .tabs { position: absolute; inset: 0; display: flex; }
+  .tabbar button { flex: 1; border: 0; background: none; cursor: pointer; display: grid; place-items: center; font-size: 22px; transition: transform .4s, opacity .3s; color: #111; }
+  .tabbar button[aria-selected="true"] { transform: translateY(-34px); opacity: 0; }
+  .tabbar button span { display: block; font: 600 11px var(--font); color: #6b7280; }
+</style>
+</head>
+<body>
+<main class="center">
+  <div class="phone">
+    <div class="screen-title" aria-live="polite">Home</div>
+    <div class="tabbar"><div class="bg"></div><div class="bubble" aria-hidden="true">🏠</div><div class="tabs" role="tablist"></div></div>
+  </div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const tabs = [["🏠", "Home"], ["🔍", "Search"], ["➕", "Create"], ["💬", "Chat"], ["👤", "Me"]];
+  const bar = document.querySelector(".tabbar"), host = bar.querySelector(".tabs"), bubble = bar.querySelector(".bubble"), title = document.querySelector(".screen-title");
+  tabs.forEach(([ic, n], i) => host.insertAdjacentHTML("beforeend", `<button role="tab" aria-selected="${i === 0}" aria-label="${n}">${ic}<span>${n}</span></button>`));
+  const btns = [...host.children];
+  let cur = 0, raf;
+  // The notch position is animated in JS so the mask (which can't transition its gradient) follows the bubble smoothly.
+  let x = 0, tx = 0;
+  function measure() { const w = bar.clientWidth / tabs.length; bar.style.setProperty("--w", w + "px"); tx = cur * w; }
+  function animate() {
+    x += (tx - x) * 0.18;
+    bar.style.setProperty("--x", x + "px");
+    if (Math.abs(tx - x) > 0.3) raf = requestAnimationFrame(animate); else bar.style.setProperty("--x", (x = tx) + "px");
+  }
+  function select(i) {
+    cur = i; measure();
+    btns.forEach((b, k) => b.setAttribute("aria-selected", k === i));
+    bubble.animate([{ transform: "translateY(40px) scale(.6)" }, { transform: "none" }], { duration: 450, easing: "cubic-bezier(.3,1.6,.5,1)" });
+    bubble.textContent = tabs[i][0]; title.textContent = tabs[i][1];
+    cancelAnimationFrame(raf); animate();
+  }
+  btns.forEach((b, i) => b.addEventListener("click", () => select(i)));
+  addEventListener("resize", () => { measure(); x = tx; bar.style.setProperty("--x", x + "px"); });
+  measure(); bar.style.setProperty("--x", "0px");
+</script>
+</body>
+</html>

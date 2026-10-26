@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cross-document View Transitions</title>
+<meta name="description" content="Real multi-page navigation that animates like an app with zero JavaScript: @view-transition opts both pages in, and matching view-transition-names morph the hero between them.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  /* This one rule (on both pages) enables animated same-origin navigations in supporting browsers. */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: .4s cubic-bezier(.4,0,.2,1) both fade-out; }
+  ::view-transition-new(root) { animation: .4s cubic-bezier(.4,0,.2,1) both fade-in; }
+  ::view-transition-group(hero), ::view-transition-group(title) { animation-duration: .6s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  @keyframes fade-out { to { opacity: 0; transform: translateY(-20px); } }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; width: min(1000px, 92vw); padding: 100px 0 40px; }
+  .item { text-decoration: none; border-radius: 18px; overflow: hidden; background: var(--bg-2); border: 1px solid var(--line); }
+  .item .img { aspect-ratio: 4/3; background: linear-gradient(135deg, #7c3aed, #22d3ee); }
+  .item.feature .img { view-transition-name: hero; }
+  .item.feature h3 { view-transition-name: title; }
+  .item h3 { margin: 14px 16px 4px; font-size: 20px; width: fit-content; }
+  .item p { margin: 0 16px 16px; color: var(--muted); font-size: 14px; }
+  .note { width: min(1000px, 92vw); color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:0"><div class="stack">
+  <div class="list">
+    <a class="item feature" href="141-pages/detail.html"><div class="img"></div><h3>Northern Lights</h3><p>Click to open the detail page →</p></a>
+    <a class="item" href="141-pages/detail.html"><div class="img" style="background:linear-gradient(135deg,#f97316,#db2777)"></div><h3>Desert Bloom</h3><p>Same destination</p></a>
+    <a class="item" href="141-pages/detail.html"><div class="img" style="background:linear-gradient(135deg,#16a34a,#0ea5e9)"></div><h3>Rain Forest</h3><p>Same destination</p></a>
+  </div>
+  <p class="note">Works in Chromium 126+ and Safari 18.2+ when the pages are served over http(s) (e.g. <code>npx serve</code>). In other browsers, or opened from the file system, navigation simply happens without animation.</p>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

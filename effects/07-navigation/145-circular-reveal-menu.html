@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Circular Reveal Menu</title>
+<meta name="description" content="The menu panel bursts out of the button as an expanding clip-path circle, sized to exactly cover the farthest corner, and collapses back into it on close.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .fab { position: fixed; right: 28px; bottom: 28px; z-index: 60; width: 64px; height: 64px; border-radius: 50%; border: 0; background: #f472b6; cursor: pointer; display: grid; place-items: center; box-shadow: 0 10px 30px rgb(244 114 182 / .4); }
+  .fab i { position: absolute; width: 24px; height: 2.5px; background: #fff; border-radius: 2px; transition: transform .4s cubic-bezier(.7,0,.3,1); }
+  .fab i:first-child { transform: translateY(-4px); } .fab i:last-child { transform: translateY(4px); }
+  .fab[aria-expanded="true"] i:first-child { transform: rotate(45deg); } .fab[aria-expanded="true"] i:last-child { transform: rotate(-45deg); }
+  .panel { position: fixed; inset: 0; z-index: 50; background: #f472b6; color: #2a0a1a; clip-path: circle(0 at var(--cx) var(--cy)); transition: clip-path .7s cubic-bezier(.7,0,.2,1); display: grid; place-items: center; }
+  .panel.open { clip-path: circle(var(--r) at var(--cx) var(--cy)); }
+  .panel ul { list-style: none; margin: 0; padding: 0; text-align: center; }
+  .panel a { display: block; text-decoration: none; font-size: clamp(36px, 7vw, 84px); font-weight: 800; letter-spacing: -.04em; opacity: 0; transform: scale(.8); transition: opacity .4s, transform .4s; }
+  .panel.open a { opacity: 1; transform: none; transition-delay: calc(.3s + var(--i) * 60ms); }
+  .panel a:hover { color: #fff; }
+  .page { min-height: 100vh; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+<section class="page"><p class="hint" style="font-size:20px">Tap the pink button ↘</p></section>
+<div class="panel" aria-hidden="true"><ul></ul></div>
+<button class="fab" aria-label="Menu" aria-expanded="false"><i></i><i></i></button>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const fab = document.querySelector(".fab"), panel = document.querySelector(".panel"), ul = panel.querySelector("ul");
+  ["Explore", "Pricing", "Customers", "Docs", "Log in"].forEach((t, i) => ul.insertAdjacentHTML("beforeend", `<li><a href="#" tabindex="-1" style="--i:${i}">${t}</a></li>`));
+  function measure() {
+    const r = fab.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    // Radius that reaches the farthest viewport corner from the button centre.
+    const rad = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy));
+    panel.style.setProperty("--cx", cx + "px"); panel.style.setProperty("--cy", cy + "px"); panel.style.setProperty("--r", rad + "px");
+  }
+  fab.onclick = () => {
+    measure();
+    const open = panel.classList.toggle("open");
+    fab.setAttribute("aria-expanded", open); panel.setAttribute("aria-hidden", !open);
+    panel.querySelectorAll("a").forEach((a) => (a.tabIndex = open ? 0 : -1));
+  };
+  panel.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); fab.click(); }));
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && panel.classList.contains("open")) { fab.click(); fab.focus(); } });
+  addEventListener("resize", measure); measure();
+</script>
+</body>
+</html>

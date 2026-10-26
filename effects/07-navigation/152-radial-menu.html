@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radial Pie Menu</title>
+<meta name="description" content="A game-style radial menu: hold right-click (or long-press) anywhere and items fan out in a ring; move toward an item to highlight its wedge and release to choose.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { user-select: none; -webkit-user-select: none; }
+  .radial { position: fixed; left: 0; top: 0; width: 280px; height: 280px; margin: -140px 0 0 -140px; pointer-events: none; z-index: 40; opacity: 0; transform: scale(.4); transition: opacity .2s, transform .3s cubic-bezier(.2,1.5,.4,1); }
+  .radial.open { opacity: 1; transform: none; }
+  .radial .ring { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, transparent 34%, rgb(18 19 25 / .92) 35%); border: 1px solid #2a2e3b; }
+  .radial .wedge { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: opacity .15s;
+                   background: conic-gradient(from calc(var(--a) - var(--w) / 2), rgb(124 92 255 / .5) 0 var(--w), transparent 0);
+                   -webkit-mask: radial-gradient(circle, transparent 34%, #000 35%); mask: radial-gradient(circle, transparent 34%, #000 35%); }
+  .radial.hot .wedge { opacity: 1; }
+  .radial .item { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; display: grid; place-items: center; font-size: 24px; border-radius: 50%; transition: transform .2s; }
+  .radial .item.on { transform: var(--pos) scale(1.25); }
+  .radial .label { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 600 13px var(--font); text-align: center; width: 90px; }
+  .pick { font-size: 22px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <p class="hint" style="font-size:20px">Hold right-click (or long-press) anywhere, drag toward an item, release.</p>
+  <div class="pick" aria-live="polite"></div>
+</div></main>
+<div class="radial" aria-hidden="true"><div class="ring"></div><div class="wedge"></div><span class="label"></span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const items = [["🗡️", "Attack"], ["🛡️", "Defend"], ["🧪", "Potion"], ["🗺️", "Map"], ["🎒", "Inventory"], ["💬", "Talk"]];
+  const radial = document.querySelector(".radial"), wedge = radial.querySelector(".wedge"), label = radial.querySelector(".label"), pick = document.querySelector(".pick");
+  const N = items.length, R = 104, step = 360 / N;
+  const els = items.map(([ic], i) => {
+    const a = (i * step - 90) * Math.PI / 180;
+    const e = document.createElement("span"); e.className = "item"; e.textContent = ic;
+    const pos = `translate(${Math.cos(a) * R}px, ${Math.sin(a) * R}px)`;
+    e.style.transform = pos; e.style.setProperty("--pos", pos); radial.appendChild(e); return e;
+  });
+  wedge.style.setProperty("--w", step + "deg");
+  let ox = 0, oy = 0, open = false, hot = -1, pressT;
+  function show(x, y) { ox = x; oy = y; radial.style.left = x + "px"; radial.style.top = y + "px"; radial.classList.add("open"); open = true; hot = -1; label.textContent = ""; }
+  function track(x, y) {
+    if (!open) return;
+    const dx = x - ox, dy = y - oy;
+    if (Math.hypot(dx, dy) < 30) { hot = -1; radial.classList.remove("hot"); label.textContent = ""; els.forEach((e) => e.classList.remove("on")); return; }
+    const ang = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;      // 0° = up
+    hot = Math.round(ang / step) % N;
+    radial.classList.add("hot"); wedge.style.setProperty("--a", hot * step + "deg");
+    els.forEach((e, i) => e.classList.toggle("on", i === hot)); label.textContent = items[hot][1];
+  }
+  function release() { if (!open) return; radial.classList.remove("open", "hot"); open = false; if (hot >= 0) pick.textContent = `Selected: ${items[hot][0]} ${items[hot][1]}`; }
+  addEventListener("contextmenu", (e) => e.preventDefault());
+  addEventListener("pointerdown", (e) => {
+    if (e.button === 2) show(e.clientX, e.clientY);
+    else if (e.pointerType !== "mouse") pressT = setTimeout(() => show(e.clientX, e.clientY), 350);   // long-press on touch
+  });
+  addEventListener("pointermove", (e) => track(e.clientX, e.clientY));
+  addEventListener("pointerup", () => { clearTimeout(pressT); release(); });
+</script>
+</body>
+</html>

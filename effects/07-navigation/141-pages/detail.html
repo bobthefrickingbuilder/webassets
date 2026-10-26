@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Northern Lights (detail)</title>
+<link rel="stylesheet" href="../../../assets/demo.css">
+<style>
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: .4s cubic-bezier(.4,0,.2,1) both fade-out; }
+  ::view-transition-new(root) { animation: .4s cubic-bezier(.4,0,.2,1) both fade-in; }
+  ::view-transition-group(hero), ::view-transition-group(title) { animation-duration: .6s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  @keyframes fade-out { to { opacity: 0; transform: translateY(-20px); } }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } }
+  .hero { view-transition-name: hero; height: 60vh; background: linear-gradient(135deg, #7c3aed, #22d3ee); }
+  article { max-width: 720px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { view-transition-name: title; font-size: clamp(40px, 7vw, 80px); letter-spacing: -.04em; margin: 0 0 16px; width: fit-content; }
+  p { color: #cfd3df; font-size: 18px; }
+  .back { display: inline-block; margin-top: 24px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="hero"></div>
+<article>
+  <h1>Northern Lights</h1>
+  <p>This is a separate HTML document. The hero image and title carry the same <code>view-transition-name</code> as the card on the previous page, so the browser morphs one into the other across the navigation.</p>
+  <p>Use the back button (browser or below) to watch it reverse.</p>
+  <a class="back" href="../141-cross-document-view-transitions.html">← Back to list</a>
+</article>
+</body>
+</html>

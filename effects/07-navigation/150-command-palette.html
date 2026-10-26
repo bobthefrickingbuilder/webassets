@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Command Palette (⌘K)</title>
+<meta name="description" content="A keyboard-first command palette: Cmd/Ctrl+K opens a spring-animated dialog with fuzzy search, highlighted matches, grouped results and arrow-key navigation.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .open-k { padding: 12px 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; color: var(--muted); min-width: 280px; text-align: left; display: flex; justify-content: space-between; }
+  kbd { font: 12px var(--mono); padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); background: #0d0e12; color: #cbd5e1; }
+  dialog.cmdk { width: min(620px, 92vw); padding: 0; border: 1px solid #2a2e3b; border-radius: 16px; background: #121319; color: var(--fg); box-shadow: 0 40px 100px rgb(0 0 0 / .6); margin-top: 14vh; }
+  dialog.cmdk::backdrop { background: rgb(0 0 0 / .5); backdrop-filter: blur(3px); }
+  dialog.cmdk[open] { animation: pop .25s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-8px); } }
+  .cmdk input { width: 100%; padding: 18px 20px; border: 0; border-bottom: 1px solid #22252f; background: transparent; color: var(--fg); font: 17px var(--font); outline: 0; }
+  .cmdk ul { list-style: none; margin: 0; padding: 8px; max-height: 50vh; overflow: auto; }
+  .cmdk li.group { padding: 10px 12px 4px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+  .cmdk li.opt { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+  .cmdk li.opt[aria-selected="true"] { background: #1f2230; }
+  .cmdk li.opt .ic { width: 28px; height: 28px; border-radius: 7px; background: #1b1d26; display: grid; place-items: center; flex: none; }
+  .cmdk li.opt .sc { margin-left: auto; }
+  .cmdk mark { background: none; color: var(--accent-2); font-weight: 700; }
+  .cmdk .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .cmdk footer { display: flex; gap: 14px; padding: 10px 16px; border-top: 1px solid #22252f; font-size: 12px; color: #6b7280; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <button class="open-k">Search or run a command… <span><kbd>⌘</kbd> <kbd>K</kbd></span></button>
+  <p class="hint" role="status" aria-live="polite"></p>
+</div></main>
+<dialog class="cmdk" aria-label="Command palette">
+  <input role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-autocomplete="list" placeholder="Type a command or search…" autocomplete="off">
+  <ul id="cmdk-list" role="listbox"></ul>
+  <footer><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> run</span><span><kbd>esc</kbd> close</span></footer>
+</dialog>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const COMMANDS = [
+    ["Navigation", "🏠", "Go to dashboard", "G D"], ["Navigation", "⚙️", "Open settings", "G S"], ["Navigation", "👥", "View team members", ""],
+    ["Actions", "➕", "Create new project", "N"], ["Actions", "📄", "Duplicate current page", ""], ["Actions", "🔗", "Copy share link", "⌘ L"],
+    ["Theme", "🌙", "Switch to dark theme", ""], ["Theme", "☀️", "Switch to light theme", ""], ["Help", "📚", "Search documentation", "?"], ["Help", "💬", "Contact support", ""],
+  ];
+  const dlg = document.querySelector("dialog"), input = dlg.querySelector("input"), list = dlg.querySelector("ul"), status = document.querySelector("[role=status]");
+  let results = [], sel = 0;
+  // Fuzzy match: every query character must appear in order. Score rewards consecutive runs and word starts.
+  function fuzzy(text, q) {
+    if (!q) return { score: 0, idx: [] };
+    const t = text.toLowerCase(); let ti = 0, score = 0, run = 0; const idx = [];
+    for (const ch of q.toLowerCase()) {
+      const found = t.indexOf(ch, ti); if (found < 0) return null;
+      run = found === ti ? run + 1 : 1; score += run * 2 + (found === 0 || t[found - 1] === " " ? 5 : 0) - (found - ti) * 0.1;
+      idx.push(found); ti = found + 1;
+    }
+    return { score, idx };
+  }
+  const hl = (text, idx) => [...text].map((c, i) => (idx.includes(i) ? `<mark>${c}</mark>` : c)).join("");
+  function render() {
+    const q = input.value.trim();
+    results = COMMANDS.map((c) => ({ c, m: fuzzy(c[2], q) })).filter((r) => r.m).sort((a, b) => (q ? b.m.score - a.m.score : 0));
+    sel = Math.min(sel, Math.max(0, results.length - 1));
+    if (!results.length) { list.innerHTML = `<li class="empty">No results for “${q.replace(/</g, "&lt;")}”</li>`; input.removeAttribute("aria-activedescendant"); return; }
+    let html = "", group = "";
+    results.forEach((r, i) => {
+      if (!q && r.c[0] !== group) { group = r.c[0]; html += `<li class="group" role="presentation">${group}</li>`; }
+      html += `<li class="opt" role="option" id="opt${i}" data-i="${i}" aria-selected="${i === sel}"><span class="ic">${r.c[1]}</span><span>${hl(r.c[2], r.m.idx)}</span>${r.c[3] ? `<span class="sc"><kbd>${r.c[3]}</kbd></span>` : ""}</li>`;
+    });
+    list.innerHTML = html;
+    input.setAttribute("aria-activedescendant", "opt" + sel);
+    list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  }
+  function run(i) { const r = results[i]; if (!r) return; status.textContent = `Ran: ${r.c[2]}`; dlg.close(); }
+  function openPalette() { input.value = ""; sel = 0; render(); dlg.showModal(); input.focus(); }
+  input.addEventListener("input", () => { sel = 0; render(); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = (sel + 1) % results.length; render(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); sel = (sel - 1 + results.length) % results.length; render(); }
+    if (e.key === "Enter") { e.preventDefault(); run(sel); }
+  });
+  list.addEventListener("click", (e) => { const o = e.target.closest(".opt"); if (o) run(+o.dataset.i); });
+  list.addEventListener("pointermove", (e) => { const o = e.target.closest(".opt"); if (o && +o.dataset.i !== sel) { sel = +o.dataset.i; render(); } });
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });   // click on backdrop
+  addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); dlg.open ? dlg.close() : openPalette(); } });
+  document.querySelector(".open-k").onclick = openPalette;
+</script>
+</body>
+</html>

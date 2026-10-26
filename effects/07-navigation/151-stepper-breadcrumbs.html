@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Stepper and Breadcrumbs</title>
+<meta name="description" content="A checkout progress stepper whose connector line fills and step badges morph into checkmarks, paired with breadcrumbs that slide new crumbs in and collapse old ones.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .stepper { display: flex; align-items: flex-start; width: min(720px, 92vw); list-style: none; padding: 0; margin: 0; }
+  .stepper li { flex: 1; position: relative; text-align: center; font-size: 14px; color: var(--muted); }
+  .stepper li::before { content: ""; position: absolute; top: 18px; left: -50%; right: 50%; height: 3px; background: #262a36; }
+  .stepper li::after { content: ""; position: absolute; top: 18px; left: -50%; right: 50%; height: 3px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+  .stepper li:first-child::before, .stepper li:first-child::after { display: none; }
+  .stepper li.done::after, .stepper li.current::after { transform: scaleX(1); }
+  .stepper .badge { position: relative; z-index: 1; width: 38px; height: 38px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; background: #15171d; border: 2px solid #262a36; font-weight: 700; color: var(--muted); transition: all .4s .2s; }
+  .stepper .badge svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 20; stroke-dashoffset: 20; position: absolute; transition: stroke-dashoffset .35s .45s; }
+  .stepper li.current .badge { border-color: var(--accent); color: #fff; box-shadow: 0 0 0 6px rgb(124 92 255 / .2); }
+  .stepper li.current { color: var(--fg); }
+  .stepper li.done .badge { background: var(--accent); border-color: var(--accent); color: transparent; }
+  .stepper li.done .badge svg { stroke-dashoffset: 0; }
+  .crumbs { display: flex; gap: 6px; align-items: center; list-style: none; padding: 10px 16px; margin: 0; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); min-height: 44px; flex-wrap: wrap; }
+  .crumbs li { display: flex; align-items: center; gap: 6px; animation: crumb .4s cubic-bezier(.2,.8,.2,1); }
+  .crumbs li + li::before { content: "›"; color: #4b5068; }
+  .crumbs a { text-decoration: none; color: var(--muted); } .crumbs li:last-child a { color: var(--fg); font-weight: 600; }
+  @keyframes crumb { from { opacity: 0; transform: translateX(-12px); } }
+  .ctrl { display: flex; gap: 8px; }
+  .ctrl button { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .ctrl button.primary { background: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack" style="gap:40px">
+  <ol class="crumbs" aria-label="Breadcrumb"></ol>
+  <ol class="stepper" aria-label="Checkout progress"></ol>
+  <div class="ctrl"><button class="back">Back</button><button class="primary next">Continue</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const steps = ["Cart", "Shipping", "Payment", "Review", "Done"];
+  const stepper = document.querySelector(".stepper"), crumbs = document.querySelector(".crumbs");
+  steps.forEach((s, i) => stepper.insertAdjacentHTML("beforeend", `<li><span class="badge">${i + 1}<svg viewBox="0 0 20 20"><path d="M4 10.5l4 4L16 6"/></svg></span>${s}</li>`));
+  let cur = 0;
+  function render() {
+    [...stepper.children].forEach((li, i) => {
+      li.className = i < cur ? "done" : i === cur ? "current" : "";
+      if (i === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+    });
+    // Only add/remove the crumbs that changed so existing ones don't re-animate.
+    while (crumbs.children.length > cur + 1) crumbs.lastElementChild.remove();
+    for (let i = crumbs.children.length; i <= cur; i++) crumbs.insertAdjacentHTML("beforeend", `<li><a href="#">${steps[i]}</a></li>`);
+    [...crumbs.querySelectorAll("a")].forEach((a, i) => (i === cur ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  }
+  document.querySelector(".next").onclick = () => { cur = Math.min(steps.length - 1, cur + 1); render(); };
+  document.querySelector(".back").onclick = () => { cur = Math.max(0, cur - 1); render(); };
+  crumbs.addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a) return; e.preventDefault(); cur = [...crumbs.querySelectorAll("a")].indexOf(a); render(); });
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hide-on-scroll Smart Header</title>
+<meta name="description" content="A sticky header that slides away when scrolling down, returns on any upward scroll, and condenses with a blurred background once you leave the top.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .demo-bar { top: auto; bottom: 12px; }
+  .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; padding: 26px 5vw;
+                 transition: transform .35s cubic-bezier(.2,.8,.2,1), padding .3s, background .3s, box-shadow .3s; }
+  .site-header.scrolled { padding: 14px 5vw; background: rgb(11 12 16 / .72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--line); }
+  .site-header.hidden { transform: translateY(-100%); }
+  .site-header:focus-within { transform: none; }          /* never hide while keyboard focus is inside */
+  .site-header b { font-size: 20px; letter-spacing: -.02em; }
+  .site-header nav { display: flex; gap: 22px; } .site-header nav a { text-decoration: none; color: var(--muted); } .site-header nav a:hover { color: var(--fg); }
+  .hero { height: 90vh; display: grid; place-items: center; background: linear-gradient(160deg, #1e1b4b, #0b0c10); }
+  .hero h1 { font-size: clamp(40px, 7vw, 96px); letter-spacing: -.04em; margin: 0; }
+  article { max-width: 680px; margin: 0 auto; padding: 60px 16px 120px; color: #cfd3df; font-size: 18px; }
+</style>
+</head>
+<body>
+<header class="site-header"><b>◆ Studio</b><nav aria-label="Main"><a href="#">Work</a><a href="#">About</a><a href="#">Contact</a></nav></header>
+<section class="hero"><h1>Scroll down, then up</h1></section>
+<article></article>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector("article").innerHTML = Array.from({ length: 20 }, (_, i) => `<p>${Demo.lorem(60, i)}</p>`).join("");
+  const header = document.querySelector(".site-header");
+  let last = scrollY, ticking = false;
+  const TOLERANCE = 6;            // ignore tiny jitters so the header doesn't flicker
+  function update() {
+    const y = scrollY, dy = y - last;
+    header.classList.toggle("scrolled", y > 40);
+    if (Math.abs(dy) > TOLERANCE) {
+      header.classList.toggle("hidden", dy > 0 && y > header.offsetHeight * 2);
+      last = y;
+    }
+    ticking = false;
+  }
+  addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+</script>
+</body>
+</html>

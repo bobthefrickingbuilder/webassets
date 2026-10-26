@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intro Preloader Sequences</title>
+<meta name="description" content="Three agency-style page intros: a big percentage counter that splits away, a logo that draws itself then scales out, and stacked colour curtains lifting off the page.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .site { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 16px; }
+  .site h1 { font-size: clamp(44px, 9vw, 130px); letter-spacing: -.05em; margin: 0; line-height: .95; }
+  .replay { display: flex; gap: 8px; justify-content: center; margin-top: 24px; }
+  .replay button { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .loader { position: fixed; inset: 0; z-index: 100; }
+  /* Counter */
+  .counter .half { position: absolute; left: 0; right: 0; height: 50%; background: #f5f0e6; transition: transform .9s cubic-bezier(.77,0,.18,1); }
+  .counter .top { top: 0; } .counter .bot { bottom: 0; }
+  .counter .num { position: absolute; right: 5vw; bottom: 4vh; font: 800 clamp(80px, 20vw, 280px)/1 var(--font); letter-spacing: -.06em; color: #111; font-variant-numeric: tabular-nums; z-index: 2; transition: opacity .3s; }
+  .counter .bar { position: absolute; left: 0; top: 50%; height: 2px; background: #111; z-index: 2; }
+  .counter.out .top { transform: translateY(-100%); } .counter.out .bot { transform: translateY(100%); } .counter.out .num, .counter.out .bar { opacity: 0; }
+  /* Logo */
+  .logo { background: #0b0c10; display: grid; place-items: center; transition: opacity .6s .5s; }
+  .logo svg { width: 160px; height: 160px; transition: transform .9s cubic-bezier(.7,0,.2,1); }
+  .logo path { fill: none; stroke: var(--accent-2); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 500; stroke-dashoffset: 500; animation: draw 1.6s cubic-bezier(.6,0,.4,1) forwards; }
+  .logo path + path { stroke: var(--accent); animation-delay: .4s; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .logo.out { opacity: 0; } .logo.out svg { transform: scale(18); }
+  /* Curtains */
+  .curtains i { position: absolute; inset: 0; transition: transform 1s cubic-bezier(.77,0,.18,1); }
+  .curtains i:nth-child(1) { background: #facc15; transition-delay: .2s; } .curtains i:nth-child(2) { background: #f472b6; transition-delay: .1s; } .curtains i:nth-child(3) { background: #7c3aed; }
+  .curtains span { position: absolute; inset: 0; display: grid; place-items: center; font: 800 32px var(--font); letter-spacing: .3em; color: #fff; z-index: 2; transition: opacity .3s; }
+  .curtains.out i { transform: translateY(-100%); } .curtains.out span { opacity: 0; }
+</style>
+</head>
+<body>
+<section class="site"><div><h1>Welcome in.</h1><div class="replay"><button data-l="counter">Counter</button><button data-l="logo">Logo draw</button><button data-l="curtains">Curtains</button></div></div></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const done = (el, ms) => setTimeout(() => el.remove(), ms);
+  const loaders = {
+    counter() {
+      const el = document.createElement("div"); el.className = "loader counter"; el.setAttribute("role", "progressbar"); el.setAttribute("aria-label", "Loading");
+      el.innerHTML = '<div class="half top"></div><div class="half bot"></div><div class="bar"></div><div class="num">0</div>';
+      document.body.appendChild(el);
+      const num = el.querySelector(".num"), bar = el.querySelector(".bar");
+      let p = 0;
+      // Uneven increments read as "real" loading rather than a linear timer.
+      (function tick() {
+        p = Math.min(100, p + Math.random() * 9 + 1);
+        num.textContent = Math.floor(p); bar.style.width = p + "%"; el.setAttribute("aria-valuenow", Math.floor(p));
+        if (p < 100) setTimeout(tick, 60 + Math.random() * 120); else setTimeout(() => { el.classList.add("out"); done(el, 1000); }, 300);
+      })();
+    },
+    logo() {
+      const el = document.createElement("div"); el.className = "loader logo"; el.setAttribute("aria-label", "Loading");
+      el.innerHTML = '<svg viewBox="0 0 100 100"><path d="M50 8 L90 30 L90 70 L50 92 L10 70 L10 30 Z"/><path d="M50 28 L72 40 L72 62 L50 74 L28 62 L28 40 Z"/></svg>';
+      document.body.appendChild(el);
+      setTimeout(() => { el.classList.add("out"); done(el, 1300); }, 2100);
+    },
+    curtains() {
+      const el = document.createElement("div"); el.className = "loader curtains"; el.setAttribute("aria-label", "Loading");
+      el.innerHTML = "<i></i><i></i><i></i><span>LOADING</span>";
+      document.body.appendChild(el);
+      setTimeout(() => { el.classList.add("out"); done(el, 1400); }, 1200);
+    },
+  };
+  document.querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => loaders[b.dataset.l]()));
+  if (!Demo.reduced) loaders.counter();
+</script>
+</body>
+</html>

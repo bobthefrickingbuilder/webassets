@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gooey Navigation Indicator</title>
+<meta name="description" content="A navigation bar where the active blob oozes to the clicked item, flinging off droplets that merge back via an SVG goo filter.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .gnav { position: relative; display: flex; gap: 6px; padding: 8px; border-radius: 999px; background: #15171d; border: 1px solid var(--line); }
+  .gnav .goo { position: absolute; inset: 0; filter: url(#goo2); pointer-events: none; }
+  .gnav .blob, .gnav .drop { position: absolute; top: 8px; height: 44px; border-radius: 22px; background: #a3e635; }
+  .gnav .drop { width: 18px; height: 18px; top: 21px; border-radius: 50%; }
+  .gnav a { position: relative; z-index: 1; padding: 0 22px; height: 44px; display: grid; place-items: center; text-decoration: none; font-weight: 600; color: var(--muted); border-radius: 22px; transition: color .3s; }
+  .gnav a[aria-current="page"] { color: #1a2e05; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="goo2"><feGaussianBlur in="SourceGraphic" stdDeviation="7" result="b"/><feColorMatrix in="b" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 20 -8" result="g"/><feComposite in="SourceGraphic" in2="g" operator="atop"/></filter></svg>
+<main class="center"><div class="stack">
+  <nav class="gnav" aria-label="Sections"><div class="goo"><span class="blob"></span></div>
+    <a href="#" aria-current="page">Home</a><a href="#">Search</a><a href="#">Library</a><a href="#">Profile</a></nav>
+  <p class="hint">Click the items: droplets fly off and merge back.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const nav = document.querySelector(".gnav"), goo = nav.querySelector(".goo"), blob = nav.querySelector(".blob"), links = [...nav.querySelectorAll("a")];
+  const place = (a, instant) => {
+    blob.style.transition = instant ? "none" : "left .55s cubic-bezier(.6,-0.2,.3,1.3), width .55s cubic-bezier(.6,-0.2,.3,1.3)";
+    blob.style.left = a.offsetLeft + "px"; blob.style.width = a.offsetWidth + "px";
+  };
+  links.forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    const from = links.find((l) => l.getAttribute("aria-current")), fx = from.offsetLeft + from.offsetWidth / 2, tx = a.offsetLeft + a.offsetWidth / 2;
+    links.forEach((l) => l.removeAttribute("aria-current")); a.setAttribute("aria-current", "page");
+    place(a);
+    if (Demo.reduced) return;
+    // Droplets arc from the old position to the new one at slightly different speeds.
+    for (let i = 0; i < 4; i++) {
+      const d = document.createElement("span"); d.className = "drop"; goo.appendChild(d);
+      const lift = (i % 2 ? -1 : 1) * (14 + i * 6);
+      d.animate([
+        { transform: `translate(${fx - 9}px, 0) scale(1)` },
+        { transform: `translate(${(fx + tx) / 2 - 9}px, ${lift}px) scale(${0.6 + i * 0.15})`, offset: .5 },
+        { transform: `translate(${tx - 9}px, 0) scale(.4)` },
+      ], { duration: 500 + i * 90, easing: "cubic-bezier(.5,0,.3,1)" }).onfinish = () => d.remove();
+    }
+  }));
+  addEventListener("resize", () => place(links.find((l) => l.getAttribute("aria-current")), true));
+  document.fonts.ready.then(() => place(links[0], true));
+  place(links[0], true);
+</script>
+</body>
+</html>

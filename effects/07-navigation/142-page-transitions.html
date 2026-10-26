@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPA Page Transitions</title>
+<meta name="description" content="Four page-change transitions for single-page apps (wipe, curtain, slide and zoom), choreographed with an overlay so the content swap happens while the screen is covered.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  nav.top { position: fixed; top: 14px; right: 16px; z-index: 20; display: flex; gap: 6px; }
+  nav.top a { padding: 8px 14px; border-radius: 999px; text-decoration: none; background: rgb(0 0 0 / .4); border: 1px solid rgb(255 255 255 / .15); font-size: 14px; }
+  nav.top a[aria-current="page"] { background: #fff; color: #111; }
+  .fx { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 20; display: flex; gap: 6px; }
+  .fx button { padding: 8px 14px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); background: rgb(0 0 0 / .5); cursor: pointer; }
+  .fx button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+  .page { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 16px; }
+  .page h1 { font-size: clamp(56px, 12vw, 180px); letter-spacing: -.06em; margin: 0; line-height: .9; }
+  .page p { opacity: .7; font-size: 18px; }
+  .overlay { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  .overlay i { position: absolute; background: var(--accent); }
+  #app { will-change: transform, opacity; }
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Pages"><a href="#home">Home</a><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
+<div id="app"></div>
+<div class="overlay" aria-hidden="true"></div>
+<div class="fx" role="group" aria-label="Transition style"><button data-fx="wipe" aria-pressed="true">Wipe</button><button data-fx="curtain" aria-pressed="false">Curtain</button><button data-fx="slide" aria-pressed="false">Slide</button><button data-fx="zoom" aria-pressed="false">Zoom</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const pages = {
+    home: ["Hello.", "We make things move.", "#0b0c10"], work: ["Work", "Selected projects, 2019–2026", "#1e1b4b"],
+    about: ["About", "A small studio with big curves", "#052e16"], contact: ["Say hi", "hello@example.com", "#431407"],
+  };
+  const app = document.getElementById("app"), overlay = document.querySelector(".overlay");
+  let fx = "wipe", busy = false;
+  const ease = "cubic-bezier(.77,0,.18,1)";
+  function render(id) {
+    const [t, s, bg] = pages[id] || pages.home;
+    app.innerHTML = `<section class="page" style="background:${bg}"><div><h1>${t}</h1><p>${s}</p></div></section>`;
+    document.querySelectorAll("nav.top a").forEach((a) => (a.getAttribute("href") === "#" + id ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+    document.title = t + " · SPA Page Transitions";
+  }
+  // Each transition = [cover animation, uncover animation]. The page swaps in between.
+  async function go(id) {
+    if (busy) return; busy = true;
+    if (Demo.reduced) { render(id); busy = false; return; }
+    if (fx === "wipe" || fx === "curtain") {
+      overlay.innerHTML = fx === "wipe" ? "<i style='inset:0'></i>" : "<i style='left:0;right:0;top:0;height:50%'></i><i style='left:0;right:0;bottom:0;height:50%;background:var(--accent-3)'></i>";
+      const bars = [...overlay.children];
+      const inK = fx === "wipe" ? [[{ transform: "scaleX(0)", transformOrigin: "left" }, { transform: "scaleX(1)", transformOrigin: "left" }]]
+        : [[{ transform: "translateY(-100%)" }, { transform: "none" }], [{ transform: "translateY(100%)" }, { transform: "none" }]];
+      const outK = fx === "wipe" ? [[{ transform: "scaleX(1)", transformOrigin: "right" }, { transform: "scaleX(0)", transformOrigin: "right" }]]
+        : [[{ transform: "none" }, { transform: "translateY(-100%)" }], [{ transform: "none" }, { transform: "translateY(100%)" }]];
+      await Promise.all(bars.map((b, i) => b.animate(inK[i], { duration: 550, easing: ease, fill: "forwards" }).finished));
+      render(id);
+      await Promise.all(bars.map((b, i) => b.animate(outK[i], { duration: 550, easing: ease, fill: "forwards", delay: 80 }).finished));
+      overlay.innerHTML = "";
+    } else {
+      const out = fx === "slide" ? [{ transform: "none" }, { transform: "translateX(-30%)", opacity: 0 }] : [{ transform: "none", opacity: 1 }, { transform: "scale(.85)", opacity: 0 }];
+      const inn = fx === "slide" ? [{ transform: "translateX(30%)", opacity: 0 }, { transform: "none", opacity: 1 }] : [{ transform: "scale(1.15)", opacity: 0, filter: "blur(10px)" }, { transform: "none", opacity: 1, filter: "blur(0)" }];
+      await app.animate(out, { duration: 380, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" }).finished;
+      render(id);
+      await app.animate(inn, { duration: 520, easing: "cubic-bezier(0,0,.2,1)", fill: "forwards" }).finished;
+    }
+    busy = false;
+  }
+  addEventListener("hashchange", () => go(location.hash.slice(1)));
+  document.querySelectorAll("[data-fx]").forEach((b) => (b.onclick = () => { fx = b.dataset.fx; document.querySelectorAll("[data-fx]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  render(location.hash.slice(1) || "home");
+</script>
+</body>
+</html>

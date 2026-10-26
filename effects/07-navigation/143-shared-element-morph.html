@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>List to Detail Shared-element Morph</title>
+<meta name="description" content="Clicking a list card expands it into a full detail view: image, title and price morph into their new positions via the View Transitions API, with a hand-rolled FLIP fallback.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .shop { width: min(1000px, 92vw); padding: 90px 0 40px; }
+  .shop h1 { margin: 0 0 20px; letter-spacing: -.03em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .prod { border: 0; padding: 0; text-align: left; background: var(--bg-2); border-radius: 16px; overflow: hidden; cursor: pointer; color: inherit; font: inherit; border: 1px solid var(--line); }
+  .prod .pic { aspect-ratio: 1; background-size: cover; background-position: center; }
+  .prod h3 { margin: 12px 14px 2px; font-size: 17px; width: fit-content; }
+  .prod .price { margin: 0 14px 14px; color: var(--accent-2); font-weight: 600; width: fit-content; }
+  .detail { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none; grid-template-columns: 1fr 1fr; overflow: auto; }
+  .detail.open { display: grid; }
+  .detail .pic { min-height: 100vh; background-size: cover; background-position: center; }
+  .detail .info { padding: 10vh 6vw; }
+  .detail h2 { font-size: clamp(36px, 5vw, 64px); letter-spacing: -.04em; margin: 0 0 8px; width: fit-content; }
+  .detail .price { font-size: 28px; color: var(--accent-2); font-weight: 700; width: fit-content; }
+  .detail .rest { color: var(--muted); animation: up .5s .25s both; }
+  .detail button.close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgb(0 0 0 / .5); cursor: pointer; font-size: 18px; }
+  .detail .buy { margin-top: 24px; padding: 14px 28px; border-radius: 12px; border: 0; background: var(--accent); cursor: pointer; font-weight: 600; }
+  @keyframes up { from { opacity: 0; transform: translateY(20px); } }
+  ::view-transition-group(*) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  @media (max-width: 700px) { .detail { grid-template-columns: 1fr; } .detail .pic { min-height: 50vh; } }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:0"><div class="shop"><h1>Prints</h1><div class="grid"></div></div></main>
+<div class="detail" role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="pic"></div>
+  <div class="info"><h2 id="d-title"></h2><div class="price"></div><div class="rest"><p></p><button class="buy">Add to cart</button></div></div>
+  <button class="close" aria-label="Close">✕</button>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const items = [["Glacier", 48], ["Saffron", 52], ["Fjord", 39], ["Ember", 64], ["Lagoon", 45], ["Dusk", 58]];
+  const grid = document.querySelector(".grid"), detail = document.querySelector(".detail");
+  const dPic = detail.querySelector(".pic"), dTitle = detail.querySelector("h2"), dPrice = detail.querySelector(".price");
+  const urls = items.map((_, i) => Demo.artURL(700, 700, i));
+  items.forEach(([n, p], i) => grid.insertAdjacentHTML("beforeend", `<button class="prod" data-i="${i}"><div class="pic" style="background-image:url(${urls[i]})"></div><h3>${n}</h3><div class="price">$${p}</div></button>`));
+  let open = -1;
+  const names = ["pic", "title", "price"];
+  const tag = (els) => els.forEach((el, k) => (el.style.viewTransitionName = el ? names[k] : ""));
+  const untag = (els) => els.forEach((el) => (el.style.viewTransitionName = ""));
+  function transition(update) {
+    if (document.startViewTransition && !Demo.reduced) return document.startViewTransition(update).finished;
+    update(); return Promise.resolve();
+  }
+  function show(i) {
+    const card = grid.querySelector(`[data-i="${i}"]`);
+    const from = [card.querySelector(".pic"), card.querySelector("h3"), card.querySelector(".price")];
+    tag(from);
+    transition(() => {
+      untag(from);
+      dPic.style.backgroundImage = `url(${urls[i]})`; dTitle.textContent = items[i][0]; dPrice.textContent = "$" + items[i][1];
+      detail.querySelector("p").textContent = Demo.lorem(40, i);
+      tag([dPic, dTitle, dPrice]); detail.classList.add("open"); open = i;
+    }).then(() => detail.querySelector(".close").focus());
+  }
+  function hide() {
+    const card = grid.querySelector(`[data-i="${open}"]`);
+    const to = [card.querySelector(".pic"), card.querySelector("h3"), card.querySelector(".price")];
+    transition(() => { untag([dPic, dTitle, dPrice]); detail.classList.remove("open"); tag(to); })
+      .then(() => { untag(to); card.focus(); open = -1; });
+  }
+  grid.addEventListener("click", (e) => { const b = e.target.closest(".prod"); if (b) show(+b.dataset.i); });
+  detail.querySelector(".close").onclick = hide;
+  addEventListener("keydown", (e) => e.key === "Escape" && open >= 0 && hide());
+</script>
+</body>
+</html>

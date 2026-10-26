@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Circular Theme Switch Wipe</title>
+<meta name="description" content="Toggling dark mode reveals the new theme in an expanding circle from the switch, using the View Transitions API to animate a snapshot of the old page. Falls back to an instant switch.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  :root { --page: #f8fafc; --ink: #0f172a; --card: #fff; --mutedc: #64748b; }
+  :root.dark { --page: #0b0c10; --ink: #eef0f6; --card: #14161d; --mutedc: #8a90a2; }
+  body { background: var(--page); color: var(--ink); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  .top { display: flex; justify-content: flex-end; padding: 16px 20px; }
+  .toggle { width: 52px; height: 52px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); background: var(--card); color: var(--ink); cursor: pointer; font-size: 22px; display: grid; place-items: center; }
+  .layout { max-width: 900px; margin: 0 auto; padding: 40px 16px; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .layout h1 { grid-column: 1 / -1; font-size: clamp(40px, 6vw, 72px); letter-spacing: -.04em; margin: 0; }
+  .c { background: var(--card); border-radius: 16px; padding: 22px; box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent), 0 10px 30px color-mix(in srgb, var(--ink) 6%, transparent); }
+  .c p { color: var(--mutedc); margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="top"><button class="toggle" aria-label="Switch to dark theme" aria-pressed="false">🌙</button></div>
+<main class="layout"><h1>Lights out</h1></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const layout = document.querySelector(".layout");
+  ["Wipe", "From the button", "Any page"].forEach((t, i) => layout.insertAdjacentHTML("beforeend", `<div class="c"><b>${t}</b><p>${Demo.lorem(18, i)}</p></div>`));
+  const btn = document.querySelector(".toggle");
+  function apply(dark) {
+    document.documentElement.classList.toggle("dark", dark);
+    btn.textContent = dark ? "☀️" : "🌙"; btn.setAttribute("aria-pressed", dark); btn.setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} theme`);
+    try { localStorage.setItem("demo-theme", dark ? "dark" : "light"); } catch {}
+  }
+  btn.addEventListener("click", async () => {
+    const dark = !document.documentElement.classList.contains("dark");
+    if (!document.startViewTransition || Demo.reduced) { apply(dark); return; }
+    const r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const t = document.startViewTransition(() => apply(dark));
+    await t.ready;
+    // Grow the new snapshot from a point at the button to a circle covering the viewport.
+    document.documentElement.animate({ clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${end}px at ${x}px ${y}px)`] },
+      { duration: 650, easing: "cubic-bezier(.7,0,.2,1)", pseudoElement: "::view-transition-new(root)" });
+  });
+  let saved = null; try { saved = localStorage.getItem("demo-theme"); } catch {}
+  apply(saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches);
+</script>
+</body>
+</html>
