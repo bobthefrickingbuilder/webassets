@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Text Scramble / Decode</title>
+<meta name="description" content="Hacker-style decode: characters shuffle through random glyphs before resolving. Cycles phrases and scrambles links on hover.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .scramble { font: 700 clamp(32px, 6vw, 80px)/1.1 var(--mono); letter-spacing: -.02em; min-height: 2.3em; text-align: center; max-width: 16ch; }
+  .scramble .dud { color: var(--accent-2); opacity: .7; }
+  nav.links { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+  nav.links a { font: 500 18px var(--mono); text-decoration: none; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  nav.links a:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="scramble" aria-live="polite"></div>
+  <nav class="links"><a href="#" data-scramble>Work</a><a href="#" data-scramble>About</a><a href="#" data-scramble>Journal</a><a href="#" data-scramble>Contact</a></nav>
+  <p class="hint">Hover the links to scramble them.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* TextScramble: each character gets a random start/end frame; until its end frame it shows random glyphs.
+     setText() returns a promise so phrases can be chained. */
+  class TextScramble {
+    constructor(el, chars = "!<>-_\\/[]{}—=+*^?#________") {
+      this.el = el; this.chars = chars; this.update = this.update.bind(this);
+    }
+    setText(text) {
+      const old = this.el.innerText;
+      const len = Math.max(old.length, text.length);
+      this.queue = [];
+      for (let i = 0; i < len; i++) {
+        const start = Math.floor(Math.random() * 40);
+        this.queue.push({ from: old[i] || "", to: text[i] || "", start, end: start + Math.floor(Math.random() * 40) });
+      }
+      cancelAnimationFrame(this.raf);
+      this.frame = 0;
+      this.el.setAttribute("aria-label", text);
+      return new Promise((resolve) => { this.resolve = resolve; this.update(); });
+    }
+    update() {
+      let out = "", done = 0;
+      for (const q of this.queue) {
+        if (this.frame >= q.end) { done++; out += q.to; }
+        else if (this.frame >= q.start) {
+          if (!q.char || Math.random() < 0.28) q.char = this.chars[Math.floor(Math.random() * this.chars.length)];
+          out += `<span class="dud">${q.char}</span>`;
+        } else out += q.from;
+      }
+      this.el.innerHTML = out;
+      if (done === this.queue.length) this.resolve();
+      else { this.frame++; this.raf = requestAnimationFrame(this.update); }
+    }
+  }
+
+  const phrases = ["Hello, world", "Decode the noise", "Signal found", "Welcome back"];
+  const main = new TextScramble(document.querySelector(".scramble"));
+  let i = 0;
+  (function next() {
+    if (Demo.reduced) { main.el.textContent = phrases[0]; return; }
+    main.setText(phrases[i]).then(() => setTimeout(next, 1800));
+    i = (i + 1) % phrases.length;
+  })();
+
+  document.querySelectorAll("[data-scramble]").forEach((a) => {
+    const fx = new TextScramble(a, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+    const label = a.textContent;
+    a.addEventListener("mouseenter", () => fx.setText(label));
+    a.addEventListener("click", (e) => e.preventDefault());
+  });
+</script>
+</body>
+</html>

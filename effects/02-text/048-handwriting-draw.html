@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handwriting Draw-on</title>
+<meta name="description" content="SVG text and a hand-drawn flourish trace their outlines stroke by stroke, then flood with colour, like a pen signing the page.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .sig { width: min(900px, 94vw); overflow: visible; }
+  .sig text { font: italic 400 150px "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive; fill: transparent; stroke: #f5f5f4; stroke-width: 1.4;
+              stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+  .sig .flourish { fill: none; stroke: var(--accent-3); stroke-width: 4; stroke-linecap: round; stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+  .sig.play text { animation: draw 3.2s cubic-bezier(.6,.05,.4,1) forwards, fill .8s 2.9s forwards; }
+  .sig.play .flourish { animation: draw 1.2s 2.6s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fill { to { fill: #f5f5f4; } }
+  button { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .sig text { fill: #f5f5f4; stroke-dashoffset: 0; } .sig .flourish { stroke-dashoffset: 0; } .sig.play * { animation: none !important; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <svg class="sig" viewBox="0 0 900 300" aria-label="Signed, Alex">
+    <text x="450" y="170" text-anchor="middle">Signed, Alex</text>
+    <path class="flourish" d="M150 220 C 300 260, 520 180, 640 230 S 780 250, 820 200"/>
+  </svg>
+  <button>Sign again</button>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const svg = document.querySelector(".sig");
+  // SVG <text> exposes no path length, so use a generous dash length; paths can be measured exactly.
+  svg.querySelector("text").style.setProperty("--len", 1600);
+  const f = svg.querySelector(".flourish"); f.style.setProperty("--len", Math.ceil(f.getTotalLength()));
+  function play() { svg.classList.remove("play"); svg.getBoundingClientRect(); svg.classList.add("play"); }
+  document.querySelector("button").onclick = play;
+  play();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASCII Art Banner Generator</title>
+<meta name="description" content="Type text and it renders live as ASCII art by rasterising it to a tiny canvas and mapping brightness to a character ramp, with copy-to-clipboard.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .ascii-ui { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .ascii-ui input, .ascii-ui select { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg); font: inherit; }
+  .ascii-ui button { padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); cursor: pointer; }
+  pre.ascii { font: 10px/1 var(--mono); color: #86efac; background: #050608; border: 1px solid var(--line); padding: 20px; border-radius: 14px; overflow-x: auto; max-width: 94vw; text-shadow: 0 0 6px rgb(134 239 172 / .5); margin: 0; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="ascii-ui">
+    <input value="Hello!" maxlength="14" aria-label="Banner text">
+    <select aria-label="Character ramp"><option value="█▓▒░ ">Blocks</option><option value="@%#*+=-:. ">Classic</option><option value="#  ">Hash</option><option value="01 ">Binary</option></select>
+    <button>Copy</button>
+  </div>
+  <pre class="ascii" aria-label="ASCII art"></pre>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const input = document.querySelector("input"), select = document.querySelector("select"), pre = document.querySelector("pre");
+  const COLS_PER_CHAR = 9, ROWS = 14;
+  function render() {
+    const text = input.value || " ", ramp = select.value;
+    const c = document.createElement("canvas");
+    const w = text.length * COLS_PER_CHAR + 2, h = ROWS;
+    c.width = w; c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#fff"; g.font = `bold ${h}px Arial, sans-serif`; g.textBaseline = "middle";
+    g.fillText(text, 1, h / 2 + 1, w - 2);
+    const d = g.getImageData(0, 0, w, h).data;
+    let out = "";
+    for (let y = 0; y < h; y++) {
+      let line = "";
+      for (let x = 0; x < w; x++) {
+        const v = d[(y * w + x) * 4] / 255;                         // 0 = background, 1 = ink
+        line += ramp[Math.min(ramp.length - 1, Math.floor((1 - v) * ramp.length))];
+      }
+      if (line.trim()) out += line.replace(/\s+$/, "") + "\n";
+    }
+    pre.textContent = out;
+  }
+  input.addEventListener("input", render); select.addEventListener("change", render);
+  document.querySelector("button").onclick = async (e) => {
+    try { await navigator.clipboard.writeText(pre.textContent); e.target.textContent = "Copied!"; }
+    catch { e.target.textContent = "Select & copy"; }
+    setTimeout(() => (e.target.textContent = "Copy"), 1400);
+  };
+  render();
+</script>
+</body>
+</html>

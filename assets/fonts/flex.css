@@ -1,0 +1,10 @@
+/* Roboto Flex: a variable font with weight, width, slant, optical size and parametric axes (OFL).
+   Use font-family: "Flex" and drive axes with font-weight, font-stretch or font-variation-settings. */
+@font-face {
+  font-family: "Flex";
+  font-style: oblique 0deg 10deg;
+  font-display: block;
+  font-weight: 100 1000;
+  font-stretch: 25% 151%;
+  src: url("roboto-flex.woff2") format("woff2-variations"), url("roboto-flex.woff2") format("woff2");
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wavy Bobbing Text</title>
+<meta name="description" content="Letters bob in a continuous sine wave using one CSS keyframe and a per-letter negative delay, plus a hover-only variant.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .wavy { font-size: clamp(44px, 9vw, 120px); font-weight: 800; letter-spacing: -.03em; margin: 0; }
+  .wavy span { display: inline-block; animation: bob 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * -0.12s); }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.25em); color: var(--accent-2); } }
+  .hover-wave { font-size: 32px; font-weight: 700; cursor: default; }
+  .hover-wave span { display: inline-block; transition: transform .3s; }
+  .hover-wave:hover span { animation: hop .5s ease-out both; animation-delay: calc(var(--i) * 40ms); }
+  @keyframes hop { 40% { transform: translateY(-14px); color: var(--accent-3); } 100% { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .wavy span, .hover-wave:hover span { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="wavy" data-split>Making waves</h1>
+  <p class="hover-wave" data-split>Hover me for a ripple</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Only JS needed: wrap letters and set --i. Everything else is CSS.
+  document.querySelectorAll("[data-split]").forEach((el) => {
+    const t = el.textContent; el.setAttribute("aria-label", t);
+    el.innerHTML = [...t].map((c, i) => `<span aria-hidden="true" style="--i:${i}">${c === " " ? "&nbsp;" : c}</span>`).join("");
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matrix Rain in Text</title>
+<meta name="description" content="Digital rain falls across the screen and glows brightest inside a giant word, which is used as a canvas compositing mask.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas aria-label="Digital rain forming the word MATRIX"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const canvas = document.querySelector("canvas"), ctx = canvas.getContext("2d");
+  const rain = document.createElement("canvas"), rctx = rain.getContext("2d");      // accumulates the trails
+  const mask = document.createElement("canvas"), mctx = mask.getContext("2d");      // rain clipped to the word
+  const GLYPHS = "アカサタナハマヤラワ0123456789ABCDEFｦｧｨｩｪｫｬｭｮｯ:+=*<>".split("");
+  const SIZE = 18;
+  let cols, drops, W, H;
+  function resize() {
+    W = canvas.width = rain.width = mask.width = innerWidth;
+    H = canvas.height = rain.height = mask.height = innerHeight;
+    cols = Math.ceil(W / SIZE);
+    drops = Array.from({ length: cols }, () => Math.random() * -H / SIZE);
+    rctx.fillStyle = "#000"; rctx.fillRect(0, 0, W, H);
+  }
+  function frame() {
+    // Fade old glyphs to leave trails.
+    rctx.fillStyle = "rgba(0,0,0,0.08)"; rctx.fillRect(0, 0, W, H);
+    rctx.font = `${SIZE}px monospace`;
+    for (let i = 0; i < cols; i++) {
+      const y = drops[i] * SIZE;
+      rctx.fillStyle = "#d1ffd6"; rctx.fillText(GLYPHS[(Math.random() * GLYPHS.length) | 0], i * SIZE, y);
+      rctx.fillStyle = "#00ff66"; rctx.fillText(GLYPHS[(Math.random() * GLYPHS.length) | 0], i * SIZE, y - SIZE);
+      if (y > H && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.6 + (i % 5) * 0.08;
+    }
+    // Composite: dim rain everywhere, full-brightness rain inside the word.
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.28; ctx.drawImage(rain, 0, 0); ctx.globalAlpha = 1;
+    mctx.globalCompositeOperation = "source-over";
+    mctx.clearRect(0, 0, W, H);
+    mctx.drawImage(rain, 0, 0);
+    mctx.globalCompositeOperation = "destination-in";
+    mctx.font = `900 ${Math.min(W / 4.2, H / 2.2)}px system-ui, sans-serif`;
+    mctx.textAlign = "center"; mctx.textBaseline = "middle";
+    mctx.fillText("MATRIX", W / 2, H / 2);
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6; ctx.drawImage(mask, 0, 0);   // bloom-ish boost
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  addEventListener("resize", resize);
+  resize();
+  if (Demo.reduced) for (let i = 0; i < 120; i++) frame();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

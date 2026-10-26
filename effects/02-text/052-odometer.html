@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odometer Number Roll</title>
+<meta name="description" content="Digits roll on vertical reels to the new value, each reel taking the short way round, with comma groups and a live ticker.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .odo { display: inline-flex; font: 700 clamp(48px, 10vw, 120px)/1 var(--mono); letter-spacing: -.02em; padding: 16px 24px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); }
+  .reel { height: 1em; overflow: hidden; position: relative; }
+  .reel .strip { display: flex; flex-direction: column; transition: transform 1.4s cubic-bezier(.25,.9,.25,1.05); }
+  .reel .strip span { height: 1em; }
+  .sep { opacity: .5; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .controls button { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .reel .strip { transition: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="odo" role="status" aria-live="polite"></div>
+  <div class="controls"><button data-add="1">+1</button><button data-add="137">+137</button><button data-add="-250">−250</button><button data-rand>Random</button><button data-tick aria-pressed="false">Live ticker</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* Each reel holds 0-9 three times. Moving within the middle copy and re-centring after each roll
+     lets a 9→0 change roll forward one step instead of spinning back through every digit. */
+  class Odometer {
+    constructor(el, value = 0) { this.el = el; this.reels = []; this.set(value); }
+    makeReel() {
+      const reel = document.createElement("span"); reel.className = "reel";
+      const strip = document.createElement("span"); strip.className = "strip";
+      strip.innerHTML = Array.from({ length: 30 }, (_, i) => `<span>${i % 10}</span>`).join("");
+      reel.appendChild(strip);
+      const r = { reel, strip, pos: 10, digit: 0 };
+      strip.style.transform = `translateY(-${r.pos}em)`;
+      return r;
+    }
+    set(value) {
+      const text = Math.max(0, Math.round(value)).toLocaleString("en-US");
+      this.el.setAttribute("aria-label", text);
+      const digits = text.replace(/,/g, "");
+      while (this.reels.length < digits.length) this.reels.unshift(this.makeReel());
+      while (this.reels.length > digits.length) this.reels.shift();
+      // Rebuild layout (reels are reused so their positions persist).
+      this.el.replaceChildren();
+      let di = 0;
+      for (const ch of text) {
+        if (ch === ",") { const s = document.createElement("span"); s.className = "sep"; s.textContent = ","; this.el.appendChild(s); continue; }
+        const r = this.reels[di++];
+        this.el.appendChild(r.reel);
+        const target = +ch;
+        let delta = (target - r.digit + 10) % 10;
+        if (delta > 5) delta -= 10;                            // shortest direction
+        r.pos += delta; r.digit = target;
+        r.strip.style.transform = `translateY(-${r.pos}em)`;
+      }
+      clearTimeout(this.t);
+      this.t = setTimeout(() => this.recenter(), 1500);
+    }
+    recenter() {
+      for (const r of this.reels) {
+        r.strip.style.transition = "none"; r.pos = 10 + r.digit;
+        r.strip.style.transform = `translateY(-${r.pos}em)`; r.strip.getBoundingClientRect(); r.strip.style.transition = "";
+      }
+    }
+  }
+  let value = 48213;
+  const odo = new Odometer(document.querySelector(".odo"), value);
+  document.querySelectorAll("[data-add]").forEach((b) => (b.onclick = () => odo.set((value = Math.max(0, value + +b.dataset.add)))));
+  document.querySelector("[data-rand]").onclick = () => odo.set((value = Math.floor(Math.random() * 9999999)));
+  let tick;
+  document.querySelector("[data-tick]").onclick = (e) => {
+    const on = e.target.getAttribute("aria-pressed") !== "true";
+    e.target.setAttribute("aria-pressed", on);
+    clearInterval(tick);
+    if (on) tick = setInterval(() => odo.set((value += Math.ceil(Math.random() * 40))), 1600);
+  };
+</script>
+</body>
+</html>

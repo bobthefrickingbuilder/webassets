@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moving Image Inside Text</title>
+<meta name="description" content="A slowly panning image (or live canvas animation) shows only through giant letters using background-clip: text.">
+<meta name="tech" content="CSS, Canvas">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .masked { font: 900 clamp(70px, 17vw, 260px)/.9 var(--font); letter-spacing: -.06em; margin: 0; text-align: center;
+            background-size: 160% auto; background-position: 0% 50%; -webkit-background-clip: text; background-clip: text; color: transparent;
+            animation: pan 14s ease-in-out infinite alternate; }
+  @keyframes pan { to { background-position: 100% 50%; } }
+  .live { font: 900 clamp(56px, 12vw, 180px)/.9 var(--font); letter-spacing: -.05em; margin: 0; -webkit-background-clip: text; background-clip: text; color: transparent; }
+  @media (prefers-reduced-motion: reduce) { .masked { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="masked">WILD</h1>
+  <h2 class="live">PLASMA</h2>
+  <p class="hint">Top: image panning via background-position. Bottom: a canvas animation streamed into the text as a background each frame.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector(".masked").style.backgroundImage = `url(${Demo.artURL(1600, 700, 3)})`;
+
+  // Live variant: CSS element() is Firefox-only, so a small plasma canvas is copied into a data URL
+  // at a modest frame rate and used as the text's background.
+  const live = document.querySelector(".live");
+  const c = document.createElement("canvas"); c.width = 160; c.height = 60;
+  const g = c.getContext("2d"), img = g.createImageData(c.width, c.height);
+  let last = 0;
+  function frame(t) {
+    if (t - last > 66) {            // ~15fps is plenty for a background
+      last = t;
+      const s = t / 1000;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        const v = Math.sin(x * 0.08 + s) + Math.sin((y * 0.1 + s) * 1.3) + Math.sin((x + y) * 0.05 + s * 0.7) + Math.sin(Math.hypot(x - 80, y - 30) * 0.12 - s * 2);
+        const i = (y * c.width + x) * 4;
+        img.data[i] = 128 + 127 * Math.sin(v * Math.PI);
+        img.data[i + 1] = 128 + 127 * Math.sin(v * Math.PI + 2.1);
+        img.data[i + 2] = 200 + 55 * Math.sin(v * Math.PI + 4.2);
+        img.data[i + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      live.style.backgroundImage = `url(${c.toDataURL()})`;
+      live.style.backgroundSize = "100% 100%";
+    }
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

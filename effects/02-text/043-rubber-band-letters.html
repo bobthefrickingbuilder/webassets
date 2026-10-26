@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rubber-band Letter Hover</title>
+<meta name="description" content="Each letter squashes and stretches like rubber when the pointer touches it; the animation always plays to completion.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .rubber { font: 900 clamp(56px, 12vw, 170px)/1 var(--font); letter-spacing: -.02em; margin: 0; cursor: default; user-select: none; }
+  .rubber span { display: inline-block; }
+  .rubber span.band { animation: band .9s both; color: var(--accent-3); }
+  @keyframes band {
+    0% { transform: scale3d(1, 1, 1); }
+    30% { transform: scale3d(1.3, .7, 1); }
+    40% { transform: scale3d(.7, 1.3, 1); }
+    50% { transform: scale3d(1.15, .85, 1); }
+    65% { transform: scale3d(.95, 1.05, 1); }
+    75% { transform: scale3d(1.05, .95, 1); }
+    100% { transform: scale3d(1, 1, 1); }
+  }
+  @media (prefers-reduced-motion: reduce) { .rubber span.band { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="rubber">Boing boing</h1>
+  <p class="hint">Run the cursor across the letters.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const el = document.querySelector(".rubber");
+  el.setAttribute("aria-label", el.textContent);
+  el.innerHTML = [...el.textContent].map((c) => `<span aria-hidden="true">${c === " " ? "&nbsp;" : c}</span>`).join("");
+  el.querySelectorAll("span").forEach((s) => {
+    // Adding the class only if it's not already animating lets each bounce finish.
+    s.addEventListener("pointerenter", () => s.classList.add("band"));
+    s.addEventListener("animationend", () => s.classList.remove("band"));
+  });
+</script>
+</body>
+</html>

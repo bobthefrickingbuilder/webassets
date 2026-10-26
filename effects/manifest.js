@@ -319,5 +319,336 @@ window.EFFECTS = [
   "complexity": 1,
   "category": "01-scroll",
   "path": "effects/01-scroll/026-reading-time-left.html"
+ },
+ {
+  "num": 27,
+  "title": "Text Scramble / Decode",
+  "description": "Hacker-style decode: characters shuffle through random glyphs before resolving. Cycles phrases and scrambles links on hover.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/027-text-scramble.html"
+ },
+ {
+  "num": 28,
+  "title": "Typewriter",
+  "description": "Types, pauses, deletes and retypes a list of phrases with human-like timing jitter and a blinking caret.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/028-typewriter.html"
+ },
+ {
+  "num": 29,
+  "title": "Split Text Fly-in",
+  "description": "Headline split into characters that fly in from random positions, rotations and depths, staggered from the centre outward.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/029-split-text-fly-in.html"
+ },
+ {
+  "num": 30,
+  "title": "Variable Font Breathing Wave",
+  "description": "Each letter's weight and width ripple in a travelling sine wave across a variable font (Roboto Flex), with live speed and amplitude controls.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/030-variable-font-wave.html"
+ },
+ {
+  "num": 31,
+  "title": "Cursor-proximity Variable Font",
+  "description": "Letters swell in weight, width and optical size as the cursor approaches, falling off smoothly with distance.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/031-variable-font-proximity.html"
+ },
+ {
+  "num": 32,
+  "title": "Animated Gradient Text",
+  "description": "Three CSS-only gradient text treatments: a flowing linear gradient, a rotating conic gradient using @property, and a hue-cycling aurora.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/032-animated-gradient-text.html"
+ },
+ {
+  "num": 33,
+  "title": "Shimmer Sweep Text",
+  "description": "A bright band sweeps across muted text, like a loading shine or iOS 'slide to unlock', in pure CSS.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/033-shimmer-text.html"
+ },
+ {
+  "num": 34,
+  "title": "Glitch Text",
+  "description": "CSS glitch: RGB-split copies of the text jitter through random clip-path slices, with an intensity control and hover burst.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/034-glitch-text.html"
+ },
+ {
+  "num": 35,
+  "title": "Neon Sign Flicker",
+  "description": "Glowing neon tube lettering built from layered text-shadows, with a realistic irregular flicker on individual letters and a power switch.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/035-neon-sign.html"
+ },
+ {
+  "num": 36,
+  "title": "Gooey Text Morph",
+  "description": "Words melt into each other: two blurred layers cross-fade through an SVG alpha-threshold filter, giving a liquid morph.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/036-gooey-text-morph.html"
+ },
+ {
+  "num": 37,
+  "title": "Blur Cross-fade Word Swap",
+  "description": "Words swap with a soft blur-and-lift transition, and the container width animates smoothly to fit each new word.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/037-blur-crossfade-words.html"
+ },
+ {
+  "num": 38,
+  "title": "3D Extruded Text",
+  "description": "Chunky retro 3D lettering built from a stack of text-shadows whose extrusion direction follows the mouse, with a long soft drop shadow.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/038-extruded-3d-text.html"
+ },
+ {
+  "num": 39,
+  "title": "Rotating Word Carousel",
+  "description": "A slot-machine word roller inside a sentence: words roll up into a clipped window while the window resizes to each word.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/039-rotating-words.html"
+ },
+ {
+  "num": 40,
+  "title": "Wavy Bobbing Text",
+  "description": "Letters bob in a continuous sine wave using one CSS keyframe and a per-letter negative delay, plus a hover-only variant.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/040-wavy-text.html"
+ },
+ {
+  "num": 41,
+  "title": "Moving Image Inside Text",
+  "description": "A slowly panning image (or live canvas animation) shows only through giant letters using background-clip: text.",
+  "tech": [
+   "CSS",
+   "Canvas"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/041-image-in-text.html"
+ },
+ {
+  "num": 42,
+  "title": "Outline-to-Fill Hover",
+  "description": "Big outlined menu items fill with solid colour on hover via a clip-path sweep, from the side the pointer entered.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/042-outline-fill-hover.html"
+ },
+ {
+  "num": 43,
+  "title": "Rubber-band Letter Hover",
+  "description": "Each letter squashes and stretches like rubber when the pointer touches it; the animation always plays to completion.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/043-rubber-band-letters.html"
+ },
+ {
+  "num": 44,
+  "title": "Kinetic Typography Poster",
+  "description": "A looping Swiss-style type poster: rows slide in opposite directions while a variable font stretches and compresses in rhythm.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "02-text",
+  "path": "effects/02-text/044-kinetic-poster.html"
+ },
+ {
+  "num": 45,
+  "title": "Text on an Animated Path",
+  "description": "A ribbon of text flows along an SVG wave whose shape undulates over time and follows the pointer's height.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/045-text-on-path.html"
+ },
+ {
+  "num": 46,
+  "title": "Split-flap Display",
+  "description": "An airport Solari board: each character cell flips through the alphabet with real top/bottom flap halves until it lands on its target.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/046-split-flap-display.html"
+ },
+ {
+  "num": 47,
+  "title": "Matrix Rain in Text",
+  "description": "Digital rain falls across the screen and glows brightest inside a giant word, which is used as a canvas compositing mask.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/047-matrix-rain-text.html"
+ },
+ {
+  "num": 48,
+  "title": "Handwriting Draw-on",
+  "description": "SVG text and a hand-drawn flourish trace their outlines stroke by stroke, then flood with colour, like a pen signing the page.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/048-handwriting-draw.html"
+ },
+ {
+  "num": 49,
+  "title": "Blur-in Word Reveal",
+  "description": "Keynote-style reveal: words sharpen from a soft blur and drift up into place one after another.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/049-blur-in-words.html"
+ },
+ {
+  "num": 50,
+  "title": "Repelling Magnetic Letters",
+  "description": "Letters are pushed away from the cursor like magnets of the same pole, then spring back home with damped physics.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/050-magnetic-letters.html"
+ },
+ {
+  "num": 51,
+  "title": "Text Explodes into Particles",
+  "description": "Text is sampled into thousands of particles; click to blast them outward from the pointer and watch them reassemble. Type to change the word.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/051-text-particle-explode.html"
+ },
+ {
+  "num": 52,
+  "title": "Odometer Number Roll",
+  "description": "Digits roll on vertical reels to the new value, each reel taking the short way round, with comma groups and a live ticker.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/052-odometer.html"
+ },
+ {
+  "num": 53,
+  "title": "ASCII Art Banner Generator",
+  "description": "Type text and it renders live as ASCII art by rasterising it to a tiny canvas and mapping brightness to a character ramp, with copy-to-clipboard.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "02-text",
+  "path": "effects/02-text/053-ascii-banner.html"
+ },
+ {
+  "num": 54,
+  "title": "Cursor Spotlight Text",
+  "description": "Dim text that lights up in a soft circle around the cursor, revealing a colourful layer beneath via a radial CSS mask.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "02-text",
+  "path": "effects/02-text/054-spotlight-text.html"
  }
 ];

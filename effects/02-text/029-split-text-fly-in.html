@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Split Text Fly-in</title>
+<meta name="description" content="Headline split into characters that fly in from random positions, rotations and depths, staggered from the centre outward.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .split { font-size: clamp(44px, 9vw, 130px); font-weight: 800; letter-spacing: -.05em; line-height: 1; text-align: center; perspective: 800px; margin: 0; }
+  .split .ch { display: inline-block; white-space: pre; will-change: transform, opacity; }
+  .split .word { display: inline-block; white-space: nowrap; }
+  .controls { display: flex; gap: 12px; }
+  .controls button { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="split">Assemble the letters</h1>
+  <div class="controls"><button data-mode="scatter">Scatter</button><button data-mode="drop">Drop</button><button data-mode="spin">Spin</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* splitChars wraps every character in .ch (words stay unbreakable) and keeps an aria-label with the original text. */
+  function splitChars(el) {
+    const text = el.textContent;
+    el.setAttribute("aria-label", text);
+    el.innerHTML = text.split(" ").map((w) => `<span class="word" aria-hidden="true">${[...w].map((c) => `<span class="ch">${c}</span>`).join("")}</span>`).join('<span class="ch"> </span>');
+    return [...el.querySelectorAll(".ch")];
+  }
+  const chars = splitChars(document.querySelector(".split"));
+  const mid = (chars.length - 1) / 2;
+  const modes = {
+    scatter: () => ({ transform: `translate3d(${(Math.random() - .5) * 900}px, ${(Math.random() - .5) * 600}px, ${Math.random() * -800}px) rotate(${(Math.random() - .5) * 360}deg)`, opacity: 0 }),
+    drop: () => ({ transform: `translateY(-120vh) rotate(${(Math.random() - .5) * 60}deg)`, opacity: 1 }),
+    spin: () => ({ transform: "rotateY(-90deg) rotateX(60deg) scale(.4)", opacity: 0 }),
+  };
+  function play(mode) {
+    chars.forEach((c, i) => {
+      c.getAnimations().forEach((a) => a.cancel());
+      if (Demo.reduced) return;
+      c.animate([modes[mode](), { transform: "none", opacity: 1 }], {
+        duration: 1200 + Math.random() * 400,
+        delay: Math.abs(i - mid) * 45,                         // centre-out stagger
+        easing: mode === "drop" ? "cubic-bezier(.3,1.4,.5,1)" : "cubic-bezier(.16,1,.3,1)",
+        fill: "both",
+      });
+    });
+  }
+  document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => play(b.dataset.mode)));
+  play("scatter");
+</script>
+</body>
+</html>

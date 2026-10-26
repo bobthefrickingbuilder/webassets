@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blur Cross-fade Word Swap</title>
+<meta name="description" content="Words swap with a soft blur-and-lift transition, and the container width animates smoothly to fit each new word.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .sentence { font-size: clamp(36px, 6.5vw, 88px); font-weight: 700; letter-spacing: -.04em; text-align: center; line-height: 1.15; margin: 0; }
+  .swap { display: inline-grid; vertical-align: bottom; transition: width .6s cubic-bezier(.2,.8,.2,1); color: var(--accent-2); text-align: left; }
+  .swap > span { grid-area: 1 / 1; white-space: nowrap; transition: opacity .6s, filter .6s, transform .6s cubic-bezier(.2,.8,.2,1); }
+  .swap > span.out { opacity: 0; filter: blur(12px); transform: translateY(-.35em) scale(.96); }
+  .swap > span.in-start { opacity: 0; filter: blur(12px); transform: translateY(.35em) scale(.96); transition: none; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="sentence">Make it <span class="swap" aria-live="polite"></span></h1>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const words = ["faster.", "beautiful.", "accessible.", "delightful.", "yours."];
+  const box = document.querySelector(".swap");
+  let i = 0, cur;
+  function measure(word) {
+    const probe = document.createElement("span"); probe.textContent = word;
+    probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap";
+    box.appendChild(probe); const w = probe.getBoundingClientRect().width; probe.remove(); return w;
+  }
+  function show(word) {
+    const next = document.createElement("span");
+    next.textContent = word; next.className = "in-start";
+    box.appendChild(next);
+    box.style.width = measure(word) + "px";
+    next.getBoundingClientRect();               // flush so the transition runs from in-start
+    next.className = "";
+    if (cur) { const old = cur; old.className = "out"; setTimeout(() => old.remove(), 700); }
+    cur = next;
+  }
+  show(words[0]);
+  if (!Demo.reduced) setInterval(() => show(words[(i = (i + 1) % words.length)]), 2200);
+</script>
+</body>
+</html>

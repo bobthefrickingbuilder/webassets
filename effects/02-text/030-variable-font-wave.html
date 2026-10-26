@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Variable Font Breathing Wave</title>
+<meta name="description" content="Each letter's weight and width ripple in a travelling sine wave across a variable font (Roboto Flex), with live speed and amplitude controls.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<link rel="stylesheet" href="../../assets/fonts/flex.css">
+<style>
+  .vf { font-family: "Flex", var(--font); font-size: clamp(56px, 13vw, 200px); line-height: 1; text-align: center; white-space: nowrap; margin: 0; }
+  .vf span { display: inline-block; }
+  .controls { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; color: var(--muted); font-size: 14px; }
+  .controls label { display: grid; gap: 6px; }
+  /* Pure-CSS variant: one keyframe, staggered with a per-letter delay. */
+  .css-wave span { animation: breathe 2.4s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.18s); }
+  @keyframes breathe { from { font-weight: 100; font-stretch: 25%; } to { font-weight: 1000; font-stretch: 151%; } }
+  .css-wave { font-family: "Flex", var(--font); font-size: clamp(32px, 6vw, 80px); }
+  @media (prefers-reduced-motion: reduce) { .css-wave span { animation: none; font-weight: 600; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="vf js-wave">BREATHE</h1>
+  <div class="controls">
+    <label>Speed <input type="range" min="0" max="4" step="0.1" value="1.4" id="speed"></label>
+    <label>Wavelength <input type="range" min="0.2" max="1.5" step="0.05" value="0.6" id="wave"></label>
+  </div>
+  <div class="css-wave" aria-label="CSS only">CSS ONLY KEYFRAMES</div>
+  <p class="hint">Top: JS-driven sine wave. Bottom: the same idea with plain CSS keyframes and staggered delays.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  function split(el) { const t = el.textContent; el.setAttribute("aria-label", t); el.innerHTML = [...t].map((c, i) => `<span aria-hidden="true" style="--i:${i}">${c === " " ? "&nbsp;" : c}</span>`).join(""); return [...el.children]; }
+  const letters = split(document.querySelector(".js-wave"));
+  split(document.querySelector(".css-wave"));
+  const speed = document.getElementById("speed"), wave = document.getElementById("wave");
+  function frame(t) {
+    const s = t / 1000 * speed.value;
+    letters.forEach((l, i) => {
+      const k = (Math.sin(s - i * wave.value) + 1) / 2;   // 0..1
+      l.style.fontWeight = Math.round(100 + k * 900);
+      l.style.fontStretch = (25 + k * 126).toFixed(1) + "%";
+    });
+    requestAnimationFrame(frame);
+  }
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

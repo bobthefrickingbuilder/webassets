@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Typewriter</title>
+<meta name="description" content="Types, pauses, deletes and retypes a list of phrases with human-like timing jitter and a blinking caret.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .tw-line { font-size: clamp(32px, 6vw, 76px); font-weight: 700; letter-spacing: -.03em; text-align: center; }
+  .tw-line .typed { color: var(--accent-2); }
+  .caret { display: inline-block; width: .08em; height: 1em; margin-left: .06em; background: currentColor; vertical-align: -.12em; animation: blink 1s steps(1) infinite; }
+  .typing .caret { animation: none; }            /* solid while typing, blink while idle */
+  @keyframes blink { 50% { opacity: 0; } }
+  .terminal { width: min(640px, 92vw); border-radius: 14px; background: #050608; border: 1px solid var(--line); padding: 18px 20px; font: 15px/1.6 var(--mono); color: #a3e635; min-height: 170px; }
+  .terminal .caret { color: #a3e635; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="tw-line" aria-live="polite">We build <span class="typed"></span><span class="caret" aria-hidden="true"></span></div>
+  <div class="terminal"><span class="term"></span><span class="caret" aria-hidden="true"></span></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* typewriter(el, phrases, opts): loops forever. Speeds are in ms; jitter makes typing feel human. */
+  function typewriter(el, phrases, { type = 70, del = 35, hold = 1600, jitter = 60, loop = true, wrapper } = {}) {
+    const host = wrapper || el.parentElement;
+    let p = 0;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    (async function run() {
+      while (true) {
+        const text = phrases[p];
+        host.classList.add("typing");
+        for (let i = 1; i <= text.length; i++) { el.textContent = text.slice(0, i); await sleep(type + Math.random() * jitter); }
+        host.classList.remove("typing");
+        await sleep(hold);
+        if (!loop && p === phrases.length - 1) return;
+        host.classList.add("typing");
+        for (let i = text.length; i >= 0; i--) { el.textContent = text.slice(0, i); await sleep(del); }
+        host.classList.remove("typing");
+        await sleep(300);
+        p = (p + 1) % phrases.length;
+      }
+    })();
+  }
+  const typed = document.querySelector(".typed");
+  if (Demo.reduced) typed.textContent = "websites.";
+  else typewriter(typed, ["websites.", "apps.", "brands.", "experiences."]);
+
+  // Multi-line variant: newline characters are typed too.
+  const term = document.querySelector(".term");
+  term.style.whiteSpace = "pre-wrap";
+  if (!Demo.reduced) typewriter(term, ["$ npm create web-assets\n✔ Scaffolding project…\n✔ Installing effects (250)\n✔ Ready in 1.2s", "$ git push\nEverything up-to-date"], { type: 35, hold: 2200, wrapper: term.parentElement });
+  else term.textContent = "$ npm create web-assets";
+</script>
+</body>
+</html>

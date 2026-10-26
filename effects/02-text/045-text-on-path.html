@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Text on an Animated Path</title>
+<meta name="description" content="A ribbon of text flows along an SVG wave whose shape undulates over time and follows the pointer's height.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .path-stage { position: fixed; inset: 0; display: grid; place-items: center; }
+  .path-stage svg { width: 100%; height: 70vh; overflow: visible; }
+  .path-stage text { font: 700 34px var(--font); fill: var(--fg); letter-spacing: 1px; }
+  .path-stage .guide { fill: none; stroke: rgb(255 255 255 / .06); stroke-width: 60; stroke-linecap: round; }
+</style>
+</head>
+<body>
+<div class="path-stage">
+  <svg viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid meet" aria-label="Text flowing along a wave">
+    <path id="wave" class="guide"/>
+    <text><textPath href="#wave" startOffset="0">✦ Words can travel along any path you draw ✦ Words can travel along any path you draw ✦ Words can travel along any path you draw ✦</textPath></text>
+  </svg>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const path = document.getElementById("wave"), tp = document.querySelector("textPath");
+  let amp = 90, targetAmp = 90, offset = 0;
+  addEventListener("pointermove", (e) => { targetAmp = (e.clientY / innerHeight - 0.5) * 300; });
+  function build(t) {
+    // Sample a sine wave into a smooth polyline path.
+    let d = "";
+    for (let x = -200; x <= 1400; x += 20) {
+      const y = 200 + Math.sin(x * 0.006 + t * 1.2) * amp + Math.sin(x * 0.013 - t) * amp * 0.3;
+      d += (d ? " L" : "M") + x + " " + y.toFixed(1);
+    }
+    path.setAttribute("d", d);
+  }
+  function frame(now) {
+    const t = now / 1000;
+    amp += (targetAmp - amp) * 0.05;
+    build(t);
+    offset = (offset - 1.2) % 900;      // scroll the text along the path
+    tp.setAttribute("startOffset", offset);
+    requestAnimationFrame(frame);
+  }
+  build(0);
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

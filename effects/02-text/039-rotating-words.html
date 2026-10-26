@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rotating Word Carousel</title>
+<meta name="description" content="A slot-machine word roller inside a sentence: words roll up into a clipped window while the window resizes to each word.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .headline { font-size: clamp(36px, 6.5vw, 86px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; text-align: center; margin: 0; }
+  .roller { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: bottom; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .roller ul { list-style: none; margin: 0; padding: 0; transition: transform .7s cubic-bezier(.7,-0.3,.25,1.3); }
+  .roller li { height: 1.1em; white-space: nowrap; }
+  .roller li:nth-child(5n+1) { color: #a78bfa; } .roller li:nth-child(5n+2) { color: #22d3ee; }
+  .roller li:nth-child(5n+3) { color: #f472b6; } .roller li:nth-child(5n+4) { color: #facc15; } .roller li:nth-child(5n) { color: #4ade80; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="headline">We build <span class="roller"><ul></ul></span><br>for the web.</h1>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const words = ["websites", "apps", "brands", "games", "tools"];
+  const roller = document.querySelector(".roller"), ul = roller.querySelector("ul");
+  // The first word is repeated at the end so the loop can snap back invisibly.
+  [...words, words[0]].forEach((w) => ul.insertAdjacentHTML("beforeend", `<li>${w}</li>`));
+  const items = [...ul.children];
+  roller.setAttribute("aria-label", words.join(", "));
+  ul.setAttribute("aria-hidden", "true");
+  let i = 0;
+  const fit = () => (roller.style.width = items[i].scrollWidth + "px");
+  function step() {
+    i++;
+    ul.style.transform = `translateY(${-i * 1.1}em)`;
+    fit();
+    if (i === words.length) {
+      setTimeout(() => { ul.style.transition = "none"; i = 0; ul.style.transform = "translateY(0)"; ul.getBoundingClientRect(); ul.style.transition = ""; }, 750);
+    }
+  }
+  document.fonts.ready.then(fit);
+  fit();
+  if (!Demo.reduced) setInterval(step, 2000);
+</script>
+</body>
+</html>

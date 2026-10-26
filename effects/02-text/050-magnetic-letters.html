@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repelling Magnetic Letters</title>
+<meta name="description" content="Letters are pushed away from the cursor like magnets of the same pole, then spring back home with damped physics.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .repel { font: 900 clamp(48px, 11vw, 160px)/1.05 var(--font); letter-spacing: -.03em; text-align: center; margin: 0; user-select: none; }
+  .repel span { display: inline-block; will-change: transform; }
+  .controls { display: flex; gap: 12px; }
+  .controls button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="repel">Keep your<br>distance</h1>
+  <div class="controls"><button data-mode="-1" aria-pressed="true">Repel</button><button data-mode="1" aria-pressed="false">Attract</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const el = document.querySelector(".repel");
+  el.setAttribute("aria-label", el.textContent);
+  el.innerHTML = el.innerHTML.split("<br>").map((l) => [...l].map((c) => `<span aria-hidden="true">${c === " " ? "&nbsp;" : c}</span>`).join("")).join("<br>");
+  const letters = [...el.querySelectorAll("span")].map((s) => ({ s, x: 0, y: 0, vx: 0, vy: 0, cx: 0, cy: 0 }));
+  let mx = -1e4, my = -1e4, mode = -1;
+  const RADIUS = 180, FORCE = 2.2, SPRING = 0.06, DAMP = 0.82;
+  function measure() { letters.forEach((l) => { const r = l.s.getBoundingClientRect(); l.cx = r.left + r.width / 2 - l.x; l.cy = r.top + r.height / 2 - l.y; }); }
+  function frame() {
+    for (const l of letters) {
+      const dx = l.cx + l.x - mx, dy = l.cy + l.y - my, d = Math.hypot(dx, dy) || 1;
+      if (d < RADIUS) {
+        const f = (1 - d / RADIUS) * FORCE * -mode;   // repel pushes along +d, attract pulls along -d
+        l.vx += (dx / d) * f * 6; l.vy += (dy / d) * f * 6;
+      }
+      l.vx = (l.vx - l.x * SPRING) * DAMP; l.vy = (l.vy - l.y * SPRING) * DAMP;   // spring home + damping
+      l.x += l.vx; l.y += l.vy;
+      l.s.style.transform = `translate(${l.x.toFixed(2)}px, ${l.y.toFixed(2)}px) rotate(${(l.x * 0.3).toFixed(2)}deg)`;
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  document.addEventListener("pointerleave", () => { mx = my = -1e4; });
+  addEventListener("resize", measure); addEventListener("scroll", measure, { passive: true });
+  document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => {
+    mode = +b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+  document.fonts.ready.then(measure); measure();
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

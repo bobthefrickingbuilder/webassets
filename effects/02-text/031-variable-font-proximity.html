@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cursor-proximity Variable Font</title>
+<meta name="description" content="Letters swell in weight, width and optical size as the cursor approaches, falling off smoothly with distance.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<link rel="stylesheet" href="../../assets/fonts/flex.css">
+<style>
+  .prox { font-family: "Flex", var(--font); font-size: clamp(48px, 10vw, 160px); line-height: 1.05; text-align: center; margin: 0; font-weight: 200; font-stretch: 60%; cursor: default; user-select: none; }
+  .prox span { display: inline-block; transition: color .3s; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="prox">Move your<br>cursor here</h1>
+  <p class="hint">Weight 200→1000 and width 60%→151% within a 260px radius.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const el = document.querySelector(".prox");
+  el.setAttribute("aria-label", el.textContent);
+  // Split while keeping the <br>.
+  el.innerHTML = el.innerHTML.split("<br>").map((line) => [...line].map((c) => `<span aria-hidden="true">${c === " " ? "&nbsp;" : c}</span>`).join("")).join("<br>");
+  const spans = [...el.querySelectorAll("span")];
+  const RADIUS = 260;
+  let mx = -9999, my = -9999, centers = [];
+  // Measure once per frame of interest: letter centres shift as widths change, so use the rest-state positions.
+  function measure() {
+    spans.forEach((s) => { s.style.fontWeight = ""; s.style.fontStretch = ""; });
+    centers = spans.map((s) => { const r = s.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  }
+  let cur = spans.map(() => 0);
+  function frame() {
+    spans.forEach((s, i) => {
+      const d = Math.hypot(mx - centers[i][0], my - centers[i][1]);
+      const target = Math.max(0, 1 - d / RADIUS);
+      cur[i] += (target * target * (3 - 2 * target) - cur[i]) * 0.18;   // smoothstep falloff + easing
+      s.style.fontWeight = Math.round(200 + cur[i] * 800);
+      s.style.fontStretch = (60 + cur[i] * 91).toFixed(1) + "%";
+      s.style.color = cur[i] > 0.6 ? "var(--accent-2)" : "";
+    });
+    requestAnimationFrame(frame);
+  }
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  addEventListener("pointerleave", () => { mx = my = -9999; });
+  addEventListener("resize", measure);
+  addEventListener("scroll", measure, { passive: true });
+  document.fonts.ready.then(() => { measure(); requestAnimationFrame(frame); });
+</script>
+</body>
+</html>

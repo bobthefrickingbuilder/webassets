@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neon Sign Flicker</title>
+<meta name="description" content="Glowing neon tube lettering built from layered text-shadows, with a realistic irregular flicker on individual letters and a power switch.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: radial-gradient(ellipse at center, #1a0f24, #07050a 70%); }
+  .neon { --c: #ff2bd6; font: 400 clamp(56px, 11vw, 150px)/1 "Brush Script MT", "Segoe Script", cursive; margin: 0; color: #fff6fd;
+          text-shadow: 0 0 4px #fff, 0 0 10px var(--c), 0 0 22px var(--c), 0 0 44px var(--c), 0 0 80px var(--c), 0 0 120px var(--c); transition: opacity .2s, text-shadow .2s; }
+  .neon.blue { --c: #2bd9ff; font-family: var(--font); font-weight: 300; letter-spacing: .12em; font-size: clamp(28px, 5vw, 56px); text-transform: uppercase; }
+  .flicker { animation: flicker 4s infinite; }
+  @keyframes flicker {
+    0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+    20%, 24%, 55% { opacity: .25; text-shadow: none; }
+  }
+  .off .neon { color: #3a2d3f; text-shadow: none; }
+  .off .flicker { animation: none; }
+  .switch { padding: 10px 20px; border-radius: 999px; border: 1px solid #3a2d3f; background: transparent; cursor: pointer; letter-spacing: .1em; text-transform: uppercase; font-size: 12px; }
+  .wall { padding: 48px; border-radius: 18px; border: 2px solid #2a1f30; text-align: center; display: grid; gap: 24px; }
+  @media (prefers-reduced-motion: reduce) { .flicker { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="wall"><h1 class="neon">Open late</h1><p class="neon blue">Cocktails · Music</p></div>
+  <button class="switch" aria-pressed="true">Power</button>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Give two random letters their own flicker so the whole sign doesn't blink in unison.
+  document.querySelectorAll(".neon").forEach((el) => {
+    const t = el.textContent; el.setAttribute("aria-label", t);
+    const chars = [...t];
+    const pick = new Set([Math.floor(Math.random() * chars.length), Math.floor(Math.random() * chars.length)]);
+    el.innerHTML = chars.map((c, i) => pick.has(i) && c !== " " ? `<span class="flicker" aria-hidden="true" style="animation-delay:${-Math.random() * 4}s;animation-duration:${3 + Math.random() * 3}s">${c}</span>` : `<span aria-hidden="true">${c}</span>`).join("");
+  });
+  const wall = document.querySelector("main"), btn = document.querySelector(".switch");
+  btn.onclick = () => { const on = wall.classList.toggle("off"); btn.setAttribute("aria-pressed", !on); };
+</script>
+</body>
+</html>

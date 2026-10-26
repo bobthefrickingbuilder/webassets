@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Split-flap Display</title>
+<meta name="description" content="An airport Solari board: each character cell flips through the alphabet with real top/bottom flap halves until it lands on its target.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .board { display: grid; gap: 10px; padding: 24px; border-radius: 16px; background: #0d0e11; border: 1px solid #1d1f26; box-shadow: inset 0 2px 20px #000; }
+  .line { display: flex; gap: 4px; }
+  .cell { --h: clamp(34px, 6vw, 64px); position: relative; width: calc(var(--h) * .68); height: var(--h); perspective: 300px; font: 700 calc(var(--h) * .72)/var(--h) var(--mono); color: #f5f1e6; text-align: center; }
+  .half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: #1b1d22; }
+  .half span { display: block; height: var(--h); }
+  .top { top: 0; border-radius: 5px 5px 0 0; transform-origin: bottom; }
+  .bottom { bottom: 0; border-radius: 0 0 5px 5px; transform-origin: top; }
+  .bottom span { margin-top: calc(var(--h) / -2); }
+  .cell::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #000; z-index: 5; }
+  .flap-top { z-index: 3; animation: flip-top var(--t) ease-in forwards; background: linear-gradient(#1b1d22, #24262c); }
+  .flap-bottom { z-index: 3; transform: rotateX(90deg); animation: flip-bottom var(--t) ease-out var(--t) forwards; }
+  @keyframes flip-top { to { transform: rotateX(-90deg); } }
+  @keyframes flip-bottom { to { transform: rotateX(0); } }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .controls input { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg); font: 15px var(--mono); text-transform: uppercase; width: 260px; }
+  .controls button { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--accent); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="board" aria-live="polite"></div>
+  <form class="controls"><input maxlength="16" placeholder="Type a destination" aria-label="Text to display"><button>Flip</button></form>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-.→", COLS = 16, FLIP = Demo.reduced ? 0 : 60; // ms per half flip
+  const board = document.querySelector(".board");
+
+  class Cell {
+    constructor(parent) {
+      this.el = document.createElement("div"); this.el.className = "cell"; this.el.style.setProperty("--t", FLIP + "ms");
+      this.cur = " ";
+      this.el.innerHTML = `<div class="half top"><span> </span></div><div class="half bottom"><span> </span></div>`;
+      parent.appendChild(this.el); this.busy = Promise.resolve();
+    }
+    flipTo(target) {
+      target = CHARS.includes(target) ? target : " ";
+      this.busy = this.busy.then(async () => {
+        while (this.cur !== target) {
+          const next = CHARS[(CHARS.indexOf(this.cur) + 1) % CHARS.length];
+          await this.step(next);
+        }
+      });
+    }
+    step(next) {
+      // Static halves show the next char on top and the current char at the bottom; two flaps animate over them.
+      const top = this.el.querySelector(".top span"), bottom = this.el.querySelector(".bottom span");
+      const cur = this.cur;
+      if (!FLIP) { top.textContent = bottom.textContent = this.cur = next; return Promise.resolve(); }
+      top.textContent = next;
+      const ft = document.createElement("div"); ft.className = "half top flap-top"; ft.innerHTML = `<span>${cur}</span>`;
+      const fb = document.createElement("div"); fb.className = "half bottom flap-bottom"; fb.innerHTML = `<span>${next}</span>`;
+      this.el.append(ft, fb);
+      return new Promise((res) => fb.addEventListener("animationend", () => {
+        bottom.textContent = next; ft.remove(); fb.remove(); this.cur = next; res();
+      }, { once: true }));
+    }
+  }
+
+  const lines = [0, 1, 2].map(() => { const l = document.createElement("div"); l.className = "line"; board.appendChild(l); return Array.from({ length: COLS }, () => new Cell(l)); });
+  function show(rows) {
+    rows.forEach((text, r) => { const t = text.toUpperCase().padEnd(COLS).slice(0, COLS); lines[r].forEach((c, i) => c.flipTo(t[i])); });
+    board.setAttribute("aria-label", rows.join(". "));
+  }
+  const boards = [["LONDON      09:40", "PARIS       10:05", "TOKYO       11:30"], ["NEW YORK    12:15", "BERLIN      DELAYED", "OSLO        ON TIME"]];
+  let k = 0;
+  show(boards[0]);
+  setInterval(() => show(boards[(k = (k + 1) % boards.length)]), 9000);
+  document.querySelector("form").onsubmit = (e) => { e.preventDefault(); const v = e.target[0].value || "HELLO"; show([v, "", ""]); };
+</script>
+</body>
+</html>

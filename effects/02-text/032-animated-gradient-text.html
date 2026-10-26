@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Gradient Text</title>
+<meta name="description" content="Three CSS-only gradient text treatments: a flowing linear gradient, a rotating conic gradient using @property, and a hue-cycling aurora.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  .gt { font-size: clamp(44px, 9vw, 120px); font-weight: 800; letter-spacing: -.05em; line-height: 1.05; margin: 0; text-align: center;
+        -webkit-background-clip: text; background-clip: text; color: transparent; }
+  /* 1. Flowing: an oversized gradient slides through the text. */
+  .flow { background-image: linear-gradient(90deg, #7c5cff, #22d3ee, #f472b6, #facc15, #7c5cff); background-size: 300% 100%; animation: flow 6s linear infinite; }
+  @keyframes flow { to { background-position: 300% 0; } }
+  /* 2. Conic: @property lets the browser interpolate the angle itself. */
+  .conic { background-image: conic-gradient(from var(--angle), #f97316, #ec4899, #8b5cf6, #06b6d4, #f97316); animation: spin 4s linear infinite; }
+  @keyframes spin { to { --angle: 360deg; } }
+  /* 3. Aurora: soft radial blobs drifting behind the glyphs. */
+  .aurora {
+    background-image: radial-gradient(circle at 20% 30%, #22d3ee 0 20%, transparent 45%), radial-gradient(circle at 80% 60%, #a78bfa 0 20%, transparent 45%), radial-gradient(circle at 50% 90%, #34d399 0 15%, transparent 40%), linear-gradient(#e0e7ff, #e0e7ff);
+    background-size: 200% 200%; animation: drift 9s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 50%; } 100% { background-position: 30% 100%; } }
+  @media (prefers-reduced-motion: reduce) { .gt { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="gt flow">Flowing gradient</h1>
+  <h1 class="gt conic">Conic spin</h1>
+  <h1 class="gt aurora">Aurora drift</h1>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

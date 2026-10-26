@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kinetic Typography Poster</title>
+<meta name="description" content="A looping Swiss-style type poster: rows slide in opposite directions while a variable font stretches and compresses in rhythm.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<link rel="stylesheet" href="../../assets/fonts/flex.css">
+<style>
+  body { background: #ff4d1f; color: #111; overflow: hidden; }
+  .poster { height: 100vh; display: grid; grid-template-rows: repeat(7, 1fr); font-family: "Flex", var(--font); text-transform: uppercase; overflow: hidden; }
+  .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; border-bottom: 2px solid #111; }
+  .row .strip { display: inline-flex; gap: .3em; font-size: 12vh; line-height: 1; animation: slide var(--d, 12s) linear infinite; padding-right: .3em; }
+  .row:nth-child(even) .strip { animation-direction: reverse; }
+  .row .strip span { display: inline-block; }
+  .row.invert { background: #111; color: #ff4d1f; }
+  @keyframes slide { to { transform: translateX(-50%); } }
+  .badge { position: fixed; right: 4vw; bottom: 6vh; width: 22vh; height: 22vh; border-radius: 50%; background: #f5f0e6; display: grid; place-items: center; text-align: center;
+           font: 800 2.4vh/1.1 var(--font); animation: spin 10s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .row .strip, .badge { animation: none; } }
+</style>
+</head>
+<body>
+<div class="poster" aria-label="Kinetic type poster: Form follows motion"></div>
+<div class="badge" aria-hidden="true">FORM<br>FOLLOWS<br>MOTION<br>— 2026 —</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const rows = ["Form", "Follows", "Motion", "Type", "Is", "Alive", "Move"];
+  const poster = document.querySelector(".poster");
+  rows.forEach((w, r) => {
+    const row = document.createElement("div");
+    row.className = "row" + (r % 3 === 1 ? " invert" : "");
+    row.setAttribute("aria-hidden", "true");
+    // Two identical halves → translateX(-50%) loops seamlessly.
+    const half = Array.from({ length: 6 }, () => `<span>${w}</span><span>✱</span>`).join("");
+    row.innerHTML = `<div class="strip" style="--d:${10 + r * 2}s">${half}${half}</div>`;
+    poster.appendChild(row);
+  });
+  // Rhythm: every word breathes between condensed-heavy and extended-light, offset per row and column.
+  const spans = [...document.querySelectorAll(".strip span")];
+  function frame(t) {
+    const s = t / 1000;
+    spans.forEach((el, i) => {
+      const row = Math.floor(i / 24);
+      const k = (Math.sin(s * 1.6 - row * 0.8 - (i % 24) * 0.35) + 1) / 2;
+      el.style.fontStretch = (25 + k * 126).toFixed(0) + "%";
+      el.style.fontWeight = Math.round(1000 - k * 700);
+    });
+    requestAnimationFrame(frame);
+  }
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

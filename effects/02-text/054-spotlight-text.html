@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cursor Spotlight Text</title>
+<meta name="description" content="Dim text that lights up in a soft circle around the cursor, revealing a colourful layer beneath via a radial CSS mask.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .spot { position: relative; font: 800 clamp(40px, 7.5vw, 104px)/1.05 var(--font); letter-spacing: -.04em; max-width: 13ch; text-align: center; margin: 0; --x: -999px; --y: -999px; }
+  .spot .dim { color: #1d2029; }
+  .spot .lit { position: absolute; inset: 0; background: linear-gradient(120deg, #a78bfa, #22d3ee 40%, #f472b6 70%, #facc15);
+               -webkit-background-clip: text; background-clip: text; color: transparent;
+               -webkit-mask-image: radial-gradient(circle 180px at var(--x) var(--y), #000 30%, transparent 100%);
+               mask-image: radial-gradient(circle 180px at var(--x) var(--y), #000 30%, transparent 100%); }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="spot"><span class="dim">Shine a light on what matters most.</span><span class="lit" aria-hidden="true">Shine a light on what matters most.</span></h1>
+  <p class="hint">Move your cursor over the text.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const spot = document.querySelector(".spot");
+  let tx = -999, ty = -999, x = -999, y = -999;
+  addEventListener("pointermove", (e) => { const r = spot.getBoundingClientRect(); tx = e.clientX - r.left; ty = e.clientY - r.top; if (x < -900) { x = tx; y = ty; } });
+  (function loop() {
+    x += (tx - x) * 0.15; y += (ty - y) * 0.15;      // a little lag makes the light feel physical
+    spot.style.setProperty("--x", x + "px"); spot.style.setProperty("--y", y + "px");
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

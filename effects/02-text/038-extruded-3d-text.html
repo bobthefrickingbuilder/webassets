@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Extruded Text</title>
+<meta name="description" content="Chunky retro 3D lettering built from a stack of text-shadows whose extrusion direction follows the mouse, with a long soft drop shadow.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #fde68a; }
+  .extrude { font: 900 clamp(64px, 14vw, 200px)/1 var(--font); letter-spacing: -.03em; color: #fff7ed; margin: 0; text-align: center; transform: rotate(-4deg); }
+  .hint { color: #78350f; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1 class="extrude">POP!</h1>
+  <p class="hint">Move the mouse to change the extrusion angle.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const el = document.querySelector(".extrude");
+  const DEPTH = 18, faces = ["#f97316", "#ea580c"];       // alternating extrusion colours
+  let ax = 1, ay = 1, tx = 1, ty = 1;
+  function render() {
+    const s = [];
+    for (let i = 1; i <= DEPTH; i++) s.push(`${(ax * i).toFixed(1)}px ${(ay * i).toFixed(1)}px 0 ${faces[i % 2]}`);
+    s.push(`${ax * DEPTH + ax * 14}px ${ay * DEPTH + ay * 14}px 30px rgb(120 53 15 / .45)`);   // soft cast shadow
+    el.style.textShadow = s.join(",");
+  }
+  addEventListener("pointermove", (e) => {
+    // Extrude away from the cursor.
+    const dx = innerWidth / 2 - e.clientX, dy = innerHeight / 2 - e.clientY;
+    const len = Math.hypot(dx, dy) || 1;
+    tx = dx / len; ty = dy / len;
+  });
+  (function loop() {
+    ax += (tx - ax) * 0.1; ay += (ty - ay) * 0.1;
+    render();
+    if (!Demo.reduced) requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

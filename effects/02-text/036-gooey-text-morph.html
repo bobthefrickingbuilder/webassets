@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gooey Text Morph</title>
+<meta name="description" content="Words melt into each other: two blurred layers cross-fade through an SVG alpha-threshold filter, giving a liquid morph.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .morph { position: relative; height: 1.2em; width: 100%; font: 800 clamp(56px, 12vw, 160px)/1.2 var(--font); letter-spacing: -.05em; filter: url(#threshold) blur(.6px); }
+  .morph span { position: absolute; inset: 0; text-align: center; user-select: none; color: var(--fg); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Pushes alpha to near 0 or 1 so overlapping blurry glyphs fuse into one liquid shape. -->
+  <filter id="threshold"><feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 255 -140"/></filter>
+</svg>
+<main class="center"><div class="stack" style="width:100%">
+  <div class="morph" aria-live="polite"><span class="a"></span><span class="b"></span></div>
+  <p class="hint">An SVG feColorMatrix alpha threshold turns a blur cross-fade into a gooey morph.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const words = ["Liquid", "Morph", "Goo", "Melt", "Flow"];
+  const a = document.querySelector(".a"), b = document.querySelector(".b");
+  const MORPH = 1.1, HOLD = 1.4;          // seconds
+  let idx = 0, t0 = performance.now();
+  a.textContent = words[0]; b.textContent = words[1];
+  function setBlend(f) {
+    // b fades in while sharpening; a fades out while blurring. Blur is large when opacity is low.
+    b.style.filter = `blur(${Math.min(8 / f - 8, 100)}px)`; b.style.opacity = Math.pow(f, 0.4);
+    const g = 1 - f;
+    a.style.filter = `blur(${Math.min(8 / g - 8, 100)}px)`; a.style.opacity = Math.pow(g, 0.4);
+  }
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    if (t < HOLD) { a.style.filter = ""; a.style.opacity = 1; b.style.opacity = 0; }
+    else if (t < HOLD + MORPH) setBlend((t - HOLD) / MORPH);
+    else {
+      idx = (idx + 1) % words.length;
+      a.textContent = words[idx]; b.textContent = words[(idx + 1) % words.length];
+      t0 = now;
+    }
+    requestAnimationFrame(frame);
+  }
+  if (Demo.reduced) { a.textContent = words.join(" · "); b.textContent = ""; document.querySelector(".morph").style.fontSize = "40px"; }
+  else requestAnimationFrame(frame);
+</script>
+</body>
+</html>
