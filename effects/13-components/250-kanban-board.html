@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kanban Board with Animated Drag</title>
+<meta name="description" content="A Trello-style kanban: drag cards between columns with a tilted, lifted ghost that follows the pointer with spring lag, a placeholder that opens space, FLIP animations for every card that moves, column counts that bump, keyboard moves, inline add, and state saved locally.">
+<meta name="tech" content="JS, FLIP, Pointer events">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: linear-gradient(135deg, #14152a, #0b0c10); }
+  main { padding: 76px 16px 20px; overflow-x: auto; }
+  .board { display: flex; gap: 14px; align-items: flex-start; min-width: min-content; }
+  .col { width: 280px; flex: none; border-radius: 18px; background: rgb(255 255 255 / .04); border: 1px solid var(--line); padding: 10px; transition: background .2s, border-color .2s; }
+  .col.over { background: rgb(124 92 255 / .08); border-color: rgb(124 92 255 / .5); }
+  .col h2 { display: flex; align-items: center; gap: 8px; margin: 4px 6px 10px; font-size: 14px; }
+  .col h2 i { width: 10px; height: 10px; border-radius: 50%; }
+  .count { margin-left: auto; font: 600 12px var(--mono); color: var(--muted); padding: 2px 8px; border-radius: 999px; background: rgb(255 255 255 / .06); }
+  .count.bump { animation: bump .35s; } @keyframes bump { 50% { transform: scale(1.35); color: #fff; } }
+  .cards { display: grid; gap: 8px; min-height: 40px; }
+  .card { padding: 12px; border-radius: 12px; background: #1c1d28; border: 1px solid var(--line); cursor: grab; user-select: none; touch-action: none; font-size: 14px; }
+  .card:focus-visible { outline: 2px solid var(--accent); }
+  .card .tags { display: flex; gap: 4px; margin-bottom: 8px; } .card .tags span { height: 6px; width: 30px; border-radius: 3px; }
+  .card .meta { display: flex; justify-content: space-between; margin-top: 10px; color: var(--muted); font-size: 12px; }
+  .card .av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #000; }
+  .card.src { opacity: .25; }
+  .ph { border-radius: 12px; border: 2px dashed rgb(124 92 255 / .5); background: rgb(124 92 255 / .06); }
+  .ghost { position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none; box-shadow: 0 24px 50px rgb(0 0 0 / .55); cursor: grabbing; }
+  .add { width: 100%; margin-top: 8px; padding: 8px; border-radius: 10px; border: 0; background: none; color: var(--muted); text-align: left; cursor: pointer; }
+  .add:hover { background: rgb(255 255 255 / .05); color: var(--fg); }
+  .new { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--accent); background: #1c1d28; color: inherit; font: inherit; margin-top: 8px; resize: none; }
+</style>
+</head>
+<body>
+<main><div class="board"></div></main>
+<p class="sr" aria-live="assertive" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+<script src="../../assets/demo.js"></script>
+<script>
+  const COLS = [["todo", "To do", "#94a3b8"], ["doing", "In progress", "#fbbf24"], ["review", "Review", "#a78bfa"], ["done", "Done", "#22c55e"]];
+  const TAGC = ["#f472b6", "#22d3ee", "#fbbf24", "#a78bfa", "#4ade80"], PEOPLE = [["AR", "#fda4af"], ["KI", "#93c5fd"], ["PN", "#fde68a"], ["TB", "#86efac"]];
+  const DEFAULT = { todo: ["Design onboarding flow", "Write API docs", "Audit colour contrast", "Set up error tracking"], doing: ["Build pricing page", "Refactor auth hooks"], review: ["Dark mode polish"], done: ["Project kickoff", "Pick a font"] };
+  let state;
+  try { state = JSON.parse(localStorage.getItem("kanban-demo")); } catch {}
+  if (!state) { let id = 0; state = {}; for (const k in DEFAULT) state[k] = DEFAULT[k].map((t) => ({ id: "c" + id++, t, tags: [id % 5, (id * 3) % 5].slice(0, 1 + (id % 2)), who: id % 4, est: 1 + (id * 7) % 5 })); }
+  const persist = () => { try { localStorage.setItem("kanban-demo", JSON.stringify(state)); } catch {} };
+  const board = document.querySelector(".board"), sr = document.querySelector(".sr");
+  const cardEl = (c) => {
+    const el = document.createElement("div"); el.className = "card"; el.tabIndex = 0; el.dataset.id = c.id;
+    el.innerHTML = `<div class="tags">${c.tags.map((t) => `<span style="background:${TAGC[t]}"></span>`).join("")}</div><div class="t"></div><div class="meta"><span>⏱ ${c.est}d</span><span class="av" style="background:${PEOPLE[c.who][1]}">${PEOPLE[c.who][0]}</span></div>`;
+    el.querySelector(".t").textContent = c.t; return el;
+  };
+  COLS.forEach(([k, name, col]) => {
+    const c = document.createElement("section"); c.className = "col"; c.dataset.k = k;
+    c.innerHTML = `<h2><i style="background:${col}"></i>${name}<span class="count">${state[k].length}</span></h2><div class="cards" role="list" aria-label="${name}"></div><button class="add">+ Add a card</button>`;
+    state[k].forEach((card) => c.querySelector(".cards").appendChild(cardEl(card)));
+    c.querySelector(".add").onclick = () => addCard(c);
+    board.appendChild(c);
+  });
+  const all = () => [...board.querySelectorAll(".card, .ph")];
+  function flip(mutate, skip = []) {
+    const els = all(), first = new Map(els.map((e) => [e, e.getBoundingClientRect()]));
+    mutate();
+    if (Demo.reduced) return;
+    els.forEach((e) => { if (skip.includes(e) || !e.isConnected) return; const a = first.get(e), b = e.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (dx || dy) e.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" }); });
+  }
+  function syncState() {
+    board.querySelectorAll(".col").forEach((col) => {
+      const k = col.dataset.k, ids = [...col.querySelectorAll(".card:not(.ghost)")].map((e) => e.dataset.id), byId = Object.fromEntries(Object.values(state).flat().map((c) => [c.id, c]));
+      const n = ids.length, cnt = col.querySelector(".count"); if (+cnt.textContent !== n) { cnt.textContent = n; cnt.classList.remove("bump"); void cnt.offsetWidth; cnt.classList.add("bump"); }
+      col._ids = ids.map((id) => byId[id]);
+    });
+    board.querySelectorAll(".col").forEach((col) => (state[col.dataset.k] = col._ids));
+    persist();
+  }
+  // --- Pointer drag ---
+  let d = null;
+  board.addEventListener("pointerdown", (e) => {
+    const card = e.target.closest(".card"); if (!card || e.button) return;
+    const r = card.getBoundingClientRect();
+    d = { card, ox: e.clientX - r.left, oy: e.clientY - r.top, x: r.left, y: r.top, tx: r.left, ty: r.top, vx: 0, started: false, sx: e.clientX, sy: e.clientY, w: r.width, h: r.height };
+    board.setPointerCapture(e.pointerId);   // the card itself gets hidden while dragging
+  });
+  board.addEventListener("pointermove", (e) => {
+    if (!d) return;
+    if (!d.started) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) return; start(); }
+    d.tx = e.clientX - d.ox; d.ty = e.clientY - d.oy; d.px = e.clientX; d.py = e.clientY;
+    const col = document.elementsFromPoint(e.clientX, e.clientY).find((el) => el.classList?.contains("col"));
+    board.querySelectorAll(".col").forEach((c) => c.classList.toggle("over", c === col));
+    if (!col) return;
+    // find the card the pointer is above (by vertical midpoints) and move the placeholder there
+    const list = col.querySelector(".cards"), cards = [...list.querySelectorAll(".card:not(.src)")];
+    const before = cards.find((c) => e.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2) || null;
+    if (d.ph.parentElement !== list || d.ph.nextElementSibling !== before) flip(() => list.insertBefore(d.ph, before), [d.ph]);
+  });
+  function start() {
+    d.started = true;
+    d.ghost = d.card.cloneNode(true); d.ghost.classList.add("ghost"); d.ghost.style.width = d.w + "px"; document.body.appendChild(d.ghost);
+    d.ph = document.createElement("div"); d.ph.className = "ph"; d.ph.style.height = d.h + "px";
+    d.card.after(d.ph); d.card.classList.add("src"); d.card.style.display = "none";
+    requestAnimationFrame(loop);
+  }
+  function loop() {
+    if (!d || !d.started) return;
+    // spring-lag follow, and tilt by horizontal velocity
+    const px = d.x; d.x += (d.tx - d.x) * .35; d.y += (d.ty - d.y) * .35; d.vx = d.x - px;
+    const tilt = Math.max(-12, Math.min(12, d.vx * .8));
+    d.ghost.style.transform = `translate(${d.x}px, ${d.y}px) rotate(${tilt + 3}deg) scale(1.04)`;
+    // auto-scroll the board horizontally near edges
+    const m = document.querySelector("main"); if (d.px < 40) m.scrollLeft -= 10; else if (d.px > innerWidth - 40) m.scrollLeft += 10;
+    requestAnimationFrame(loop);
+  }
+  const end = () => {
+    if (!d) return; const { card, ghost, ph, started } = d; d = null;
+    board.querySelectorAll(".col").forEach((c) => c.classList.remove("over"));
+    if (!started) return;
+    // drop: fly the ghost into the placeholder, then swap in the real card
+    const r = ph.getBoundingClientRect();
+    const fin = () => { ph.replaceWith(card); card.style.display = ""; card.classList.remove("src"); ghost.remove(); syncState(); card.focus({ preventScroll: true }); sr.textContent = `${card.querySelector(".t").textContent} moved to ${card.closest(".col").querySelector("h2").textContent.replace(/\d+$/, "")}`; };
+    if (Demo.reduced) return fin();
+    ghost.animate([{ transform: ghost.style.transform }, { transform: `translate(${r.left}px, ${r.top}px)` }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }).onfinish = fin;
+  };
+  board.addEventListener("pointerup", end); board.addEventListener("pointercancel", end);
+  // --- Keyboard: ←/→ move between columns, ↑/↓ reorder ---
+  board.addEventListener("keydown", (e) => {
+    const card = e.target.closest(".card"); if (!card) return;
+    const col = card.closest(".col"), cols = [...board.querySelectorAll(".col")], ci = cols.indexOf(col);
+    let moved = true;
+    if (e.key === "ArrowRight" && ci < cols.length - 1) flip(() => cols[ci + 1].querySelector(".cards").prepend(card));
+    else if (e.key === "ArrowLeft" && ci > 0) flip(() => cols[ci - 1].querySelector(".cards").prepend(card));
+    else if (e.key === "ArrowUp" && card.previousElementSibling) flip(() => card.previousElementSibling.before(card));
+    else if (e.key === "ArrowDown" && card.nextElementSibling) flip(() => card.nextElementSibling.after(card));
+    else moved = false;
+    if (moved) { e.preventDefault(); card.focus(); syncState(); sr.textContent = `Moved to ${card.closest(".col").querySelector("h2").textContent.replace(/\d+$/, "")}`; }
+  });
+  function addCard(col) {
+    const ta = document.createElement("textarea"); ta.className = "new"; ta.rows = 2; ta.placeholder = "Card title, Enter to add";
+    col.querySelector(".add").before(ta); ta.focus();
+    let finished = false;
+    const done = (keep) => { if (finished) return; finished = true; const t = ta.value.trim(); ta.remove(); if (!keep || !t) return; const c = { id: "c" + Date.now(), t, tags: [Math.floor(Math.random() * 5)], who: Math.floor(Math.random() * 4), est: 1 }; const el = cardEl(c); state[col.dataset.k].push(c); col.querySelector(".cards").appendChild(el); if (!Demo.reduced) el.animate([{ opacity: 0, transform: "scale(.9)" }, { opacity: 1, transform: "none" }], { duration: 250 }); syncState(); };
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); done(true); } if (e.key === "Escape") done(false); });
+    ta.addEventListener("blur", () => done(true));
+  }
+</script>
+</body>
+</html>

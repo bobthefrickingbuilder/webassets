@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flip-digit Countdown</title>
+<meta name="description" content="A split-flap countdown to a launch date: each digit card has top and bottom halves, and on change the top flap folds down in 3D to reveal the new digit (back-face trick with two leaves). Days, hours, minutes, seconds, with an editable target and a finish celebration.">
+<meta name="tech" content="CSS 3D, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 22px; padding: 70px 12px 20px; }
+  h1 { margin: 0; font-size: clamp(22px, 4vw, 36px); letter-spacing: -.02em; }
+  .clock { display: flex; gap: clamp(8px, 2vw, 22px); }
+  .unit { display: grid; gap: 10px; justify-items: center; }
+  .unit small { color: var(--muted); letter-spacing: .14em; text-transform: uppercase; font-size: 11px; }
+  .digits { display: flex; gap: 6px; }
+  .card { --h: clamp(52px, 9vw, 120px); position: relative; width: calc(var(--h) * .7); height: var(--h); perspective: 400px; font: 800 calc(var(--h) * .72) / var(--h) var(--font); text-align: center; color: #f2f2f6; }
+  .half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: #1d1e27; }
+  .half span { position: absolute; left: 0; right: 0; height: var(--h); }
+  .top { top: 0; border-radius: 10px 10px 0 0; background: linear-gradient(#24252f, #1d1e27); }
+  .bot { bottom: 0; border-radius: 0 0 10px 10px; } .bot span { bottom: 0; }
+  .card::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: #0b0c10; z-index: 5; }
+  .leaf { position: absolute; left: 0; right: 0; top: 0; height: 50%; transform-origin: bottom; transform-style: preserve-3d; z-index: 3; }
+  .leaf .front, .leaf .back { position: absolute; inset: 0; backface-visibility: hidden; overflow: hidden; }
+  .leaf .front { border-radius: 10px 10px 0 0; background: linear-gradient(#24252f, #1d1e27); }
+  .leaf .back { transform: rotateX(180deg); border-radius: 0 0 10px 10px; background: #1d1e27; }
+  .leaf .front span, .leaf .back span { position: absolute; left: 0; right: 0; height: var(--h); }
+  .leaf .back span { bottom: 0; }
+  .leaf.go { animation: flip .6s cubic-bezier(.4, 0, .3, 1) forwards; }
+  @keyframes flip { 0% { transform: rotateX(0); } 100% { transform: rotateX(-180deg); } }
+  .leaf.go .front { animation: shade .6s forwards; }
+  @keyframes shade { to { filter: brightness(.5); } }
+  .sep { font: 800 clamp(40px, 8vw, 80px) var(--font); color: #3a3c4a; align-self: center; margin-top: -24px; }
+  .ctrl { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; flex-wrap: wrap; justify-content: center; }
+  .ctrl input, .ctrl button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); color: inherit; }
+  .ctrl button { cursor: pointer; }
+  .done h1 { animation: pop .6s cubic-bezier(.3, 1.8, .5, 1); color: #22c55e; }
+  @keyframes pop { from { transform: scale(.6); } }
+  @media (prefers-reduced-motion: reduce) { .leaf.go { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="title">Launching in…</h1>
+  <div class="clock" role="timer" aria-live="off"></div>
+  <div class="ctrl"><label>Target <input type="datetime-local" class="target"></label><button class="ten">Demo: 10 s</button></div>
+  <p class="sr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const clock = document.querySelector(".clock");
+  const UNITS = [["days", 3], ["hours", 2], ["minutes", 2], ["seconds", 2]];
+  const cards = [];
+  UNITS.forEach(([name, n], u) => {
+    if (u) clock.insertAdjacentHTML("beforeend", '<span class="sep" aria-hidden="true">:</span>');
+    const unit = document.createElement("div"); unit.className = "unit";
+    unit.innerHTML = `<div class="digits"></div><small>${name}</small>`;
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement("div"); c.className = "card"; c.setAttribute("aria-hidden", "true");
+      c.innerHTML = '<div class="half top"><span>0</span></div><div class="half bot"><span>0</span></div>';
+      unit.querySelector(".digits").appendChild(c); cards.push({ el: c, v: "0", name });
+    }
+    clock.appendChild(unit);
+  });
+  // Flip: static top shows NEW, static bottom shows OLD; a leaf (front = old top, back = new bottom) folds down.
+  function setDigit(card, v) {
+    if (card.v === v) return;
+    const old = card.v; card.v = v;
+    const top = card.el.querySelector(".top span"), bot = card.el.querySelector(".bot span");
+    top.textContent = v; bot.textContent = old;
+    card.el.querySelector(".leaf")?.remove();
+    const leaf = document.createElement("div"); leaf.className = "leaf";
+    leaf.innerHTML = `<div class="front"><span>${old}</span></div><div class="back"><span>${v}</span></div>`;
+    card.el.appendChild(leaf);
+    requestAnimationFrame(() => leaf.classList.add("go"));
+    leaf.addEventListener("animationend", (e) => { if (e.target !== leaf) return; bot.textContent = v; leaf.remove(); });
+  }
+  let target = new Date(Date.now() + ((3 * 24 + 7) * 3600 + 42 * 60 + 15) * 1000);
+  const input = document.querySelector(".target");
+  const toLocal = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  input.value = toLocal(target);
+  input.onchange = () => { target = new Date(input.value); document.body.classList.remove("done"); document.querySelector(".title").textContent = "Launching in…"; };
+  document.querySelector(".ten").onclick = () => { target = new Date(Date.now() + 10500); input.value = toLocal(target); document.body.classList.remove("done"); document.querySelector(".title").textContent = "Launching in…"; };
+  let lastAnnounce = 0;
+  function tick() {
+    let s = Math.max(0, Math.floor((target - Date.now()) / 1000));
+    const parts = [Math.floor(s / 86400), Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60, s % 60];
+    const str = parts.map((p, i) => String(Math.min(p, i ? 99 : 999)).padStart(UNITS[i][1], "0")).join("");
+    [...str].forEach((ch, i) => setDigit(cards[i], ch));
+    if (!s && !document.body.classList.contains("done")) { document.body.classList.add("done"); document.querySelector(".title").textContent = "🚀 We're live!"; }
+    // announce once a minute for screen readers, not every second
+    if (Date.now() - lastAnnounce > 60000 || !s) { lastAnnounce = Date.now(); document.querySelector(".sr").textContent = `${parts[0]} days, ${parts[1]} hours, ${parts[2]} minutes remaining`; }
+  }
+  tick(); setInterval(tick, 250);
+</script>
+</body>
+</html>

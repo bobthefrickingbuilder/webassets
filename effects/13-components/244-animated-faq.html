@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated FAQ Section</title>
+<meta name="description" content="A FAQ with category tabs (sliding underline), instant search that highlights matches and FLIP-animates the list as items filter in and out, expanding answers with a grid-template-rows 0fr→1fr transition, and a deep-link hash per question.">
+<meta name="tech" content="CSS, JS, FLIP">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 760px; margin: 0 auto; padding: 90px 20px 60px; }
+  h1 { margin: 0 0 18px; font-size: clamp(30px, 5vw, 46px); letter-spacing: -.03em; }
+  .search { width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2); color: inherit; font-size: 16px; }
+  .tabs { position: relative; display: flex; gap: 4px; margin: 16px 0 20px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tabs button { padding: 10px 14px; border: 0; background: none; color: var(--muted); cursor: pointer; font-weight: 600; white-space: nowrap; }
+  .tabs button[aria-selected="true"] { color: var(--fg); }
+  .tabs .ul { position: absolute; bottom: -1px; height: 2px; background: var(--accent); transition: left .35s cubic-bezier(.3, 1.3, .5, 1), width .35s cubic-bezier(.3, 1.3, .5, 1); }
+  .q { border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); margin-bottom: 10px; }
+  .q.hide { display: none; }
+  .q button { width: 100%; display: flex; gap: 12px; align-items: center; padding: 16px 18px; border: 0; background: none; color: inherit; text-align: left; font: 600 15px var(--font); cursor: pointer; }
+  .q button .pm { margin-left: auto; position: relative; width: 14px; height: 14px; flex: none; }
+  .q button .pm::before, .q button .pm::after { content: ""; position: absolute; left: 0; top: 6px; width: 14px; height: 2px; background: currentColor; transition: rotate .3s; }
+  .q button .pm::after { rotate: 90deg; }
+  .q.open button .pm::after { rotate: 0deg; }
+  .a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s cubic-bezier(.2, .8, .2, 1); }
+  .q.open .a { grid-template-rows: 1fr; }
+  .a > div { overflow: hidden; }
+  .a p { margin: 0; padding: 0 18px 18px; color: var(--muted); line-height: 1.6; }
+  mark { background: rgb(124 92 255 / .35); color: inherit; border-radius: 3px; padding: 0 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 30px; display: none; }
+  .q:target { outline: 2px solid var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .a, .tabs .ul { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Frequently asked</h1>
+  <input class="search" type="search" placeholder="Search questions…" aria-label="Search FAQ">
+  <div class="tabs" role="tablist"><span class="ul"></span></div>
+  <div class="list"></div>
+  <p class="empty">No questions match. <a href="#" class="reset">Clear search</a></p>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const FAQ = [
+    ["Billing", "Can I change plans later?", "Yes, upgrade or downgrade any time; we prorate the difference to the day."],
+    ["Billing", "Do you offer refunds?", "Within 30 days of purchase, no questions asked."],
+    ["Billing", "Which payment methods do you accept?", "All major cards, PayPal and bank transfer for annual plans."],
+    ["Account", "How do I reset my password?", "Use 'Forgot password' on the sign-in page; the link is valid for one hour."],
+    ["Account", "Can I have multiple workspaces?", "Yes, every account can own unlimited workspaces and switch with ⌘K."],
+    ["Security", "Is my data encrypted?", "At rest with AES-256 and in transit with TLS 1.3."],
+    ["Security", "Do you support SSO?", "SAML and OIDC single sign-on are available on the Team plan."],
+    ["Product", "Is there an API?", "A REST and GraphQL API with generous rate limits, plus webhooks."],
+    ["Product", "Does it work offline?", "The desktop app syncs changes when you're back online."],
+  ];
+  const list = document.querySelector(".list"), tabs = document.querySelector(".tabs"), ul = tabs.querySelector(".ul"), search = document.querySelector(".search");
+  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  FAQ.forEach(([cat, q, a], i) => {
+    const el = document.createElement("div"); el.className = "q"; el.id = slug(q); el.dataset.cat = cat;
+    el.innerHTML = `<button aria-expanded="false" aria-controls="a${i}"><span class="qt"></span><span class="pm" aria-hidden="true"></span></button><div class="a" id="a${i}" role="region"><div><p></p></div></div>`;
+    el.querySelector(".qt").textContent = q; el.querySelector("p").textContent = a + " " + Demo.lorem(14, i);
+    el.dataset.q = q; el.dataset.a = el.querySelector("p").textContent;
+    el.querySelector("button").onclick = () => { const o = el.classList.toggle("open"); el.querySelector("button").setAttribute("aria-expanded", o); history.replaceState(null, "", o ? "#" + el.id : location.pathname); };
+    list.appendChild(el);
+  });
+  ["All", ...new Set(FAQ.map((f) => f[0]))].forEach((c, i) => { const b = document.createElement("button"); b.setAttribute("role", "tab"); b.textContent = c; b.setAttribute("aria-selected", !i); b.onclick = () => { cat = c; tabs.querySelectorAll("button").forEach((x) => x.setAttribute("aria-selected", x === b)); moveUL(); apply(); }; tabs.appendChild(b); });
+  let cat = "All";
+  function moveUL() { const b = tabs.querySelector('[aria-selected="true"]'); ul.style.left = b.offsetLeft + "px"; ul.style.width = b.offsetWidth + "px"; }
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const hl = (text, q) => (q ? esc(text).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`) : esc(text));
+  // FLIP: record positions, change the filter, then animate each surviving item from old to new position
+  function apply() {
+    const items = [...list.children], first = new Map(items.map((el) => [el, el.getBoundingClientRect().top]));
+    const q = search.value.trim().toLowerCase(); let shown = 0;
+    items.forEach((el) => {
+      const match = (cat === "All" || el.dataset.cat === cat) && (!q || (el.dataset.q + " " + el.dataset.a).toLowerCase().includes(q));
+      const was = !el.classList.contains("hide"); el.classList.toggle("hide", !match); if (match) shown++;
+      el.querySelector(".qt").innerHTML = hl(el.dataset.q, q); el.querySelector("p").innerHTML = hl(el.dataset.a, q);
+      if (match && q && !el.classList.contains("open") && el.dataset.a.toLowerCase().includes(q)) { el.classList.add("open"); el.querySelector("button").setAttribute("aria-expanded", true); }
+      if (match && !was && !Demo.reduced) el.animate([{ opacity: 0, transform: "scale(.96)" }, { opacity: 1, transform: "none" }], { duration: 300, easing: "ease-out" });
+    });
+    if (!Demo.reduced) items.forEach((el) => { if (el.classList.contains("hide") || !first.has(el)) return; const dy = first.get(el) - el.getBoundingClientRect().top; if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 350, easing: "cubic-bezier(.2,.8,.2,1)" }); });
+    document.querySelector(".empty").style.display = shown ? "none" : "block";
+  }
+  search.addEventListener("input", apply);
+  document.querySelector(".reset").onclick = (e) => { e.preventDefault(); search.value = ""; apply(); };
+  addEventListener("resize", moveUL); moveUL();
+  // deep link: open the question in the URL hash
+  const h = location.hash && document.getElementById(location.hash.slice(1)); if (h) h.querySelector("button").click();
+</script>
+</body>
+</html>

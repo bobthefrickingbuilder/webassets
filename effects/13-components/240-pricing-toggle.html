@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Pricing Table</title>
+<meta name="description" content="A pricing section with a monthly/yearly segmented toggle whose pill slides between options; prices roll digit by digit like an odometer, a 'save 20%' badge pops in, and the featured plan has an animated gradient border and spotlight hover.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  main { max-width: 1040px; margin: 0 auto; padding: 90px 20px 40px; text-align: center; }
+  h1 { margin: 0 0 8px; font-size: clamp(32px, 5vw, 52px); letter-spacing: -.03em; }
+  .toggle { position: relative; display: inline-flex; padding: 4px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); margin: 18px 0 34px; }
+  .toggle button { position: relative; z-index: 1; padding: 10px 22px; border: 0; background: none; color: var(--muted); font-weight: 650; cursor: pointer; transition: color .3s; }
+  .toggle button[aria-pressed="true"] { color: #000; }
+  .toggle .pill { position: absolute; top: 4px; bottom: 4px; border-radius: 999px; background: #fff; transition: left .45s cubic-bezier(.3, 1.4, .5, 1), width .45s cubic-bezier(.3, 1.4, .5, 1); }
+  .save { position: absolute; right: -14px; top: -14px; padding: 3px 8px; border-radius: 999px; background: #22c55e; color: #00210c; font: 800 11px var(--font); transform: scale(0) rotate(-12deg); transition: transform .4s cubic-bezier(.3, 1.8, .5, 1); }
+  .yearly .save { transform: scale(1) rotate(8deg); }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; text-align: left; }
+  .plan { position: relative; padding: 26px; border-radius: 22px; background: var(--bg-2); border: 1px solid var(--line); overflow: hidden; }
+  .plan::before { content: ""; position: absolute; inset: 0; background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / .07), transparent 60%); opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .plan:hover::before { opacity: 1; }
+  .plan.featured { border: 2px solid transparent; background: linear-gradient(var(--bg-2), var(--bg-2)) padding-box, conic-gradient(from var(--ang), #7c5cff, #22d3ee, #f472b6, #7c5cff) border-box; animation: spinb 4s linear infinite; }
+  @keyframes spinb { to { --ang: 360deg; } }
+  .plan h3 { margin: 0; font-size: 18px; } .plan .tag { position: absolute; top: 18px; right: 18px; padding: 4px 10px; border-radius: 999px; background: var(--accent); font-size: 11px; font-weight: 800; }
+  .price { display: flex; align-items: flex-end; gap: 4px; margin: 18px 0 4px; font: 800 48px/1 var(--font); letter-spacing: -.03em; }
+  .price .cur { font-size: 24px; align-self: flex-start; margin-top: 6px; }
+  .price .per { font: 500 14px var(--font); color: var(--muted); margin-bottom: 6px; }
+  .digits { display: inline-flex; overflow: hidden; height: 1em; }
+  .digit { display: inline-block; height: 1em; overflow: hidden; }
+  .digit span { display: flex; flex-direction: column; transition: transform .7s cubic-bezier(.2, .9, .2, 1); }
+  .billed { color: var(--muted); font-size: 13px; min-height: 1.3em; }
+  .plan ul { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 8px; font-size: 14px; color: #c7cad6; }
+  .plan li::before { content: "✓"; color: #22c55e; margin-right: 8px; font-weight: 800; }
+  .plan .cta { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: transparent; font-weight: 700; cursor: pointer; }
+  .featured .cta { background: #fff; color: #000; border-color: #fff; }
+  @media (prefers-reduced-motion: reduce) { .digit span, .toggle .pill { transition: none; } .plan.featured { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Simple, honest pricing</h1>
+  <p style="color:var(--muted);margin:0">Start free. Upgrade when you're ready.</p>
+  <div class="toggle" role="group" aria-label="Billing period"><span class="pill"></span><button data-b="monthly" aria-pressed="true">Monthly</button><button data-b="yearly" aria-pressed="false">Yearly</button><span class="save">Save 20%</span></div>
+  <div class="plans"></div>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const PLANS = [
+    { name: "Starter", m: 9, y: 7, feats: ["3 projects", "Basic analytics", "Email support"] },
+    { name: "Pro", m: 29, y: 23, feats: ["Unlimited projects", "Advanced analytics", "Priority support", "Custom domains"], featured: true },
+    { name: "Team", m: 79, y: 63, feats: ["Everything in Pro", "SSO & audit logs", "10 seats included", "Dedicated manager"] },
+  ];
+  const plans = document.querySelector(".plans");
+  plans.innerHTML = PLANS.map((p) => `<article class="plan${p.featured ? " featured" : ""}">${p.featured ? '<span class="tag">Most popular</span>' : ""}<h3>${p.name}</h3>
+    <div class="price"><span class="cur">$</span><span class="digits" aria-hidden="true"></span><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></span><span class="per">/ month</span></div>
+    <div class="billed"></div><ul>${p.feats.map((f) => `<li>${f}</li>`).join("")}</ul><button class="cta">Choose ${p.name}</button></article>`).join("");
+  // Odometer digits: each digit column is a 0–9 strip translated to the right position.
+  function setPrice(el, value) {
+    const s = String(value), d = el.querySelector(".digits");
+    while (d.children.length < s.length) { const c = document.createElement("span"); c.className = "digit"; c.innerHTML = "<span>" + [...Array(10).keys()].map((n) => `<b style="height:1em;display:block">${n}</b>`).join("") + "</span>"; d.appendChild(c); }
+    while (d.children.length > s.length) d.lastChild.remove();
+    [...s].forEach((ch, i) => (d.children[i].firstChild.style.transform = `translateY(${-ch * 1}em)`));
+    el.querySelector(".sr").textContent = value + " dollars per month";
+  }
+  const toggle = document.querySelector(".toggle"), pill = toggle.querySelector(".pill");
+  function setBilling(b) {
+    toggle.classList.toggle("yearly", b === "yearly");
+    toggle.querySelectorAll("button").forEach((x) => { const on = x.dataset.b === b; x.setAttribute("aria-pressed", on); if (on) { pill.style.left = x.offsetLeft + "px"; pill.style.width = x.offsetWidth + "px"; } });
+    plans.querySelectorAll(".plan").forEach((el, i) => {
+      const p = PLANS[i]; setPrice(el.querySelector(".price"), b === "yearly" ? p.y : p.m);
+      el.querySelector(".billed").textContent = b === "yearly" ? `$${p.y * 12} billed yearly` : "billed monthly";
+    });
+  }
+  toggle.querySelectorAll("button").forEach((x) => (x.onclick = () => setBilling(x.dataset.b)));
+  plans.querySelectorAll(".plan").forEach((el) => el.addEventListener("pointermove", (e) => { const r = el.getBoundingClientRect(); el.style.setProperty("--mx", e.clientX - r.left + "px"); el.style.setProperty("--my", e.clientY - r.top + "px"); }));
+  setBilling("monthly");
+  addEventListener("resize", () => setBilling(toggle.classList.contains("yearly") ? "yearly" : "monthly"));
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-step Form Wizard</title>
+<meta name="description" content="A four-step sign-up wizard with direction-aware slide transitions, a progress rail that fills and checks off steps, per-step validation with shake and inline messages, animated height between steps, a review screen and a success state with a drawn checkmark.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { min-height: 100vh; display: grid; place-items: center; padding: 80px 16px 30px; }
+  .wiz { width: min(520px, 100%); padding: 26px; border-radius: 24px; background: var(--bg-2); border: 1px solid var(--line); }
+  .rail { display: flex; align-items: center; margin-bottom: 24px; }
+  .st { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--font); border: 2px solid var(--line); color: var(--muted); background: var(--bg-2); flex: none; transition: all .3s; }
+  .st.on { border-color: var(--accent); color: #fff; }
+  .st.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ln { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+  .ln i { position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .4s; }
+  .ln.fill i { transform: scaleX(1); }
+  .view { position: relative; overflow: hidden; transition: height .35s cubic-bezier(.2, .8, .2, 1); }
+  .step { display: grid; gap: 12px; }
+  .step h2 { margin: 0 0 4px; font-size: 20px; }
+  .step p { margin: 0; color: var(--muted); font-size: 14px; }
+  label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+  input, select { padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: #0f1016; color: inherit; font-size: 15px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .err { color: #f87171; font-size: 12px; font-weight: 500; min-height: 1em; }
+  .invalid input, .invalid select { border-color: #f87171; }
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .opts label { padding: 14px 10px; border-radius: 12px; border: 1px solid var(--line); text-align: center; cursor: pointer; font-weight: 600; transition: border-color .2s, background .2s; }
+  .opts input { position: absolute; opacity: 0; pointer-events: none; }
+  .opts label:has(input:checked) { border-color: var(--accent); background: rgb(124 92 255 / .12); }
+  .opts label:has(input:focus-visible) { outline: 2px solid var(--accent); }
+  .nav { display: flex; justify-content: space-between; margin-top: 22px; }
+  .nav button { padding: 12px 20px; border-radius: 12px; border: 1px solid var(--line); background: transparent; font-weight: 700; cursor: pointer; }
+  .nav .next { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav button[hidden] { display: block; visibility: hidden; }
+  .review { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; } .review dt { color: var(--muted); } .review dd { margin: 0; }
+  .shake { animation: shake .4s; } @keyframes shake { 25% { translate: -8px; } 50% { translate: 8px; } 75% { translate: -4px; } }
+  .success { text-align: center; padding: 20px 0; }
+  .success svg { width: 90px; height: 90px; }
+  .success circle, .success path { fill: none; stroke: #22c55e; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 300; stroke-dashoffset: 300; animation: draw .8s forwards; }
+  .success path { animation-delay: .5s; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+</style>
+</head>
+<body>
+<main>
+  <form class="wiz" novalidate>
+    <div class="rail" aria-hidden="true"></div>
+    <div class="view" aria-live="polite"></div>
+    <div class="nav"><button type="button" class="back">← Back</button><button type="submit" class="next">Continue →</button></div>
+  </form>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const data = { name: "", email: "", plan: "pro", team: "1-5", role: "", agree: false };
+  const STEPS = [
+    { title: "Who are you?", sub: "Let's start with the basics.", html: () => `<label class="f-name">Full name<input name="name" autocomplete="name" value="${data.name}"><span class="err"></span></label><label class="f-email">Email<input name="email" type="email" autocomplete="email" value="${data.email}"><span class="err"></span></label>`,
+      validate: (f) => ({ name: f.name.value.trim().length < 2 && "Please enter your name", email: !/^\S+@\S+\.\S+$/.test(f.email.value) && "That email doesn't look right" }) },
+    { title: "Pick a plan", sub: "You can change this later.", html: () => `<div class="opts" role="radiogroup">${["free", "pro", "team"].map((p) => `<label><input type="radio" name="plan" value="${p}" ${data.plan === p ? "checked" : ""}>${p[0].toUpperCase() + p.slice(1)}</label>`).join("")}</div>`, validate: () => ({}) },
+    { title: "About your team", sub: "Helps us tailor the onboarding.", html: () => `<label class="f-team">Team size<select name="team">${["1-5", "6-20", "21-100", "100+"].map((t) => `<option ${data.team === t ? "selected" : ""}>${t}</option>`).join("")}</select></label><label class="f-role">Your role<select name="role"><option value="">Choose…</option>${["Designer", "Engineer", "Product", "Founder", "Other"].map((r) => `<option ${data.role === r ? "selected" : ""}>${r}</option>`).join("")}</select><span class="err"></span></label>`,
+      validate: (f) => ({ role: !f.role.value && "Pick the closest one" }) },
+    { title: "Review", sub: "Everything look right?", html: () => `<dl class="review"><dt>Name</dt><dd></dd><dt>Email</dt><dd></dd><dt>Plan</dt><dd></dd><dt>Team</dt><dd></dd><dt>Role</dt><dd></dd></dl><label class="f-agree" style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="agree" ${data.agree ? "checked" : ""}> I agree to the terms</label><span class="err e-agree"></span>`,
+      after: (v) => [data.name, data.email, data.plan, data.team, data.role].forEach((x, i) => (v.querySelectorAll("dd")[i].textContent = x)),
+      validate: (f) => ({ agree: !f.agree.checked && "Please accept to continue" }) },
+  ];
+  const form = document.querySelector(".wiz"), view = form.querySelector(".view"), rail = form.querySelector(".rail"), back = form.querySelector(".back"), next = form.querySelector(".next");
+  rail.innerHTML = STEPS.map((_, i) => `${i ? '<span class="ln"><i></i></span>' : ""}<span class="st">${i + 1}</span>`).join("");
+  let cur = 0;
+  function save() { const f = form.elements; ["name", "email", "team", "role"].forEach((k) => f[k] && (data[k] = f[k].value)); if (f.plan) data.plan = [...form.querySelectorAll("[name=plan]")].find((r) => r.checked)?.value || data.plan; if (f.agree) data.agree = f.agree.checked; }
+  function render(dir) {
+    const s = STEPS[cur], old = view.firstElementChild, startH = view.offsetHeight;
+    const el = document.createElement("div"); el.className = "step"; el.innerHTML = `<h2>${s.title}</h2><p>${s.sub}</p>` + s.html(); s.after?.(el);
+    view.appendChild(el);
+    rail.querySelectorAll(".st").forEach((d, i) => { d.classList.toggle("on", i === cur); d.classList.toggle("done", i < cur); d.textContent = i < cur ? "✓" : i + 1; });
+    rail.querySelectorAll(".ln").forEach((l, i) => l.classList.toggle("fill", i < cur));
+    back.hidden = cur === 0; next.textContent = cur === STEPS.length - 1 ? "Create account" : "Continue →";
+    if (old && dir && !Demo.reduced) {
+      // slide old out and new in, from the direction of travel, while the container eases to the new height
+      old.style.position = "absolute"; old.style.inset = "0 0 auto 0";
+      const endH = el.offsetHeight; view.style.height = startH + "px"; requestAnimationFrame(() => (view.style.height = endH + "px"));
+      const o = { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" };
+      old.animate([{ transform: "none", opacity: 1 }, { transform: `translateX(${-40 * dir}px)`, opacity: 0 }], o).onfinish = () => old.remove();
+      el.animate([{ transform: `translateX(${40 * dir}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], o).onfinish = () => (view.style.height = "");
+    } else old?.remove();
+    el.querySelector("input, select")?.focus({ preventScroll: true });
+  }
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const errs = STEPS[cur].validate(form.elements); let bad = false;
+    for (const k in errs) { const f = form.querySelector(".f-" + k) || form.querySelector(".e-" + k)?.previousElementSibling; const msg = form.querySelector(`.f-${k} .err`) || form.querySelector(".e-" + k); if (msg) msg.textContent = errs[k] || ""; f?.classList.toggle("invalid", !!errs[k]); if (errs[k]) bad = true; }
+    if (bad) { form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake"); form.querySelector(".invalid input, .invalid select")?.focus(); return; }
+    save();
+    if (cur < STEPS.length - 1) { cur++; render(1); }
+    else { view.innerHTML = `<div class="success"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44"/><path d="M30 52 L45 66 L72 38"/></svg><h2>Welcome, ${data.name.split(" ")[0].replace(/[<>&]/g, "")}!</h2><p style="color:var(--muted)">Check ${data.email.replace(/[<>&]/g, "")} to confirm your account.</p></div>`; form.querySelector(".nav").style.display = "none"; rail.querySelectorAll(".st").forEach((d) => { d.classList.add("done"); d.textContent = "✓"; }); rail.querySelectorAll(".ln").forEach((l) => l.classList.add("fill")); }
+  });
+  back.onclick = () => { save(); cur--; render(-1); };
+  form.addEventListener("input", (e) => { const l = e.target.closest(".invalid"); if (l) { l.classList.remove("invalid"); const m = l.querySelector(".err"); if (m) m.textContent = ""; } });
+  render(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Playful Cookie Consent</title>
+<meta name="description" content="A cookie banner that's fun but honest: a cookie character bobs in, takes bites as you toggle categories off, crumbs fall when you reject, and it does a happy hop on accept. Equal-weight Accept / Reject buttons, granular preferences, and the choice remembered in localStorage.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 680px; margin: 0 auto; padding: 100px 20px; color: var(--muted); }
+  main h1 { color: var(--fg); }
+  .banner { position: fixed; left: 50%; bottom: 20px; width: min(560px, calc(100vw - 24px)); padding: 20px; border-radius: 22px; background: #1b1c25; border: 1px solid var(--line); box-shadow: 0 20px 60px rgb(0 0 0 / .5);
+            display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; transform: translate(-50%, 150%); transition: transform .6s cubic-bezier(.3, 1.4, .5, 1); z-index: 20; }
+  .banner.show { transform: translate(-50%, 0); }
+  .banner.leave { transform: translate(-50%, 150%); transition-timing-function: cubic-bezier(.6, -.4, .7, .3); }
+  .cookie { grid-row: span 3; width: 74px; height: 74px; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-5px) rotate(-6deg); } }
+  .cookie.hop { animation: hop .6s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes hop { 40% { transform: translateY(-26px) rotate(20deg) scale(1.1); } }
+  .banner h2 { margin: 0; font-size: 17px; }
+  .banner p { margin: 0; color: var(--muted); font-size: 13px; }
+  .prefs { grid-column: 1 / -1; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s; }
+  .banner.custom .prefs { grid-template-rows: 1fr; }
+  .prefs > div { overflow: hidden; }
+  .pref { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .pref small { display: block; color: var(--muted); font-size: 12px; }
+  .sw { width: 42px; height: 24px; border-radius: 99px; border: 0; background: #3a3c4a; position: relative; cursor: pointer; flex: none; }
+  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: translate .25s cubic-bezier(.3, 1.5, .5, 1); }
+  .sw[aria-checked="true"] { background: #22c55e; } .sw[aria-checked="true"]::after { translate: 18px; }
+  .sw:disabled { opacity: .5; cursor: not-allowed; }
+  .acts { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .acts button { flex: 1; padding: 11px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; border: 1px solid var(--line); background: transparent; min-width: 110px; }
+  .acts .primary { background: #fff; color: #000; border-color: #fff; }
+  .crumb { position: fixed; width: 6px; height: 6px; border-radius: 2px; background: #c58a4a; pointer-events: none; z-index: 30; }
+  .status { position: fixed; top: 64px; right: 16px; padding: 8px 12px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) { .cookie { animation: none; } .banner { transition-duration: .01s; } }
+</style>
+</head>
+<body>
+<main><h1>Some page content</h1><p></p><p></p></main>
+<div class="status" aria-live="polite"></div>
+<section class="banner" role="dialog" aria-labelledby="ck-t" aria-describedby="ck-d">
+  <svg class="cookie" viewBox="0 0 100 100" aria-hidden="true">
+    <defs><mask id="bites"><rect width="100" height="100" fill="#fff"/><g class="bitemask" fill="#000"></g></mask></defs>
+    <g mask="url(#bites)"><circle cx="50" cy="50" r="44" fill="#d9a066"/><circle cx="50" cy="50" r="44" fill="none" stroke="#b07a3f" stroke-width="4"/>
+      <g fill="#4a2c17"><circle cx="34" cy="32" r="6"/><circle cx="62" cy="28" r="5"/><circle cx="70" cy="56" r="6"/><circle cx="40" cy="64" r="5"/><circle cx="54" cy="46" r="4"/><circle cx="28" cy="50" r="3"/></g></g>
+    <g class="face"><circle cx="40" cy="44" r="3.5" fill="#2a1a0d"/><circle cx="60" cy="44" r="3.5" fill="#2a1a0d"/><path class="mouth" d="M40 58 Q50 66 60 58" stroke="#2a1a0d" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+  </svg>
+  <h2 id="ck-t">Cookies? Just a few.</h2>
+  <p id="ck-d">We use essential cookies to make the site work, and optional ones to understand usage. Your call.</p>
+  <div class="prefs"><div></div></div>
+  <div class="acts"><button class="reject">Reject optional</button><button class="customise">Customise</button><button class="primary accept">Accept all</button></div>
+</section>
+<button class="reopen" style="position:fixed;left:16px;bottom:16px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);cursor:pointer">🍪 Cookie settings</button>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelectorAll("main p").forEach((p, i) => (p.textContent = Demo.lorem(60, i)));
+  const banner = document.querySelector(".banner"), cookie = banner.querySelector(".cookie"), status = document.querySelector(".status");
+  const CATS = [["essential", "Essential", "Login, security, your cookie choice", true], ["analytics", "Analytics", "Anonymous usage stats"], ["marketing", "Marketing", "Personalised ads"], ["prefs", "Preferences", "Remember language & theme"]];
+  let choice = { essential: true, analytics: false, marketing: false, prefs: false };
+  try { const s = JSON.parse(localStorage.getItem("cookie-choice")); if (s) choice = s; } catch {}
+  const prefs = banner.querySelector(".prefs > div");
+  prefs.innerHTML = CATS.map(([k, n, d, locked]) => `<div class="pref"><span>${n}<small>${d}</small></span><button class="sw" role="switch" data-k="${k}" aria-checked="${choice[k] || !!locked}" ${locked ? "disabled" : ""} aria-label="${n}"></button></div>`).join("") + '<div class="acts" style="margin-top:6px"><button class="primary save">Save choices</button></div>';
+  // Each optional category turned off takes a bite out of the cookie.
+  const BITES = [[88, 30, 16], [82, 78, 14], [18, 82, 15]];
+  function bites() {
+    const off = CATS.filter(([k, , , l]) => !l && !choice[k]).length, g = banner.querySelector(".bitemask");
+    g.innerHTML = BITES.slice(0, off).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/><circle cx="${x - r * .7}" cy="${y + r * .5}" r="${r * .6}"/>`).join("");
+    banner.querySelector(".mouth").setAttribute("d", off >= 3 ? "M40 62 Q50 54 60 62" : off ? "M40 60 L60 60" : "M40 58 Q50 66 60 58");
+  }
+  prefs.querySelectorAll(".sw:not(:disabled)").forEach((s) => (s.onclick = () => { const on = s.getAttribute("aria-checked") !== "true"; s.setAttribute("aria-checked", on); choice[s.dataset.k] = on; bites(); }));
+  function crumbs() {
+    if (Demo.reduced) return; const r = cookie.getBoundingClientRect();
+    for (let i = 0; i < 18; i++) {
+      const c = document.createElement("i"); c.className = "crumb"; c.style.left = r.left + r.width / 2 + "px"; c.style.top = r.top + r.height / 2 + "px"; document.body.appendChild(c);
+      const dx = (Math.random() - .5) * 160, dy = 120 + Math.random() * 200;
+      c.animate([{ transform: "translate(0,0) rotate(0)" }, { transform: `translate(${dx}px, ${dy}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }], { duration: 900 + Math.random() * 400, easing: "cubic-bezier(.3,.1,.7,1)" }).onfinish = () => c.remove();
+    }
+  }
+  function save(how) {
+    try { localStorage.setItem("cookie-choice", JSON.stringify(choice)); } catch {}
+    status.textContent = "Saved: " + Object.entries(choice).filter(([, v]) => v).map(([k]) => k).join(", ");
+    if (how === "accept") { cookie.classList.remove("hop"); void cookie.offsetWidth; cookie.classList.add("hop"); }
+    if (how === "reject") crumbs();
+    setTimeout(() => { banner.classList.add("leave"); banner.classList.remove("show"); }, how === "accept" ? 550 : 250);
+  }
+  banner.querySelector(".accept").onclick = () => { CATS.forEach(([k]) => (choice[k] = true)); prefs.querySelectorAll(".sw").forEach((s) => s.setAttribute("aria-checked", true)); bites(); save("accept"); };
+  banner.querySelector(".reject").onclick = () => { CATS.forEach(([k, , , l]) => (choice[k] = !!l)); prefs.querySelectorAll(".sw:not(:disabled)").forEach((s) => s.setAttribute("aria-checked", false)); bites(); save("reject"); };
+  banner.querySelector(".customise").onclick = () => banner.classList.toggle("custom");
+  prefs.querySelector(".save").onclick = () => save(Object.values(choice).every(Boolean) ? "accept" : "reject");
+  document.querySelector(".reopen").onclick = () => { banner.classList.remove("leave"); banner.classList.add("show", "custom"); };
+  bites();
+  // this demo always shows the banner on load (a real site would skip it when a choice is stored)
+  setTimeout(() => banner.classList.add("show"), 400);
+  status.textContent = localStorage.getItem?.("cookie-choice") ? "A previous choice is stored" : "No choice stored yet";
+</script>
+</body>
+</html>

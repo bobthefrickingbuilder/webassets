@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Testimonial Carousel</title>
+<meta name="description" content="A testimonial slider with auto-play (pauses on hover, focus and hidden tabs), a progress ring on the active dot, drag/swipe with momentum snapping, keyboard arrows, looping, and neighbouring cards that scale and fade. Accessible live-region announcements.">
+<meta name="tech" content="JS, CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { min-height: 100vh; display: grid; place-content: center; padding: 70px 0 30px; overflow: hidden; }
+  h1 { text-align: center; margin: 0 0 30px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.03em; }
+  .viewport { position: relative; width: 100vw; touch-action: pan-y; cursor: grab; user-select: none; }
+  .viewport:active { cursor: grabbing; }
+  .track { display: flex; gap: 24px; will-change: transform; }
+  .card { flex: 0 0 min(520px, 80vw); padding: 30px; border-radius: 24px; background: var(--bg-2); border: 1px solid var(--line); transition: transform .5s, opacity .5s; transform: scale(.88); opacity: .4; }
+  .card.active { transform: none; opacity: 1; }
+  .card q { display: block; font-size: clamp(17px, 2vw, 21px); line-height: 1.5; quotes: "“" "”"; }
+  .who { display: flex; gap: 12px; align-items: center; margin-top: 22px; }
+  .who img { width: 46px; height: 46px; border-radius: 50%; }
+  .who b { display: block; } .who small { color: var(--muted); }
+  .stars { color: #fbbf24; letter-spacing: 2px; margin-bottom: 12px; }
+  .nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 26px; }
+  .nav button.arrow { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 18px; }
+  .dots { display: flex; gap: 8px; }
+  .dot { width: 22px; height: 22px; border: 0; background: none; padding: 0; cursor: pointer; display: grid; place-items: center; }
+  .dot svg { width: 22px; height: 22px; rotate: -90deg; }
+  .dot circle.bg { fill: none; stroke: var(--line); stroke-width: 3; }
+  .dot circle.p { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 50.3; stroke-dashoffset: 50.3; }
+  .dot[aria-current="true"] circle.bg { stroke: rgb(124 92 255 / .3); }
+  .pause { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Loved by builders</h1>
+  <div class="viewport" role="region" aria-roledescription="carousel" aria-label="Testimonials" tabindex="0"><div class="track"></div></div>
+  <div class="nav"><button class="arrow prev" aria-label="Previous">←</button><div class="dots"></div><button class="arrow next" aria-label="Next">→</button><button class="pause" aria-pressed="false">Pause</button></div>
+  <p class="sr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const PEOPLE = [["Ana Ruiz", "Design lead, Northwind"], ["Kenji Ito", "CTO, Paperplane"], ["Priya Nair", "Founder, Loop"], ["Tom Becker", "Engineer, Stackfold"], ["Lea Martin", "PM, Brightline"]];
+  const track = document.querySelector(".track"), vp = document.querySelector(".viewport"), dots = document.querySelector(".dots");
+  PEOPLE.forEach(([n, r], i) => {
+    const c = document.createElement("article"); c.className = "card"; c.setAttribute("aria-roledescription", "slide"); c.setAttribute("aria-label", `${i + 1} of ${PEOPLE.length}`);
+    c.innerHTML = `<div class="stars">★★★★★</div><q>${Demo.lorem(26 + (i % 3) * 8, i + 20)}</q><div class="who"><img alt="" src="${Demo.artURL(92, 92, i + 40)}"><div><b>${n}</b><small>${r}</small></div></div>`;
+    track.appendChild(c);
+    const d = document.createElement("button"); d.className = "dot"; d.setAttribute("aria-label", "Show testimonial " + (i + 1));
+    d.innerHTML = '<svg viewBox="0 0 22 22"><circle class="bg" cx="11" cy="11" r="8"/><circle class="p" cx="11" cy="11" r="8"/></svg>'; d.onclick = () => go(i); dots.appendChild(d);
+  });
+  const cards = [...track.children], N = cards.length, DUR = 5000;
+  let idx = 0, x = 0, target = 0, dragging = false, elapsed = 0, paused = false, userPaused = Demo.reduced;
+  const offsetFor = (i) => innerWidth / 2 - (cards[i].offsetLeft + cards[i].offsetWidth / 2);
+  function go(i, announce = true) {
+    idx = (i + N) % N; target = offsetFor(idx); elapsed = 0;
+    cards.forEach((c, k) => c.classList.toggle("active", k === idx));
+    [...dots.children].forEach((d, k) => d.setAttribute("aria-current", k === idx));
+    if (announce) document.querySelector(".sr").textContent = `Testimonial ${idx + 1} of ${N}: ${PEOPLE[idx][0]}`;
+  }
+  document.querySelector(".prev").onclick = () => go(idx - 1); document.querySelector(".next").onclick = () => go(idx + 1);
+  vp.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") go(idx - 1); if (e.key === "ArrowRight") go(idx + 1); });
+  const pauseBtn = document.querySelector(".pause");
+  const setPauseLabel = () => { pauseBtn.textContent = userPaused ? "Play" : "Pause"; pauseBtn.setAttribute("aria-pressed", userPaused); };
+  pauseBtn.onclick = () => { userPaused = !userPaused; setPauseLabel(); }; setPauseLabel();
+  ["pointerenter", "focusin"].forEach((ev) => vp.addEventListener(ev, () => (paused = true)));
+  ["pointerleave", "focusout"].forEach((ev) => vp.addEventListener(ev, () => (paused = false)));
+  // drag with velocity: release projects forward and snaps to the nearest card
+  let sx = 0, sxPos = 0, hist = [];
+  vp.addEventListener("pointerdown", (e) => { dragging = true; sx = e.clientX; sxPos = x; hist = [[e.clientX, performance.now()]]; vp.setPointerCapture(e.pointerId); });
+  vp.addEventListener("pointermove", (e) => { if (!dragging) return; x = sxPos + (e.clientX - sx); hist.push([e.clientX, performance.now()]); if (hist.length > 5) hist.shift(); });
+  vp.addEventListener("pointerup", () => {
+    if (!dragging) return; dragging = false;
+    const [a, b] = [hist[0], hist[hist.length - 1]], v = b[1] > a[1] ? (b[0] - a[0]) / (b[1] - a[1]) : 0;
+    const projected = x + v * 250;
+    let best = 0; cards.forEach((_, i) => { if (Math.abs(offsetFor(i) - projected) < Math.abs(offsetFor(best) - projected)) best = i; });
+    go(best);
+  });
+  addEventListener("resize", () => go(idx, false));
+  let last = performance.now();
+  function frame(now) {
+    const dt = now - last; last = now;
+    if (!dragging) x += (target - x) * (Demo.reduced ? 1 : .12);
+    track.style.transform = `translateX(${x}px)`;
+    if (!paused && !userPaused && !dragging && !document.hidden) { elapsed += dt; if (elapsed > DUR) go(idx + 1, false); }
+    dots.children[idx].querySelector(".p").style.strokeDashoffset = 50.3 * (1 - Math.min(1, elapsed / DUR));
+    [...dots.children].forEach((d, k) => k !== idx && (d.querySelector(".p").style.strokeDashoffset = 50.3));
+    requestAnimationFrame(frame);
+  }
+  go(0, false); x = target; requestAnimationFrame(frame);
+</script>
+</body>
+</html>

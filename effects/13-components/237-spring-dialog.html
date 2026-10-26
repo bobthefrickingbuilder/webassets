@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spring Modal Dialog</title>
+<meta name="description" content="Native <dialog> with a springy entrance and exit: CSS linear() spring easing, @starting-style for the open transition, transition-behavior: allow-discrete for display/overlay, a blurred backdrop, origin-aware zoom from the trigger button, and built-in focus trapping and Esc.">
+<meta name="tech" content="CSS, HTML dialog">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  :root { --spring: linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 19.4%, 1.077, 1.121 24%, 1.149 26.3%, 1.159 28.9%, 1.14 33.3%, 1.04 43.6%, .99 50.9%, .974 54.5%, .979 63.4%, .999 75.4%, 1.001 88.9%, 1); }
+  main { min-height: 100vh; display: grid; place-content: center; gap: 14px; justify-items: center; }
+  .open { padding: 14px 24px; border-radius: 14px; border: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .row { display: flex; gap: 10px; }
+  .row .open:nth-child(2) { background: #ef4444; }
+  dialog { width: min(440px, 90vw); padding: 0; border: 0; border-radius: 22px; background: #16171f; color: var(--fg); box-shadow: 0 30px 90px rgb(0 0 0 / .6);
+           transform-origin: var(--ox, 50%) var(--oy, 50%);
+           opacity: 0; transform: scale(.6) translateY(20px);
+           transition: opacity .2s, transform .55s var(--spring), display .55s allow-discrete, overlay .55s allow-discrete; }
+  dialog[open] { opacity: 1; transform: none; }
+  @starting-style { dialog[open] { opacity: 0; transform: scale(.6) translateY(20px); } }
+  dialog::backdrop { background: rgb(5 5 10 / 0); backdrop-filter: blur(0); transition: background .3s, backdrop-filter .3s, display .3s allow-discrete, overlay .3s allow-discrete; }
+  dialog[open]::backdrop { background: rgb(5 5 10 / .55); backdrop-filter: blur(6px); }
+  @starting-style { dialog[open]::backdrop { background: rgb(5 5 10 / 0); backdrop-filter: blur(0); } }
+  .hd { padding: 22px 22px 0; display: flex; gap: 14px; align-items: center; }
+  .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .danger .ic { background: rgb(239 68 68 / .2); }
+  dialog h2 { margin: 0; font-size: 20px; }
+  dialog p { margin: 12px 22px 0; color: var(--muted); }
+  .ft { display: flex; justify-content: flex-end; gap: 8px; padding: 22px; }
+  .ft button { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-weight: 600; }
+  .ft .ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .danger .ft .ok { background: #ef4444; border-color: #ef4444; }
+  .x { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 25% { translate: -8px; } 50% { translate: 8px; } 75% { translate: -4px; } }
+  .result { color: var(--muted); font-size: 14px; min-height: 1.4em; }
+  @media (prefers-reduced-motion: reduce) { dialog, dialog::backdrop { transition-duration: .01s; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="row"><button class="open" data-d="welcome">Open dialog</button><button class="open" data-d="delete">Delete project…</button></div>
+  <p class="result" aria-live="polite"></p>
+</main>
+<dialog id="welcome" aria-labelledby="w-t">
+  <form method="dialog">
+    <button class="x" value="cancel" aria-label="Close">×</button>
+    <div class="hd"><div class="ic">✨</div><h2 id="w-t">Welcome aboard</h2></div>
+    <p>This is a native &lt;dialog&gt;: focus is trapped, Esc closes it, and the page behind is inert. The spring comes from a CSS <code>linear()</code> easing curve.</p>
+    <div class="ft"><button value="later">Later</button><button class="ok" value="start" autofocus>Get started</button></div>
+  </form>
+</dialog>
+<dialog id="delete" class="danger" aria-labelledby="d-t">
+  <form method="dialog">
+    <div class="hd"><div class="ic">🗑️</div><h2 id="d-t">Delete “Aurora”?</h2></div>
+    <p>This permanently removes the project and its 14 files. Clicking outside won't close this one; it shakes instead.</p>
+    <div class="ft"><button value="cancel" autofocus>Cancel</button><button class="ok" value="delete">Delete</button></div>
+  </form>
+</dialog>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const result = document.querySelector(".result");
+  document.querySelectorAll(".open").forEach((btn) => btn.addEventListener("click", () => {
+    const d = document.getElementById(btn.dataset.d);
+    // zoom out of the button that opened it: set transform-origin to the button centre, relative to the dialog's final box
+    d.showModal();
+    const b = btn.getBoundingClientRect(), r = d.getBoundingClientRect();
+    d.style.setProperty("--ox", b.left + b.width / 2 - r.left + "px"); d.style.setProperty("--oy", b.top + b.height / 2 - r.top + "px");
+  }));
+  document.querySelectorAll("dialog").forEach((d) => {
+    d.addEventListener("close", () => (result.textContent = `“${d.querySelector("h2").textContent}” closed with: ${d.returnValue || "Esc"}`));
+    // light dismiss for the friendly dialog; the destructive one shakes instead
+    d.addEventListener("click", (e) => {
+      if (e.target !== d) return;
+      const r = d.getBoundingClientRect(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (inside) return;
+      if (d.classList.contains("danger")) { d.classList.remove("shake"); void d.offsetWidth; d.classList.add("shake"); } else d.close("backdrop");
+    });
+  });
+</script>
+</body>
+</html>

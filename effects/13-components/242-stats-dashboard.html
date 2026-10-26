@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Stats Dashboard</title>
+<meta name="description" content="A dashboard whose widgets animate in as they enter view: KPI counters tick up, an SVG line chart draws itself with an area fade and hover crosshair tooltip, bars grow with stagger, a donut fills segment by segment and sparklines trace. All hand-rolled SVG, no chart library.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 1100px; margin: 0 auto; padding: 80px 18px 40px; }
+  h1 { margin: 0 0 18px; font-size: 26px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .w { grid-column: span 3; padding: 18px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); opacity: 0; translate: 0 16px; transition: opacity .6s, translate .6s; }
+  .w.in { opacity: 1; translate: 0 0; }
+  .w.big { grid-column: span 8; } .w.side { grid-column: span 4; } .w.half { grid-column: span 6; }
+  @media (max-width: 860px) { .w, .w.big, .w.side, .w.half { grid-column: span 12; } .w.kpi { grid-column: span 6; } }
+  .w h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .kpi .v { font: 800 30px var(--font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .kpi .d { font-size: 12px; font-weight: 700; } .up { color: #22c55e; } .down { color: #ef4444; }
+  .kpi svg { width: 100%; height: 34px; margin-top: 6px; }
+  svg text { fill: var(--muted); font: 11px var(--font); }
+  .chart { position: relative; }
+  .chart svg { width: 100%; height: 240px; display: block; }
+  .tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: #fff; color: #000; font-size: 12px; font-weight: 700; transform: translate(-50%, -120%); opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Overview · last 30 days</h1>
+  <div class="grid">
+    <div class="w kpi" data-v="48210" data-pre="$" data-d="+12.4%"><h3>Revenue</h3><div class="v">0</div><span class="d up"></span><svg class="spark"></svg></div>
+    <div class="w kpi" data-v="3842" data-d="+8.1%"><h3>New users</h3><div class="v">0</div><span class="d up"></span><svg class="spark"></svg></div>
+    <div class="w kpi" data-v="4.62" data-dec="2" data-suf="%" data-d="-0.3%"><h3>Conversion</h3><div class="v">0</div><span class="d down"></span><svg class="spark"></svg></div>
+    <div class="w kpi" data-v="94" data-suf=" NPS" data-d="+3"><h3>Satisfaction</h3><div class="v">0</div><span class="d up"></span><svg class="spark"></svg></div>
+    <div class="w big chart"><h3>Traffic</h3><svg class="line" viewBox="0 0 800 240" preserveAspectRatio="none" aria-label="Line chart of daily visits"></svg><div class="tip"></div></div>
+    <div class="w side"><h3>Channels</h3><svg class="donut" viewBox="0 0 200 200" style="width:100%;height:200px" aria-label="Donut chart of traffic channels"></svg><div class="legend"></div></div>
+    <div class="w half"><h3>Signups by weekday</h3><svg class="bars" viewBox="0 0 500 200" style="width:100%;height:200px" aria-label="Bar chart"></svg></div>
+    <div class="w half"><h3>Goal progress</h3><div class="goals"></div></div>
+  </div>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const rng = Demo.rng(42), NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  const tween = (dur, fn) => new Promise((res) => { if (Demo.reduced) { fn(1); return res(); } const s = performance.now(); (function f(n) { const t = Math.max(0, Math.min(1, (n - s) / dur)); fn(ease(t)); t < 1 ? requestAnimationFrame(f) : res(); })(s); });
+  // helper: draw a path in by animating its dash offset
+  const drawIn = (path, dur, delay = 0) => { const L = path.getTotalLength(); path.style.strokeDasharray = L; path.style.strokeDashoffset = L; setTimeout(() => tween(dur, (t) => (path.style.strokeDashoffset = L * (1 - t))), delay); };
+  const series = (n, base, vol) => { let v = base; return Array.from({ length: n }, () => (v = Math.max(base * .4, v + (rng() - .45) * vol))); };
+  const smooth = (pts) => pts.reduce((d, [x, y], i, a) => { if (!i) return `M${x},${y}`; const [px, py] = a[i - 1], cx = (px + x) / 2; return d + ` C${cx},${py} ${cx},${y} ${x},${y}`; }, "");
+  const anim = {
+    kpi(w) {
+      const v = +w.dataset.v, dec = +(w.dataset.dec || 0), fmt = (n) => (w.dataset.pre || "") + n.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (w.dataset.suf || "");
+      w.querySelector(".d").textContent = w.dataset.d + " vs last month";
+      tween(1400, (t) => (w.querySelector(".v").textContent = fmt(v * t)));
+      const s = w.querySelector(".spark"), data = series(20, 50, 12), max = Math.max(...data), min = Math.min(...data);
+      s.setAttribute("viewBox", "0 0 200 34"); s.setAttribute("preserveAspectRatio", "none");
+      const up = !w.querySelector(".down"), p = el("path", { d: smooth(data.map((y, i) => [i * 200 / 19, 32 - (y - min) / (max - min) * 30])), fill: "none", stroke: up ? "#22c55e" : "#ef4444", "stroke-width": 2, "vector-effect": "non-scaling-stroke" }, s);
+      drawIn(p, 1200, 200);
+    },
+    line(w) {
+      const svg = w.querySelector(".line"), W = 800, H = 240, P = 30, a = series(30, 1200, 260), b = series(30, 700, 200), max = Math.max(...a, ...b) * 1.1;
+      for (let i = 0; i <= 4; i++) { const y = P + (H - 2 * P) * i / 4; el("line", { x1: P, x2: W, y1: y, y2: y, stroke: "rgb(255 255 255 / .06)" }, svg); el("text", { x: 0, y: y + 4 }, svg).textContent = Math.round(max * (1 - i / 4) / 100) / 10 + "k"; }
+      const X = (i) => P + i * (W - P) / 29, Y = (v) => P + (H - 2 * P) * (1 - v / max);
+      const defs = el("defs", {}, svg), g = el("linearGradient", { id: "fa", x1: 0, x2: 0, y1: 0, y2: 1 }, defs);
+      el("stop", { offset: 0, "stop-color": "#7c5cff", "stop-opacity": .4 }, g); el("stop", { offset: 1, "stop-color": "#7c5cff", "stop-opacity": 0 }, g);
+      const dA = smooth(a.map((v, i) => [X(i), Y(v)])), area = el("path", { d: dA + ` L${X(29)},${H - P} L${X(0)},${H - P}Z`, fill: "url(#fa)", opacity: 0 }, svg);
+      const la = el("path", { d: dA, fill: "none", stroke: "#7c5cff", "stroke-width": 2.5 }, svg), lb = el("path", { d: smooth(b.map((v, i) => [X(i), Y(v)])), fill: "none", stroke: "#22d3ee", "stroke-width": 2, "stroke-dasharray": "0" }, svg);
+      drawIn(la, 1600); drawIn(lb, 1600, 250); tween(1600, (t) => area.setAttribute("opacity", t));
+      // hover crosshair + tooltip
+      const cross = el("line", { y1: P, y2: H - P, stroke: "rgb(255 255 255 / .3)", opacity: 0 }, svg), dot = el("circle", { r: 5, fill: "#7c5cff", stroke: "#fff", "stroke-width": 2, opacity: 0 }, svg), tip = w.querySelector(".tip");
+      svg.addEventListener("pointermove", (e) => {
+        const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(29, Math.round(((e.clientX - r.left) / r.width * W - P) / (W - P) * 29)));
+        cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); dot.setAttribute("cx", X(i)); dot.setAttribute("cy", Y(a[i])); cross.setAttribute("opacity", 1); dot.setAttribute("opacity", 1);
+        tip.style.left = (X(i) / W) * r.width + svg.offsetLeft + "px"; tip.style.top = (Y(a[i]) / H) * r.height + svg.offsetTop + "px"; tip.style.opacity = 1;
+        tip.textContent = `Day ${i + 1}: ${Math.round(a[i]).toLocaleString()} visits`;
+      });
+      svg.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); tip.style.opacity = 0; });
+    },
+    donut(w) {
+      const svg = w.querySelector(".donut"), data = [["Organic", 42, "#7c5cff"], ["Direct", 24, "#22d3ee"], ["Social", 19, "#f472b6"], ["Referral", 15, "#fbbf24"]], C = 2 * Math.PI * 70;
+      let acc = 0;
+      data.forEach(([n, v, c], i) => {
+        const seg = el("circle", { cx: 100, cy: 100, r: 70, fill: "none", stroke: c, "stroke-width": 26, "stroke-dasharray": `0 ${C}`, transform: `rotate(${-90 + acc / 100 * 360} 100 100)` }, svg);
+        const len = v / 100 * C - 3; setTimeout(() => tween(700, (t) => seg.setAttribute("stroke-dasharray", `${len * t} ${C}`)), i * 350);
+        acc += v;
+      });
+      const total = el("text", { x: 100, y: 96, "text-anchor": "middle", style: "font:800 26px var(--font);fill:#fff" }, svg); el("text", { x: 100, y: 118, "text-anchor": "middle" }, svg).textContent = "visits";
+      tween(1400, (t) => (total.textContent = Math.round(48.2 * t * 10) / 10 + "k"));
+      w.querySelector(".legend").innerHTML = data.map(([n, v, c]) => `<span><i style="background:${c}"></i>${n} ${v}%</span>`).join("");
+    },
+    bars(w) {
+      const svg = w.querySelector(".bars"), days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], vals = days.map(() => 30 + rng() * 70), bw = 44;
+      days.forEach((d, i) => {
+        const x = 30 + i * 66, h = vals[i] * 1.5, r = el("rect", { x, y: 170, width: bw, height: 0, rx: 8, fill: i === 4 ? "#7c5cff" : "rgb(124 92 255 / .35)" }, svg);
+        el("text", { x: x + bw / 2, y: 190, "text-anchor": "middle" }, svg).textContent = d;
+        setTimeout(() => tween(800, (t) => { r.setAttribute("y", 170 - h * t); r.setAttribute("height", h * t); }), i * 90);
+      });
+    },
+    goals(w) {
+      const box = w.querySelector(".goals"), G = [["Q3 revenue", 78, "#7c5cff"], ["Activation", 64, "#22d3ee"], ["Retention", 91, "#22c55e"], ["NPS target", 45, "#f472b6"]];
+      box.innerHTML = G.map(([n, , c]) => `<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${n}</span><b class="gv">0%</b></div><div style="height:8px;border-radius:4px;background:rgb(255 255 255 / .06);margin-top:6px;overflow:hidden"><i class="gb" style="display:block;height:100%;width:0;background:${c};border-radius:4px"></i></div></div>`).join("");
+      G.forEach(([, v], i) => setTimeout(() => tween(1000, (t) => { box.querySelectorAll(".gb")[i].style.width = v * t + "%"; box.querySelectorAll(".gv")[i].textContent = Math.round(v * t) + "%"; }), i * 150));
+    },
+  };
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return; io.unobserve(e.target); const w = e.target; w.classList.add("in");
+    if (w.classList.contains("kpi")) anim.kpi(w); else if (w.querySelector(".line")) anim.line(w); else if (w.querySelector(".donut")) anim.donut(w); else if (w.querySelector(".bars")) anim.bars(w); else anim.goals(w);
+  }), { threshold: .3 });
+  document.querySelectorAll(".w").forEach((w, i) => { w.style.transitionDelay = (i % 4) * 80 + "ms"; io.observe(w); });
+</script>
+</body>
+</html>

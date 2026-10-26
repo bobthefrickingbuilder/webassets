@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Cropper with Zoom &amp; Pan</title>
+<meta name="description" content="An avatar/banner cropper: drag to pan, wheel, pinch or slider to zoom around the focal point, rotate in 90° steps, switch aspect ratios (1:1 circle, 16:9, 4:5) with an animated mask, rule-of-thirds grid while dragging, the image clamped so it always covers the frame, and a canvas export preview.">
+<meta name="tech" content="JS, Canvas, Pointer events">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 900px; margin: 0 auto; padding: 80px 16px 30px; display: grid; grid-template-columns: 1fr 220px; gap: 20px; align-items: start; }
+  @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+  .stage { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; background: #000; touch-action: none; cursor: grab; user-select: none; }
+  .stage:active { cursor: grabbing; }
+  .stage img { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; max-width: none; pointer-events: none; }
+  .frame { position: absolute; left: 50%; top: 50%; translate: -50% -50%; box-shadow: 0 0 0 9999px rgb(0 0 0 / .6); border: 2px solid #fff; transition: width .4s cubic-bezier(.3, 1.2, .5, 1), height .4s cubic-bezier(.3, 1.2, .5, 1), border-radius .4s; pointer-events: none; }
+  .frame.round { border-radius: 50%; }
+  .frame::before, .frame::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .2s; background: linear-gradient(90deg, transparent 33.1%, rgb(255 255 255 / .5) 33.3% 33.5%, transparent 33.7% 66.4%, rgb(255 255 255 / .5) 66.6% 66.8%, transparent 67%); }
+  .frame::after { rotate: 90deg; scale: calc(var(--ar, 1)) calc(1 / var(--ar, 1)); }
+  .stage.drag .frame::before, .stage.drag .frame::after { opacity: 1; }
+  .side { display: grid; gap: 12px; }
+  .side h3 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .seg { display: flex; gap: 4px; } .seg button, .tools button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: #fff; color: #000; }
+  .tools { display: flex; gap: 6px; }
+  .preview { width: 100%; border-radius: 12px; background: #000; display: block; }
+  .preview.round { border-radius: 50%; }
+  .zoom { display: flex; gap: 8px; align-items: center; } .zoom input { flex: 1; }
+</style>
+</head>
+<body>
+<main>
+  <div class="stage" aria-label="Crop area: drag to pan, scroll or pinch to zoom"><img alt="Photo being cropped"><div class="frame"></div></div>
+  <div class="side">
+    <h3>Aspect</h3><div class="seg"><button data-ar="1" data-round="1" aria-pressed="true">◯ 1:1</button><button data-ar="1.7778" aria-pressed="false">16:9</button><button data-ar=".8" aria-pressed="false">4:5</button></div>
+    <h3>Zoom</h3><div class="zoom"><span>−</span><input type="range" min="1" max="4" step=".01" value="1" aria-label="Zoom"><span>+</span></div>
+    <div class="tools"><button class="rot">⟳ Rotate</button><button class="reset">Reset</button></div>
+    <h3>Result</h3><canvas class="preview round" width="200" height="200"></canvas>
+  </div>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const stage = document.querySelector(".stage"), img = document.querySelector("img"), frame = document.querySelector(".frame"), zoomIn = document.querySelector(".zoom input"), prev = document.querySelector(".preview");
+  const src = Demo.art(1600, 1100, 21); img.src = src.toDataURL("image/jpeg", .9);
+  let ar = 1, round = true, rot = 0, scale = 1, minScale = 1, x = 0, y = 0;   // x/y: image centre offset from frame centre, in screen px
+  let FW, FH;
+  // image size as displayed (after rotation the bounding box swaps)
+  const dims = () => (rot % 180 ? [src.height, src.width] : [src.width, src.height]);
+  function layoutFrame() {
+    const S = stage.getBoundingClientRect(), pad = 30, maxW = S.width - pad * 2, maxH = S.height - pad * 2;
+    FW = Math.min(maxW, maxH * ar); FH = FW / ar;
+    frame.style.width = FW + "px"; frame.style.height = FH + "px"; frame.classList.toggle("round", round); frame.style.setProperty("--ar", ar);
+    const [w, h] = dims(); minScale = Math.max(FW / w, FH / h);   // image must always cover the frame
+    scale = Math.max(scale, minScale); clamp(); apply();
+  }
+  function clamp() {
+    const [w, h] = dims(), mx = Math.max(0, (w * scale - FW) / 2), my = Math.max(0, (h * scale - FH) / 2);
+    x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y));
+  }
+  function apply() {
+    // transform: move to centre + offset, rotate, scale, then shift by half the unrotated size
+    img.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${scale}) translate(${-src.width / 2}px, ${-src.height / 2}px)`;
+    zoomIn.value = scale / minScale;
+    drawPreview();
+  }
+  function zoomAt(f, px = 0, py = 0) {
+    // keep the point under (px, py) — relative to the frame centre — fixed while zooming
+    const ns = Math.max(minScale, Math.min(minScale * 4, scale * f)), k = ns / scale;
+    x = px - (px - x) * k; y = py - (py - y) * k; scale = ns; clamp(); apply();
+  }
+  const pointers = new Map(); let pinch = 0;
+  stage.addEventListener("pointerdown", (e) => { pointers.set(e.pointerId, [e.clientX, e.clientY]); stage.setPointerCapture(e.pointerId); stage.classList.add("drag"); });
+  stage.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return; const [px, py] = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = stage.getBoundingClientRect(); if (pinch) zoomAt(d / pinch, (a[0] + b[0]) / 2 - r.left - r.width / 2, (a[1] + b[1]) / 2 - r.top - r.height / 2); pinch = d; return; }
+    x += e.clientX - px; y += e.clientY - py; clamp(); apply();
+  });
+  const up = (e) => { pointers.delete(e.pointerId); pinch = 0; if (!pointers.size) stage.classList.remove("drag"); };
+  stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+  stage.addEventListener("wheel", (e) => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * .0015), e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2); }, { passive: false });
+  zoomIn.oninput = () => zoomAt(+zoomIn.value * minScale / scale);
+  document.querySelector(".rot").onclick = () => { rot = (rot + 90) % 360; [x, y] = [-y, x]; layoutFrame(); };
+  document.querySelector(".reset").onclick = () => { rot = 0; x = y = 0; scale = 0; layoutFrame(); };
+  document.querySelectorAll("[data-ar]").forEach((b) => (b.onclick = () => { ar = +b.dataset.ar; round = !!b.dataset.round; document.querySelectorAll("[data-ar]").forEach((o) => o.setAttribute("aria-pressed", o === b)); layoutFrame(); }));
+  // Export: render exactly what's inside the frame into a canvas (what you'd upload).
+  function drawPreview() {
+    const W = 200, H = Math.round(200 / ar); prev.width = W; prev.height = H; prev.classList.toggle("round", round);
+    const g = prev.getContext("2d"), k = W / FW;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+    g.translate(W / 2 + x * k, H / 2 + y * k); g.rotate(rot * Math.PI / 180); g.scale(scale * k, scale * k); g.drawImage(src, -src.width / 2, -src.height / 2);
+  }
+  addEventListener("resize", layoutFrame);
+  scale = 0; layoutFrame();
+</script>
+</body>
+</html>

@@ -2812,5 +2812,176 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "12-experimental",
   "path": "effects/12-experimental/236-pixel-art-replay.html"
+ },
+ {
+  "num": 237,
+  "title": "Spring Modal Dialog",
+  "description": "Native <dialog> with a springy entrance and exit: CSS linear() spring easing, @starting-style for the open transition, transition-behavior: allow-discrete for display/overlay, a blurred backdrop, origin-aware zoom from the trigger button, and built-in focus trapping and Esc.",
+  "tech": [
+   "CSS",
+   "HTML dialog"
+  ],
+  "complexity": 1,
+  "category": "13-components",
+  "path": "effects/13-components/237-spring-dialog.html"
+ },
+ {
+  "num": 238,
+  "title": "Toast Notification System",
+  "description": "A Sonner-style toast stack: new toasts slide in and older ones tuck behind in a 3D stack that fans out on hover, with auto-dismiss timers that pause on hover, progress bars, success/error/promise variants, action buttons and swipe-to-dismiss with velocity.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/238-toast-system.html"
+ },
+ {
+  "num": 239,
+  "title": "Smooth Height Accordion",
+  "description": "An accordion built on native <details>/<summary> that animates to height: auto using interpolate-size: allow-keywords and the ::details-content pseudo-element, with exclusive groups via the name attribute, a rotating chevron, and a grid-rows fallback for older browsers.",
+  "tech": [
+   "CSS",
+   "HTML details"
+  ],
+  "complexity": 1,
+  "category": "13-components",
+  "path": "effects/13-components/239-smooth-accordion.html"
+ },
+ {
+  "num": 240,
+  "title": "Animated Pricing Table",
+  "description": "A pricing section with a monthly/yearly segmented toggle whose pill slides between options; prices roll digit by digit like an odometer, a 'save 20%' badge pops in, and the featured plan has an animated gradient border and spotlight hover.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/240-pricing-toggle.html"
+ },
+ {
+  "num": 241,
+  "title": "Testimonial Carousel",
+  "description": "A testimonial slider with auto-play (pauses on hover, focus and hidden tabs), a progress ring on the active dot, drag/swipe with momentum snapping, keyboard arrows, looping, and neighbouring cards that scale and fade. Accessible live-region announcements.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/241-testimonial-carousel.html"
+ },
+ {
+  "num": 242,
+  "title": "Animated Stats Dashboard",
+  "description": "A dashboard whose widgets animate in as they enter view: KPI counters tick up, an SVG line chart draws itself with an area fade and hover crosshair tooltip, bars grow with stagger, a donut fills segment by segment and sparklines trace. All hand-rolled SVG, no chart library.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/242-stats-dashboard.html"
+ },
+ {
+  "num": 243,
+  "title": "Flip-digit Countdown",
+  "description": "A split-flap countdown to a launch date: each digit card has top and bottom halves, and on change the top flap folds down in 3D to reveal the new digit (back-face trick with two leaves). Days, hours, minutes, seconds, with an editable target and a finish celebration.",
+  "tech": [
+   "CSS 3D",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/243-flip-countdown.html"
+ },
+ {
+  "num": 244,
+  "title": "Animated FAQ Section",
+  "description": "A FAQ with category tabs (sliding underline), instant search that highlights matches and FLIP-animates the list as items filter in and out, expanding answers with a grid-template-rows 0fr→1fr transition, and a deep-link hash per question.",
+  "tech": [
+   "CSS",
+   "JS",
+   "FLIP"
+  ],
+  "complexity": 1,
+  "category": "13-components",
+  "path": "effects/13-components/244-animated-faq.html"
+ },
+ {
+  "num": 245,
+  "title": "Playful Cookie Consent",
+  "description": "A cookie banner that's fun but honest: a cookie character bobs in, takes bites as you toggle categories off, crumbs fall when you reject, and it does a happy hop on accept. Equal-weight Accept / Reject buttons, granular preferences, and the choice remembered in localStorage.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "13-components",
+  "path": "effects/13-components/245-cookie-banner.html"
+ },
+ {
+  "num": 246,
+  "title": "Sortable List with FLIP",
+  "description": "Drag-to-reorder list built on pointer events: the dragged row lifts with a shadow and follows the pointer while siblings slide out of the way using FLIP transforms, with edge auto-scroll, keyboard reordering (space to grab, arrows to move) and screen-reader announcements.",
+  "tech": [
+   "JS",
+   "FLIP"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/246-sortable-list.html"
+ },
+ {
+  "num": 247,
+  "title": "Multi-step Form Wizard",
+  "description": "A four-step sign-up wizard with direction-aware slide transitions, a progress rail that fills and checks off steps, per-step validation with shake and inline messages, animated height between steps, a review screen and a success state with a drawn checkmark.",
+  "tech": [
+   "JS",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/247-form-wizard.html"
+ },
+ {
+  "num": 248,
+  "title": "Animated Empty States &amp; 404",
+  "description": "A set of friendly animated illustrations for empty and error states, all inline SVG + CSS: an empty inbox with a floating paper plane, no search results with a magnifier that scans, offline with a blinking cloud, an empty cart that rocks, and a 404 astronaut drifting with the pointer.",
+  "tech": [
+   "SVG",
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/248-empty-states.html"
+ },
+ {
+  "num": 249,
+  "title": "Image Cropper with Zoom &amp; Pan",
+  "description": "An avatar/banner cropper: drag to pan, wheel, pinch or slider to zoom around the focal point, rotate in 90° steps, switch aspect ratios (1:1 circle, 16:9, 4:5) with an animated mask, rule-of-thirds grid while dragging, the image clamped so it always covers the frame, and a canvas export preview.",
+  "tech": [
+   "JS",
+   "Canvas",
+   "Pointer events"
+  ],
+  "complexity": 2,
+  "category": "13-components",
+  "path": "effects/13-components/249-image-cropper.html"
+ },
+ {
+  "num": 250,
+  "title": "Kanban Board with Animated Drag",
+  "description": "A Trello-style kanban: drag cards between columns with a tilted, lifted ghost that follows the pointer with spring lag, a placeholder that opens space, FLIP animations for every card that moves, column counts that bump, keyboard moves, inline add, and state saved locally.",
+  "tech": [
+   "JS",
+   "FLIP",
+   "Pointer events"
+  ],
+  "complexity": 3,
+  "category": "13-components",
+  "path": "effects/13-components/250-kanban-board.html"
  }
 ];

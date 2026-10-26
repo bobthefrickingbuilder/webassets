@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Empty States &amp; 404</title>
+<meta name="description" content="A set of friendly animated illustrations for empty and error states, all inline SVG + CSS: an empty inbox with a floating paper plane, no search results with a magnifier that scans, offline with a blinking cloud, an empty cart that rocks, and a 404 astronaut drifting with the pointer.">
+<meta name="tech" content="SVG, CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 1100px; margin: 0 auto; padding: 80px 18px 40px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 18px; }
+  .tabs button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: #fff; color: #000; }
+  .state { display: none; text-align: center; padding: 30px 20px 40px; border-radius: 24px; background: var(--bg-2); border: 1px solid var(--line); }
+  .state.on { display: block; animation: fadeup .5s ease-out; }
+  @keyframes fadeup { from { opacity: 0; translate: 0 12px; } }
+  .state svg { width: min(320px, 80vw); height: auto; overflow: visible; }
+  .state h2 { margin: 10px 0 6px; } .state p { color: var(--muted); margin: 0 0 18px; }
+  .state .btn { display: inline-block; padding: 11px 20px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
+  /* inbox */
+  .plane { animation: fly 4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes fly { 0%, 100% { transform: translate(0, 0) rotate(-4deg); } 50% { transform: translate(18px, -14px) rotate(6deg); } }
+  .trail { stroke-dasharray: 6 8; animation: dash 1.5s linear infinite; } @keyframes dash { to { stroke-dashoffset: -28; } }
+  /* search */
+  .lens { animation: scan 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes scan { 0%, 100% { transform: translate(-30px, 0) rotate(-10deg); } 50% { transform: translate(30px, -6px) rotate(10deg); } }
+  .q { animation: blink 1.2s steps(2) infinite; } @keyframes blink { 50% { opacity: 0; } }
+  /* offline */
+  .bolt { animation: zap 2.4s infinite; } @keyframes zap { 0%, 60%, 100% { opacity: 0; } 62%, 70% { opacity: 1; } 66% { opacity: .2; } }
+  .drop { animation: rain 1.4s linear infinite; } .drop:nth-child(2) { animation-delay: .45s; } .drop:nth-child(3) { animation-delay: .9s; }
+  @keyframes rain { from { transform: translateY(-6px); opacity: 0; } 30% { opacity: 1; } to { transform: translateY(40px); opacity: 0; } }
+  /* cart */
+  .cart { animation: rock 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; } @keyframes rock { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateX(6px); } }
+  .tumble { animation: tumble 3s linear infinite; transform-box: fill-box; transform-origin: center; } @keyframes tumble { from { transform: translateX(-160px) rotate(0); } to { transform: translateX(160px) rotate(720deg); } }
+  /* 404 */
+  .astro { transition: transform .8s cubic-bezier(.2, .8, .2, 1); }
+  .astro-in { animation: drift 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes drift { 50% { transform: translateY(-10px) rotate(8deg); } }
+  .star { animation: tw 2s ease-in-out infinite; } .star:nth-child(2n) { animation-delay: .7s; } .star:nth-child(3n) { animation-delay: 1.3s; }
+  @keyframes tw { 50% { opacity: .2; } }
+  @media (prefers-reduced-motion: reduce) { .state * { animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="tabs" role="tablist"></div>
+
+  <section class="state" data-n="Empty inbox">
+    <svg viewBox="0 0 320 200" aria-hidden="true"><ellipse cx="160" cy="180" rx="110" ry="10" fill="rgb(0 0 0 / .3)"/>
+      <path d="M70 110 L160 60 L250 110 V170 H70Z" fill="#2a2c3a"/><path d="M70 110 L160 150 L250 110" fill="none" stroke="#3d4052" stroke-width="3"/><rect x="90" y="80" width="140" height="70" rx="6" fill="#f5f5f7" transform="translate(0 6)"/><path d="M70 110 L160 150 L250 110 V170 H70Z" fill="#33364a"/>
+      <path class="trail" d="M40 70 Q90 20 150 40" fill="none" stroke="#7c5cff" stroke-width="2"/><g class="plane"><path d="M150 40 L200 22 L182 60 L172 46Z" fill="#fff"/><path d="M172 46 L200 22 L168 52Z" fill="#cfd2e0"/></g></svg>
+    <h2>Inbox zero 🎉</h2><p>Nothing new. Enjoy the quiet.</p><button class="btn">Compose</button>
+  </section>
+
+  <section class="state" data-n="No results">
+    <svg viewBox="0 0 320 200" aria-hidden="true"><rect x="60" y="40" width="200" height="130" rx="12" fill="#2a2c3a"/><g fill="#3d4052"><rect x="80" y="64" width="120" height="10" rx="5"/><rect x="80" y="86" width="160" height="10" rx="5"/><rect x="80" y="108" width="90" height="10" rx="5"/><rect x="80" y="130" width="140" height="10" rx="5"/></g>
+      <g class="lens"><circle cx="170" cy="100" r="34" fill="rgb(124 92 255 / .15)" stroke="#fff" stroke-width="8"/><path d="M194 124 L222 152" stroke="#fff" stroke-width="12" stroke-linecap="round"/><text class="q" x="170" y="112" text-anchor="middle" font-size="34" font-weight="900" fill="#fff" font-family="system-ui">?</text></g></svg>
+    <h2>No matches for “flux capacitor”</h2><p>Try fewer words or check the spelling.</p><button class="btn">Clear filters</button>
+  </section>
+
+  <section class="state" data-n="Offline">
+    <svg viewBox="0 0 320 200" aria-hidden="true"><path d="M100 120 a40 40 0 0 1 20 -74 a52 52 0 0 1 96 10 a34 34 0 0 1 4 64Z" fill="#3d4052"/>
+      <path class="bolt" d="M166 100 L150 134 H166 L156 166 L188 122 H170 L180 100Z" fill="#fbbf24"/>
+      <g fill="#22d3ee"><rect class="drop" x="120" y="128" width="3" height="10" rx="1.5"/><rect class="drop" x="206" y="128" width="3" height="10" rx="1.5"/><rect class="drop" x="236" y="122" width="3" height="10" rx="1.5"/></g>
+      <path d="M60 60 L260 170" stroke="#ef4444" stroke-width="6" stroke-linecap="round" opacity=".8"/></svg>
+    <h2>You're offline</h2><p>We'll reconnect automatically when the storm passes.</p><button class="btn">Try again</button>
+  </section>
+
+  <section class="state" data-n="Empty cart">
+    <svg viewBox="0 0 320 200" aria-hidden="true"><line x1="20" y1="176" x2="300" y2="176" stroke="#3d4052" stroke-width="3"/>
+      <g class="tumble"><circle cx="160" cy="166" r="9" fill="none" stroke="#8b7a5a" stroke-width="2"/><path d="M152 162 l16 8 M156 172 l8 -12" stroke="#8b7a5a" stroke-width="1.5"/></g>
+      <g class="cart"><path d="M90 60 H112 L132 140 H222 L240 84 H120" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/><circle cx="140" cy="162" r="10" fill="#fff"/><circle cx="212" cy="162" r="10" fill="#fff"/></g></svg>
+    <h2>Your cart is feeling light</h2><p>Add something nice. It gets lonely in there.</p><button class="btn">Browse products</button>
+  </section>
+
+  <section class="state" data-n="404">
+    <svg viewBox="0 0 320 200" aria-hidden="true"><g fill="#fff"><circle class="star" cx="30" cy="30" r="2"/><circle class="star" cx="290" cy="40" r="1.5"/><circle class="star" cx="250" cy="170" r="2"/><circle class="star" cx="60" cy="160" r="1.5"/><circle class="star" cx="150" cy="18" r="1.5"/><circle class="star" cx="300" cy="120" r="2"/></g>
+      <text x="160" y="125" text-anchor="middle" font-size="110" font-weight="900" font-family="system-ui" fill="#2a2c3a">404</text>
+      <g class="astro"><g class="astro-in"><rect x="146" y="80" width="30" height="40" rx="12" fill="#e9eaf2"/><circle cx="161" cy="72" r="18" fill="#f5f5f7"/><ellipse cx="164" cy="72" rx="11" ry="8" fill="#1f2a44"/><ellipse cx="168" cy="69" rx="3" ry="2" fill="#7fb6ff"/><rect x="132" y="86" width="14" height="10" rx="5" fill="#e9eaf2" transform="rotate(-30 139 91)"/><rect x="176" y="84" width="14" height="10" rx="5" fill="#e9eaf2" transform="rotate(40 183 89)"/><rect x="148" y="118" width="10" height="16" rx="5" fill="#e9eaf2"/><rect x="164" y="118" width="10" height="16" rx="5" fill="#e9eaf2"/><path d="M146 100 Q120 140 80 150" fill="none" stroke="#7c5cff" stroke-width="2" stroke-dasharray="4 4"/></g></g></svg>
+    <h2>Lost in space</h2><p>The page you're looking for drifted out of orbit.</p><a class="btn" href="../../index.html">Back to base</a>
+  </section>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const states = [...document.querySelectorAll(".state")], tabs = document.querySelector(".tabs");
+  states.forEach((s, i) => { const b = document.createElement("button"); b.textContent = s.dataset.n; b.setAttribute("aria-pressed", !i); b.onclick = () => show(i); tabs.appendChild(b); });
+  function show(i) { states.forEach((s, k) => s.classList.toggle("on", k === i)); tabs.querySelectorAll("button").forEach((b, k) => b.setAttribute("aria-pressed", k === i)); }
+  show(0);
+  // the astronaut leans away from the pointer
+  addEventListener("pointermove", (e) => { const a = document.querySelector(".astro"); a.style.transform = `translate(${(e.clientX / innerWidth - .5) * -30}px, ${(e.clientY / innerHeight - .5) * -20}px)`; });
+</script>
+</body>
+</html>

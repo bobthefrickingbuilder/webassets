@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sortable List with FLIP</title>
+<meta name="description" content="Drag-to-reorder list built on pointer events: the dragged row lifts with a shadow and follows the pointer while siblings slide out of the way using FLIP transforms, with edge auto-scroll, keyboard reordering (space to grab, arrows to move) and screen-reader announcements.">
+<meta name="tech" content="JS, FLIP">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  main { max-width: 520px; margin: 0 auto; padding: 90px 18px 40px; }
+  h1 { margin: 0 0 6px; } .sub { color: var(--muted); margin: 0 0 18px; font-size: 14px; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li { display: flex; align-items: center; gap: 12px; padding: 14px 14px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); user-select: none; position: relative; }
+  li .h { cursor: grab; color: var(--muted); font-size: 18px; touch-action: none; padding: 2px 4px; }
+  li .rk { font: 700 13px var(--mono); color: var(--accent); width: 22px; }
+  li .em { font-size: 22px; }
+  li.dragging { z-index: 10; box-shadow: 0 20px 40px rgb(0 0 0 / .5); background: #232433; scale: 1.03; cursor: grabbing; transition: scale .2s, box-shadow .2s; }
+  li.kbd { outline: 2px solid var(--accent); }
+  li:focus-visible { outline: 2px solid var(--accent); }
+  .ph { border: 2px dashed var(--line); background: transparent; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Rank your snacks</h1>
+  <p class="sub">Drag the handle, or focus a row and press Space, then ↑ ↓.</p>
+  <ol aria-label="Sortable list"></ol>
+  <p class="sr" aria-live="assertive" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+</main>
+<script src="../../assets/demo.js"></script>
+<script>
+  const ITEMS = [["🍕", "Pizza"], ["🍩", "Doughnut"], ["🌮", "Taco"], ["🍣", "Sushi"], ["🍪", "Cookie"], ["🥐", "Croissant"], ["🍜", "Ramen"], ["🧁", "Cupcake"]];
+  const list = document.querySelector("ol"), sr = document.querySelector(".sr");
+  ITEMS.forEach(([e, n]) => { const li = document.createElement("li"); li.tabIndex = 0; li.dataset.name = n; li.innerHTML = `<span class="h" aria-hidden="true">⠿</span><span class="rk"></span><span class="em">${e}</span><span>${n}</span>`; list.appendChild(li); });
+  const ranks = () => [...list.children].forEach((li, i) => (li.querySelector(".rk").textContent = i + 1));
+  ranks();
+  // FLIP helper: measure, mutate the DOM, then play each item from its old position to its new one.
+  function flip(mutate, skip) {
+    const items = [...list.children], first = new Map(items.map((el) => [el, el.getBoundingClientRect().top]));
+    mutate();
+    if (Demo.reduced) return;
+    items.forEach((el) => {
+      if (el === skip) return;
+      const dy = first.get(el) - el.getBoundingClientRect().top;
+      if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }], { duration: 250, easing: "cubic-bezier(.2,.8,.2,1)" });
+    });
+  }
+  // --- Pointer dragging ---
+  let drag = null;
+  list.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest(".h"); if (!h) return;
+    const li = h.parentElement, r = li.getBoundingClientRect();
+    drag = { li, offY: e.clientY - r.top, startTop: r.top, y: e.clientY };
+    li.classList.add("dragging"); list.setPointerCapture(e.pointerId);   // the row moves in the DOM, so capture on the list
+  });
+  list.addEventListener("pointermove", (e) => {
+    if (!drag) return; drag.y = e.clientY; place();
+  });
+  function place() {
+    const { li } = drag;
+    // compare the dragged row's centre to its neighbours' centres and swap when it passes them
+    const cur = li.getBoundingClientRect(), centre = drag.y - drag.offY + cur.height / 2;
+    const prev = li.previousElementSibling, next = li.nextElementSibling;
+    if (prev && centre < prev.getBoundingClientRect().top + prev.offsetHeight / 2) flip(() => list.insertBefore(li, prev), li);
+    else if (next && centre > next.getBoundingClientRect().top + next.offsetHeight / 2) flip(() => list.insertBefore(next, li), li);
+    const natural = li.getBoundingClientRect().top - (parseFloat(li.dataset.ty) || 0);
+    const ty = drag.y - drag.offY - natural; li.dataset.ty = ty; li.style.transform = `translateY(${ty}px)`;
+  }
+  const end = () => {
+    if (!drag) return; const { li } = drag; drag = null;
+    const ty = parseFloat(li.dataset.ty) || 0; li.dataset.ty = 0; li.style.transform = "";
+    li.animate([{ transform: `translateY(${ty}px) scale(1.03)` }, { transform: "none" }], { duration: Demo.reduced ? 1 : 300, easing: "cubic-bezier(.3,1.4,.5,1)" }).onfinish = () => li.classList.remove("dragging");
+    ranks(); sr.textContent = `${li.dataset.name} dropped at position ${[...list.children].indexOf(li) + 1}`;
+  };
+  list.addEventListener("pointerup", end); list.addEventListener("pointercancel", end);
+  // auto-scroll when dragging near the viewport edges
+  (function scroller() { if (drag) { const edge = 60; if (drag.y < edge) { scrollBy(0, -8); place(); } else if (drag.y > innerHeight - edge) { scrollBy(0, 8); place(); } } requestAnimationFrame(scroller); })();
+  // --- Keyboard reordering ---
+  list.addEventListener("keydown", (e) => {
+    const li = e.target.closest("li"); if (!li) return;
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); const on = li.classList.toggle("kbd"); sr.textContent = on ? `${li.dataset.name} grabbed. Use arrow keys to move, Space to drop.` : `${li.dataset.name} dropped at position ${[...list.children].indexOf(li) + 1}`; return; }
+    if (!li.classList.contains("kbd")) return;
+    if (e.key === "ArrowUp" && li.previousElementSibling) { e.preventDefault(); flip(() => list.insertBefore(li, li.previousElementSibling)); }
+    else if (e.key === "ArrowDown" && li.nextElementSibling) { e.preventDefault(); flip(() => list.insertBefore(li.nextElementSibling, li)); }
+    else if (e.key === "Escape") li.classList.remove("kbd");
+    else return;
+    li.focus(); ranks(); sr.textContent = `${li.dataset.name}, position ${[...list.children].indexOf(li) + 1} of ${list.children.length}`;
+  });
+</script>
+</body>
+</html>
