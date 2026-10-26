@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bokeh Light Orbs</title>
+<meta name="description" content="Out-of-focus city lights: soft hexagonal and round bokeh discs drift and shimmer at different depths, with depth-of-field style blur and parallax on mouse move.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: linear-gradient(#0b0718, #1a0b2e); }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .hero { position: relative; min-height: 100vh; display: grid; place-items: center; text-align: center; pointer-events: none; }
+  .hero h1 { font-size: clamp(44px, 9vw, 120px); letter-spacing: -.04em; margin: 0; font-weight: 300; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<section class="hero"><h1>After hours</h1></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, mx = 0, my = 0, smx = 0, smy = 0;
+  const HUES = [330, 30, 45, 280, 200];
+  const orbs = [];
+  // Pre-render each orb sprite once (radial gradient with a crisp rim, like real lens bokeh).
+  // Depth-of-field blur is baked in too (far orbs blurrier), so the per-frame cost is one drawImage.
+  function sprite(r, hue, hex, blur) {
+    const pad = Math.ceil(blur * 2) + 2;
+    const c = document.createElement("canvas"); c.width = c.height = r * 2 + pad * 2;
+    const g = c.getContext("2d"), cx = r + pad;
+    g.filter = `blur(${blur}px)`;
+    const grad = g.createRadialGradient(cx, cx, 0, cx, cx, r);
+    grad.addColorStop(0, `hsla(${hue},90%,70%,.25)`); grad.addColorStop(.85, `hsla(${hue},90%,65%,.35)`); grad.addColorStop(1, `hsla(${hue},90%,80%,.6)`);
+    g.fillStyle = grad; g.beginPath();
+    if (hex) for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + Math.PI / 6; g.lineTo(cx + Math.cos(a) * r, cx + Math.sin(a) * r); }
+    else g.arc(cx, cx, r, 0, 6.283);
+    g.fill();
+    return c;
+  }
+  function resize() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight; orbs.length = 0;
+    for (let i = 0; i < 70; i++) {
+      const z = Math.random(), r = 10 + z * 60;
+      orbs.push({ x: Math.random() * W, y: Math.random() * H, z, r, img: sprite(r, HUES[i % HUES.length] + Math.random() * 20, Math.random() < .5, (1 - z) * 6), vx: (Math.random() - .5) * .3, vy: -.1 - Math.random() * .3, ph: Math.random() * 6.28 });
+    }
+    orbs.sort((a, b) => a.z - b.z);
+  }
+  addEventListener("resize", resize); resize();
+  addEventListener("pointermove", (e) => { mx = e.clientX / W - .5; my = e.clientY / H - .5; });
+  function frame(t) {
+    ctx.clearRect(0, 0, W, H);
+    smx += (mx - smx) * .05; smy += (my - smy) * .05;
+    ctx.globalCompositeOperation = "lighter";
+    for (const o of orbs) {
+      o.x += o.vx; o.y += o.vy;
+      if (o.y < -o.r * 2) { o.y = H + o.r; o.x = Math.random() * W; }
+      const px = o.x - smx * 80 * (o.z + .2), py = o.y - smy * 80 * (o.z + .2);
+      ctx.globalAlpha = .5 + .5 * Math.sin(t / 900 + o.ph);
+      ctx.drawImage(o.img, px - o.img.width / 2, py - o.img.height / 2);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

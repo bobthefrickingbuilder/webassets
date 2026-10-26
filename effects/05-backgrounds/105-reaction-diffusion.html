@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reaction-Diffusion</title>
+<meta name="description" content="Gray-Scott reaction-diffusion simulated on the GPU with ping-pong framebuffers: coral, mitosis and maze patterns grow organically. Draw with the pointer to seed growth.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+  .presets { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+  .presets button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgb(15 16 22 / .85); cursor: pointer; }
+  .presets button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+</style>
+</head>
+<body>
+<canvas aria-label="Reaction-diffusion simulation. Draw to seed."></canvas>
+<div class="presets"></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const gl = GL.context(canvas);
+  if (!gl) return;
+  // State texture: r = chemical A, g = chemical B.
+  const SIM = GL.program(gl, `
+    uniform sampler2D u_state; uniform vec2 u_texel; uniform float u_feed; uniform float u_kill; uniform vec3 u_brush;
+    void main(){
+      vec2 s = texture(u_state, v_uv).rg;
+      // 3x3 Laplacian with standard weights.
+      vec2 lap = -s;
+      lap += .2 * (texture(u_state, v_uv + vec2(u_texel.x, 0)).rg + texture(u_state, v_uv - vec2(u_texel.x, 0)).rg + texture(u_state, v_uv + vec2(0, u_texel.y)).rg + texture(u_state, v_uv - vec2(0, u_texel.y)).rg);
+      lap += .05 * (texture(u_state, v_uv + u_texel).rg + texture(u_state, v_uv - u_texel).rg + texture(u_state, v_uv + vec2(u_texel.x, -u_texel.y)).rg + texture(u_state, v_uv - vec2(u_texel.x, -u_texel.y)).rg);
+      float a = s.r, b = s.g, abb = a * b * b;
+      a += 1.0 * lap.r - abb + u_feed * (1. - a);
+      b += .5 * lap.g + abb - (u_kill + u_feed) * b;
+      if (u_brush.z > 0. && distance(v_uv / u_texel, u_brush.xy) < 6.) b = 1.;
+      o = vec4(clamp(a, 0., 1.), clamp(b, 0., 1.), 0, 1);
+    }`);
+  const SEED = GL.program(gl, `
+    uniform vec2 u_texel; float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main(){ vec2 px = v_uv / u_texel; float b = (h(floor(px / 12.)) > .985) ? 1. : 0.; b = max(b, step(distance(v_uv, vec2(.5)), .02)); o = vec4(1, b, 0, 1); }`);
+  const SHOW = GL.program(gl, `
+    uniform sampler2D u_state; uniform vec3 u_c1; uniform vec3 u_c2;
+    void main(){ vec2 s = texture(u_state, v_uv).rg; float v = smoothstep(.1, .4, s.g); vec3 c = mix(u_c1, u_c2, v); c += pow(v, 6.) * .3; o = vec4(c, 1); }`);
+
+  const presets = { Coral: [0.0545, 0.062], Mitosis: [0.0367, 0.0649], Maze: [0.029, 0.057], Spots: [0.035, 0.065] };
+  let [feed, kill] = presets.Coral, state, texel;
+  const brush = [0, 0, 0];
+  function reset() {
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+    const w = Math.round(innerWidth / 2), h = Math.round(innerHeight / 2);   // half-res sim keeps it fast
+    state = GL.doubleTarget(gl, w, h, { float: true });
+    texel = [1 / w, 1 / h];
+    SEED.use().set("u_texel", texel); GL.draw(gl, state.read);
+  }
+  function setBrush(e, on) { brush[0] = (e.clientX / innerWidth) / texel[0]; brush[1] = (1 - e.clientY / innerHeight) / texel[1]; brush[2] = on; }
+  let down = false;
+  canvas.addEventListener("pointerdown", (e) => { down = true; setBrush(e, 1); });
+  canvas.addEventListener("pointermove", (e) => down && setBrush(e, 1));
+  addEventListener("pointerup", () => { down = false; brush[2] = 0; });
+
+  const host = document.querySelector(".presets");
+  Object.keys(presets).forEach((name, i) => {
+    const b = document.createElement("button"); b.textContent = name; b.setAttribute("aria-pressed", i === 0);
+    b.onclick = () => { [feed, kill] = presets[name]; reset(); if (Demo.reduced) step(3000); host.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+    host.appendChild(b);
+  });
+  reset();
+  addEventListener("resize", reset);
+  function step(n) {
+    for (let i = 0; i < n; i++) {
+      SIM.use().set("u_state", state.read).set("u_texel", texel).set("u_feed", feed).set("u_kill", kill).set("u_brush", brush);
+      GL.draw(gl, state.write); state.swap();
+    }
+    SHOW.use().set("u_state", state.read).set("u_c1", [0.03, 0.04, 0.08]).set("u_c2", [0.95, 0.55, 0.75]);
+    GL.draw(gl, null);
+  }
+  // Many sim steps per frame so the pattern grows at a watchable speed. Reduced motion: jump ahead, then only step while drawing.
+  if (Demo.reduced) { step(3000); canvas.addEventListener("pointermove", () => down && step(40)); }
+  else (function frame() { step(12); requestAnimationFrame(frame); })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cursor-following Gradient</title>
+<meta name="description" content="A hero background of soft radial gradients that chase the cursor at different speeds, giving a layered, liquid light effect.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .glow-bg { position: fixed; inset: 0; background: #07070d;
+    background-image:
+      radial-gradient(600px circle at var(--x1) var(--y1), rgb(124 92 255 / .45), transparent 60%),
+      radial-gradient(500px circle at var(--x2) var(--y2), rgb(34 211 238 / .35), transparent 60%),
+      radial-gradient(400px circle at var(--x3) var(--y3), rgb(244 114 182 / .35), transparent 60%); }
+  .hero { position: relative; min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 16px; }
+  .hero h1 { font-size: clamp(44px, 9vw, 120px); letter-spacing: -.05em; margin: 0; }
+</style>
+</head>
+<body>
+<div class="glow-bg" aria-hidden="true"></div>
+<section class="hero"><div><h1>Follow the light</h1><p class="hint">Three gradients with three different lags.</p></div></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const bg = document.querySelector(".glow-bg");
+  let tx = innerWidth / 2, ty = innerHeight / 2;
+  const layers = [0.12, 0.06, 0.03].map((k) => ({ k, x: tx, y: ty }));
+  addEventListener("pointermove", (e) => { tx = e.clientX; ty = e.clientY; });
+  (function loop(t) {
+    layers.forEach((l, i) => {
+      // Slower layers also orbit a little so the scene breathes when the mouse is still.
+      const ox = Math.cos(t / 1400 + i * 2) * 60 * i, oy = Math.sin(t / 1700 + i) * 60 * i;
+      l.x += (tx + ox - l.x) * l.k; l.y += (ty + oy - l.y) * l.k;
+      bg.style.setProperty("--x" + (i + 1), l.x + "px"); bg.style.setProperty("--y" + (i + 1), l.y + "px");
+    });
+    requestAnimationFrame(loop);
+  })(0);
+</script>
+</body>
+</html>

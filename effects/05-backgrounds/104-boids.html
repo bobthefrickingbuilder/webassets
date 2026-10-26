@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boids Flocking</title>
+<meta name="description" content="Craig Reynolds' boids: separation, alignment and cohesion produce emergent flocking. The pointer is a predator the flock scatters from; sliders tune each rule.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .panel { position: fixed; right: 16px; bottom: 16px; padding: 14px 16px; border-radius: 14px; background: rgb(15 16 22 / .8); border: 1px solid var(--line); display: grid; gap: 8px; font-size: 13px; color: var(--muted); backdrop-filter: blur(8px); }
+  .panel label { display: grid; grid-template-columns: 90px 120px; align-items: center; }
+</style>
+</head>
+<body>
+<canvas aria-label="Flock of birds avoiding your pointer"></canvas>
+<div class="panel">
+  <label>Separation <input type="range" id="sep" min="0" max="3" step=".1" value="1.6"></label>
+  <label>Alignment <input type="range" id="ali" min="0" max="3" step=".1" value="1"></label>
+  <label>Cohesion <input type="range" id="coh" min="0" max="3" step=".1" value="0.8"></label>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H;
+  const N = 260, VIEW = 50, SEP_D = 22, MAX_SPEED = 3.2, MAX_FORCE = 0.06;
+  const sliders = { sep: document.getElementById("sep"), ali: document.getElementById("ali"), coh: document.getElementById("coh") };
+  const m = { x: -1e4, y: -1e4 };
+  function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  addEventListener("resize", resize); resize();
+  addEventListener("pointermove", (e) => { m.x = e.clientX; m.y = e.clientY; });
+  const boids = Array.from({ length: N }, () => { const a = Math.random() * 6.28; return { x: Math.random() * W, y: Math.random() * H, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2 }; });
+  const limit = (x, y, max) => { const l = Math.hypot(x, y); return l > max ? [x / l * max, y / l * max] : [x, y]; };
+  function steer(b, dx, dy) { // turn a desired direction into a bounded steering force
+    const [sx, sy] = limit(dx, dy, 1); const ux = sx * MAX_SPEED - b.vx, uy = sy * MAX_SPEED - b.vy; return limit(ux, uy, MAX_FORCE);
+  }
+  function frame() {
+    ctx.fillStyle = "rgba(11,12,16,0.35)"; ctx.fillRect(0, 0, W, H);
+    // Bucket into a grid so each boid only checks nearby neighbours.
+    const grid = new Map(), key = (x, y) => ((x / VIEW) | 0) + "," + ((y / VIEW) | 0);
+    for (const b of boids) { const k = key(b.x, b.y); (grid.get(k) || grid.set(k, []).get(k)).push(b); }
+    const ws = +sliders.sep.value, wa = +sliders.ali.value, wc = +sliders.coh.value;
+    for (const b of boids) {
+      let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, n = 0;
+      const gx = (b.x / VIEW) | 0, gy = (b.y / VIEW) | 0;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const list = grid.get(gx + i + "," + (gy + j)); if (!list) continue;
+        for (const o of list) {
+          if (o === b) continue;
+          const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy);
+          if (d < VIEW) { ax += o.vx; ay += o.vy; cx += o.x; cy += o.y; n++; if (d < SEP_D && d > 0) { sx += dx / d / d; sy += dy / d / d; } }
+        }
+      }
+      let fx = 0, fy = 0;
+      if (n) {
+        let [x1, y1] = steer(b, sx, sy); fx += x1 * ws * 1.5; fy += y1 * ws * 1.5;
+        [x1, y1] = steer(b, ax / n, ay / n); fx += x1 * wa; fy += y1 * wa;
+        [x1, y1] = steer(b, cx / n - b.x, cy / n - b.y); fx += x1 * wc; fy += y1 * wc;
+      }
+      const pd = Math.hypot(b.x - m.x, b.y - m.y);
+      if (pd < 120) { const [x1, y1] = steer(b, b.x - m.x, b.y - m.y); fx += x1 * 4; fy += y1 * 4; }   // flee the predator
+      b.vx += fx; b.vy += fy;
+      [b.vx, b.vy] = limit(b.vx, b.vy, MAX_SPEED);
+      b.x = (b.x + b.vx + W) % W; b.y = (b.y + b.vy + H) % H;
+      const a = Math.atan2(b.vy, b.vx);
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(a);
+      ctx.fillStyle = `hsl(${190 + (a * 30) % 60}, 80%, 65%)`;
+      ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-5, 3.5); ctx.lineTo(-3, 0); ctx.lineTo(-5, -3.5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spiral Galaxy</title>
+<meta name="description" content="A 3D spiral galaxy of 120,000 additive-blended particles generated on logarithmic arms, rotating differentially in a vertex shader. Drag to orbit.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; }
+</style>
+</head>
+<body>
+<canvas aria-label="Rotating spiral galaxy. Drag to orbit."></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 3.2, 4.2], fov: 55, background: 0x000000 });
+  const controls = ThreeKit.orbit(kit.camera, kit.renderer.domElement, { minDistance: 1.5, maxDistance: 14 });
+
+  const COUNT = 120000, ARMS = 4, RADIUS = 5, SPIN = 1.1;
+  const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3), scale = new Float32Array(COUNT);
+  const inside = new THREE.Color("#ffb36b"), outside = new THREE.Color("#4f7bff");
+  for (let i = 0; i < COUNT; i++) {
+    const r = Math.pow(Math.random(), 1.5) * RADIUS;
+    const arm = ((i % ARMS) / ARMS) * Math.PI * 2;
+    const twist = r * SPIN;
+    // Scatter falls off away from the arm centre line (power curve = dense core, sparse edges).
+    const rnd = () => Math.pow(Math.random(), 3) * (Math.random() < .5 ? 1 : -1) * 0.5 * (0.3 + r * 0.25);
+    pos[i * 3] = Math.cos(arm + twist) * r + rnd();
+    pos[i * 3 + 1] = rnd() * 0.6;
+    pos[i * 3 + 2] = Math.sin(arm + twist) * r + rnd();
+    const c = inside.clone().lerp(outside, r / RADIUS);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    scale[i] = Math.random();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geo.setAttribute("aScale", new THREE.BufferAttribute(scale, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSize: { value: 26 * kit.renderer.getPixelRatio() } },
+    vertexShader: `
+      uniform float uTime; uniform float uSize; attribute float aScale; varying vec3 vColor;
+      void main(){
+        vec3 p = position;
+        // Differential rotation: inner stars orbit faster than outer ones.
+        float r = length(p.xz), a = atan(p.x, p.z) + uTime * (1. / (r + .6)) * .35;
+        p.x = sin(a) * r; p.z = cos(a) * r;
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uSize * aScale * (1. / -mv.z);
+        vColor = color;
+      }`,
+    fragmentShader: `
+      varying vec3 vColor;
+      void main(){ float d = length(gl_PointCoord - .5); float s = pow(1. - smoothstep(0., .5, d), 6.); gl_FragColor = vec4(vColor * s, 1.); }`,
+    vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+  });
+  kit.scene.add(new THREE.Points(geo, mat));
+  kit.onFrame((t) => { mat.uniforms.uTime.value = t; controls.update(); }).start();
+</script>
+</body>
+</html>

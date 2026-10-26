@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Particle Constellation Network</title>
+<meta name="description" content="Drifting points link up with fading lines when close, the pointer acts as a hub that connects to nearby nodes, and clicks add more particles. Uses a spatial grid for speed.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .hero { position: relative; min-height: 100vh; display: grid; place-items: center; pointer-events: none; text-align: center; }
+  .hero h1 { font-size: clamp(40px, 8vw, 110px); letter-spacing: -.05em; margin: 0; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<section class="hero"><div><h1>Connected</h1><p class="hint">Move to connect · click to add nodes</p></div></section>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, pts = [];
+  const LINK = 130, m = { x: -1e4, y: -1e4 };
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr;
+    const target = Math.round((innerWidth * innerHeight) / 9000);
+    while (pts.length < target) pts.push(make(Math.random() * W, Math.random() * H));
+    pts.length = Math.min(pts.length, target + 200);
+  }
+  function make(x, y) { const a = Math.random() * 6.28, s = (0.15 + Math.random() * 0.35) * dpr; return { x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s }; }
+  addEventListener("resize", resize); resize();
+  addEventListener("pointermove", (e) => { m.x = e.clientX * dpr; m.y = e.clientY * dpr; });
+  addEventListener("pointerdown", (e) => { for (let i = 0; i < 5; i++) pts.push(make(e.clientX * dpr, e.clientY * dpr)); });
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    const L = LINK * dpr, cell = L;
+    // Spatial hash: only compare points in neighbouring cells (O(n) instead of O(n²)).
+    const grid = new Map();
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      const k = ((p.x / cell) | 0) + "," + ((p.y / cell) | 0);
+      (grid.get(k) || grid.set(k, []).get(k)).push(p);
+    }
+    ctx.lineWidth = dpr;
+    for (const p of pts) {
+      const cx = (p.x / cell) | 0, cy = (p.y / cell) | 0;
+      for (let dx = 0; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === -1) continue;           // visit each neighbouring pair once
+        const list = grid.get(cx + dx + "," + (cy + dy)); if (!list) continue;
+        for (const q of list) {
+          if (q === p || (dx === 0 && dy === 0 && q.x < p.x)) continue;
+          const d = Math.hypot(p.x - q.x, p.y - q.y);
+          if (d < L) { ctx.strokeStyle = `rgba(148,163,255,${(1 - d / L) * 0.5})`; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+        }
+      }
+      const dm = Math.hypot(p.x - m.x, p.y - m.y);
+      if (dm < L * 1.6) {
+        ctx.strokeStyle = `rgba(34,211,238,${(1 - dm / (L * 1.6)) * 0.9})`;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+        p.x += (m.x - p.x) * 0.002; p.y += (m.y - p.y) * 0.002;   // gentle attraction
+      }
+    }
+    ctx.fillStyle = "#c7d2fe";
+    for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.8 * dpr, 0, 6.283); ctx.fill(); }
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

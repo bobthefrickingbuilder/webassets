@@ -1120,5 +1120,307 @@ window.EFFECTS = [
   "complexity": 1,
   "category": "04-micro",
   "path": "effects/04-micro/094-notification-bell.html"
+ },
+ {
+  "num": 95,
+  "title": "Animated Mesh Gradient",
+  "description": "A Stripe-style living gradient: domain-warped fractal noise blends four palette colours on the GPU, with film grain and switchable palettes.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/095-mesh-gradient.html"
+ },
+ {
+  "num": 96,
+  "title": "Aurora Borealis",
+  "description": "Northern lights rendered in a shader: noise-warped vertical curtains with ray streaks ripple across a starry sky above a mountain silhouette.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/096-aurora.html"
+ },
+ {
+  "num": 97,
+  "title": "Floating Blurred Blobs",
+  "description": "A soft, modern hero background: large blurred colour blobs drift on independent looping paths, pure CSS with no JavaScript.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/097-floating-blobs.html"
+ },
+ {
+  "num": 98,
+  "title": "Particle Constellation Network",
+  "description": "Drifting points link up with fading lines when close, the pointer acts as a hub that connects to nearby nodes, and clicks add more particles. Uses a spatial grid for speed.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/098-particle-network.html"
+ },
+ {
+  "num": 99,
+  "title": "Perlin Noise Flow Field",
+  "description": "Thousands of particles follow an evolving Perlin-noise vector field, painting silky trails. Click to reseed the field and palette.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/099-flow-field.html"
+ },
+ {
+  "num": 100,
+  "title": "Starfield Warp Speed",
+  "description": "Fly through a 3D starfield; hold the mouse (or Space) to engage hyperdrive and stretch stars into blue-shifted streaks. The pointer steers the vanishing point.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/100-starfield-warp.html"
+ },
+ {
+  "num": 101,
+  "title": "Synthwave Perspective Grid",
+  "description": "Retro 80s outrun scene in pure CSS: an infinite neon grid floor scrolling toward the viewer under a striped sunset sun and chrome title.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/101-synthwave-grid.html"
+ },
+ {
+  "num": 102,
+  "title": "Layered SVG Waves",
+  "description": "Parallax ocean waves at the bottom of a hero: four translucent SVG wave layers loop horizontally at different speeds. Pure CSS animation.",
+  "tech": [
+   "SVG",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/102-svg-waves.html"
+ },
+ {
+  "num": 103,
+  "title": "Metaballs Lava Lamp",
+  "description": "GPU metaballs: an implicit field from moving blobs is thresholded into gooey shapes with a glossy rim, and the pointer is one of the blobs.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/103-metaballs.html"
+ },
+ {
+  "num": 104,
+  "title": "Boids Flocking",
+  "description": "Craig Reynolds' boids: separation, alignment and cohesion produce emergent flocking. The pointer is a predator the flock scatters from; sliders tune each rule.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/104-boids.html"
+ },
+ {
+  "num": 105,
+  "title": "Reaction-Diffusion",
+  "description": "Gray-Scott reaction-diffusion simulated on the GPU with ping-pong framebuffers: coral, mitosis and maze patterns grow organically. Draw with the pointer to seed growth.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/105-reaction-diffusion.html"
+ },
+ {
+  "num": 106,
+  "title": "Animated Film Grain Overlay",
+  "description": "A tactile analogue grain layer: an SVG feTurbulence noise tile jittered with stepped CSS animation, adjustable with an intensity slider.",
+  "tech": [
+   "SVG",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/106-film-grain.html"
+ },
+ {
+  "num": 107,
+  "title": "Cursor-following Gradient",
+  "description": "A hero background of soft radial gradients that chase the cursor at different speeds, giving a layered, liquid light effect.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/107-cursor-gradient.html"
+ },
+ {
+  "num": 108,
+  "title": "Animated Topographic Contours",
+  "description": "A slowly shifting terrain drawn as anti-aliased contour lines, with heavier index contours every fifth line and a lifted 'hill' that follows the pointer.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/108-topographic-lines.html"
+ },
+ {
+  "num": 109,
+  "title": "Weather Particle Systems",
+  "description": "Switchable ambient weather for any page: drifting snow with depth, slanted rain with splashes, tumbling autumn leaves, and falling confetti. Wind follows the pointer.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/109-weather-particles.html"
+ },
+ {
+  "num": 110,
+  "title": "Dot-matrix World Map",
+  "description": "A world map made of dots, with pulsing city markers and animated great-circle-style arcs carrying packets between them, like a global-network hero section.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/110-dot-world-map.html"
+ },
+ {
+  "num": 111,
+  "title": "3D Dotted Globe with Arcs",
+  "description": "A spinning Three.js globe made of land dots on a Fibonacci sphere, with a fresnel atmosphere, pulsing city markers and animated flight arcs. Drag to rotate.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/111-3d-globe.html"
+ },
+ {
+  "num": 112,
+  "title": "Bokeh Light Orbs",
+  "description": "Out-of-focus city lights: soft hexagonal and round bokeh discs drift and shimmer at different depths, with depth-of-field style blur and parallax on mouse move.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/112-bokeh-lights.html"
+ },
+ {
+  "num": 113,
+  "title": "Animated Voronoi Cells",
+  "description": "Living cellular texture: Worley/Voronoi noise with wandering seed points, glowing borders and a cell that lights up under the pointer.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/113-voronoi-cells.html"
+ },
+ {
+  "num": 114,
+  "title": "Retro CRT Screen",
+  "description": "A CSS cathode-ray tube: scanlines, RGB phosphor mask, rolling refresh bar, flicker, vignette, curved bezel and glowing green text from a typing terminal.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/114-crt-screen.html"
+ },
+ {
+  "num": 115,
+  "title": "Sweeping Spotlight Beams",
+  "description": "Stage lighting in CSS: soft conic-gradient spotlight beams sweep back and forth from above, crossing over a hazy floor with a glowing headline.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/115-light-beams.html"
+ },
+ {
+  "num": 116,
+  "title": "Morphing Organic Blob",
+  "description": "A smooth SVG blob whose outline is generated each frame from noise around a circle, drawn with Catmull-Rom curves; it swells toward the pointer.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/116-morphing-blob.html"
+ },
+ {
+  "num": 117,
+  "title": "Interactive Water Ripples",
+  "description": "A GPU height-field wave simulation: move or click to disturb the water, and the image underneath refracts through the ripples with specular highlights.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/117-water-ripples.html"
+ },
+ {
+  "num": 118,
+  "title": "Lightning Strikes",
+  "description": "Procedural lightning: recursive midpoint displacement builds forked bolts that strike where you click, flashing the sky and fading with a glowing afterimage.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/118-lightning.html"
+ },
+ {
+  "num": 119,
+  "title": "Fireflies",
+  "description": "A summer-night meadow: fireflies wander on smooth random paths and blink with their own rhythm, gathering around the pointer when it rests.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/119-fireflies.html"
+ },
+ {
+  "num": 120,
+  "title": "Spiral Galaxy",
+  "description": "A 3D spiral galaxy of 120,000 additive-blended particles generated on logarithmic arms, rotating differentially in a vertex shader. Drag to orbit.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "05-backgrounds",
+  "path": "effects/05-backgrounds/120-galaxy.html"
  }
 ];

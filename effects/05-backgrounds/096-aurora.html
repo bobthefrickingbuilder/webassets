@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aurora Borealis</title>
+<meta name="description" content="Northern lights rendered in a shader: noise-warped vertical curtains with ray streaks ripple across a starry sky above a mountain silhouette.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .hero { position: relative; min-height: 100vh; display: grid; place-items: center; text-align: center; }
+  .hero h1 { font-size: clamp(40px, 8vw, 110px); letter-spacing: -.04em; margin: 0; font-weight: 300; color: #e0fff4; text-shadow: 0 0 40px rgb(52 211 153 / .5); }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<section class="hero"><h1>Aurora</h1></section>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const FRAG = `
+    uniform vec2 u_res; uniform float u_time;
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+    float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 4; i++){ v += a * noise(p); p *= 2.1; a *= .5; } return v; }
+    vec3 curtain(vec2 uv, float t, float seed, vec3 col){
+      // Each curtain is a band whose height wiggles along x, lit by fine vertical rays.
+      float wave = fbm(vec2(uv.x * 1.6 + t * .15 + seed, seed)) ;
+      float center = .55 + (wave - .5) * .5 + seed * .03;
+      float d = uv.y - center;
+      float band = exp(-d * d * 60.) * smoothstep(-.02, .25, d + .2);
+      float rays = .4 + .6 * noise(vec2(uv.x * 60. + seed * 10., t * .6));
+      float tail = smoothstep(0., .35, d + .05) * exp(-max(d, 0.) * 4.);   // light streaming upward
+      return col * (band * rays * 1.4 + tail * rays * .35);
+    }
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res;
+      vec2 p = vec2(uv.x * u_res.x / u_res.y, uv.y);
+      float t = u_time;
+      vec3 sky = mix(vec3(.01, .02, .06), vec3(.02, .06, .12), uv.y);
+      // Stars: sparse hashed points with twinkle.
+      vec2 g = floor(gl_FragCoord.xy / 3.);
+      float s = step(.997, hash(g)) * (.5 + .5 * sin(t * 3. + hash(g + 1.) * 40.));
+      sky += s * smoothstep(.3, .8, uv.y);
+      vec3 a = curtain(p, t, 0., vec3(.1, 1., .55));
+      a += curtain(p + vec2(.3, .05), t * 1.3, 1.7, vec3(.15, .7, 1.));
+      a += curtain(p - vec2(.2, -.1), t * .8, 3.3, vec3(.7, .25, 1.)) * .7;
+      vec3 c = sky + a;
+      // Mountain silhouette
+      float m = .18 + fbm(vec2(p.x * 2.5, 0.)) * .12;
+      c = mix(c, vec3(.005, .01, .02), smoothstep(m + .003, m, uv.y));
+      o = vec4(pow(c, vec3(.9)), 1.);
+    }`;
+  GL.fullscreen(document.querySelector("canvas"), FRAG, { dpr: 1 });
+</script>
+</body>
+</html>

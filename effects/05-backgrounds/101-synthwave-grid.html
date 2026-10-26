@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthwave Perspective Grid</title>
+<meta name="description" content="Retro 80s outrun scene in pure CSS: an infinite neon grid floor scrolling toward the viewer under a striped sunset sun and chrome title.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #0d0221; overflow: hidden; }
+  .scene { position: fixed; inset: 0; background: linear-gradient(#0d0221 0%, #2b0a3d 45%, #ff2a6d 62%, #0d0221 62.2%); overflow: hidden; }
+  .sun { position: absolute; left: 50%; top: 22%; width: 40vmin; height: 40vmin; margin-left: -20vmin; border-radius: 50%;
+         background: linear-gradient(#ffd319 10%, #ff901f 45%, #ff2975 75%);
+         /* Horizontal slats cut into the lower half of the sun, getting thicker toward the horizon. */
+         -webkit-mask: linear-gradient(#000 50%, transparent 50% 54%, #000 54% 60%, transparent 60% 65%, #000 65% 71%, transparent 71% 77%, #000 77% 83%, transparent 83% 90%, #000 90%);
+         mask: linear-gradient(#000 50%, transparent 50% 54%, #000 54% 60%, transparent 60% 65%, #000 65% 71%, transparent 71% 77%, #000 77% 83%, transparent 83% 90%, #000 90%);
+         filter: drop-shadow(0 0 40px #ff2975); }
+  .floor { position: absolute; left: -50%; right: -50%; top: 62%; height: 100%; perspective: 300px; perspective-origin: 50% 0; }
+  .grid { position: absolute; inset: 0; transform: rotateX(80deg); transform-origin: top; height: 400%;
+          /* Soft-edged lines fake the neon glow; a filter here would repaint the whole floor every frame. */
+          background-image: linear-gradient(#ff2a6d 2px, rgb(255 42 109 / .35) 3px, transparent 6px), linear-gradient(90deg, #ff2a6d 2px, rgb(255 42 109 / .35) 3px, transparent 6px);
+          background-size: 60px 60px; animation: drive .6s linear infinite; }
+  .floor::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#0d0221, transparent 35%); }
+  @keyframes drive { to { background-position: 0 60px; } }
+  .mountains { position: absolute; left: 0; right: 0; top: calc(62% - 10vh); height: 10vh; background: #1a0633;
+               clip-path: polygon(0 100%, 0 60%, 8% 20%, 15% 70%, 24% 30%, 33% 80%, 40% 50%, 46% 90%, 54% 90%, 60% 40%, 70% 75%, 78% 15%, 88% 65%, 95% 35%, 100% 55%, 100% 100%); }
+  .title { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font: italic 900 clamp(48px, 11vw, 160px)/1 var(--font); letter-spacing: -.02em;
+           background: linear-gradient(#e0f7ff 0%, #9be7ff 45%, #2a4b8d 50%, #ff8af1 52%, #fff 70%); -webkit-background-clip: text; background-clip: text; color: transparent;
+           -webkit-text-stroke: 1px rgb(255 255 255 / .3); filter: drop-shadow(0 4px 0 #ff2a6d) drop-shadow(0 0 20px #b967ff); transform: skewX(-8deg); }
+  @media (prefers-reduced-motion: reduce) { .grid { animation: none; } }
+</style>
+</head>
+<body>
+<div class="scene" aria-label="Synthwave sunset scene">
+  <div class="sun"></div>
+  <div class="mountains"></div>
+  <div class="floor"><div class="grid"></div></div>
+  <div class="title">OUTRUN</div>
+</div>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

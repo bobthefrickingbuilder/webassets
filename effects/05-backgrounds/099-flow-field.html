@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perlin Noise Flow Field</title>
+<meta name="description" content="Thousands of particles follow an evolving Perlin-noise vector field, painting silky trails. Click to reseed the field and palette.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas aria-label="Generative flow field. Click to reseed."></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* Classic 2D Perlin gradient noise with a seeded permutation table. */
+  function Perlin(seed) {
+    const r = Demo.rng(seed), p = new Uint8Array(512), perm = [...Array(256).keys()];
+    for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+    for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+    const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+    const grad = (h, x, y) => ((h & 1) ? -x : x) + ((h & 2) ? -y : y);
+    return function (x, y) {
+      const X = Math.floor(x) & 255, Y = Math.floor(y) & 255; x -= Math.floor(x); y -= Math.floor(y);
+      const u = fade(x), v = fade(y), a = p[X] + Y, b = p[X + 1] + Y;
+      const l1 = grad(p[a], x, y) + u * (grad(p[b], x - 1, y) - grad(p[a], x, y));
+      const l2 = grad(p[a + 1], x, y - 1) + u * (grad(p[b + 1], x - 1, y - 1) - grad(p[a + 1], x, y - 1));
+      return l1 + v * (l2 - l1);   // roughly -1..1
+    };
+  }
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, noise, parts, hueBase, t = 0, seed = 7;
+  const N = 2500, SCALE = 0.0022;
+  function reset() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    noise = Perlin(seed); hueBase = (seed * 47) % 360;
+    ctx.fillStyle = "#07080c"; ctx.fillRect(0, 0, W, H);
+    parts = Array.from({ length: N }, () => ({ x: Math.random() * W, y: Math.random() * H, life: Math.random() * 200 }));
+  }
+  function frame() {
+    ctx.fillStyle = "rgba(7,8,12,0.04)"; ctx.fillRect(0, 0, W, H);   // slow fade = long trails
+    t += 0.0015;
+    ctx.lineWidth = 1;
+    for (const p of parts) {
+      const a = noise(p.x * SCALE, p.y * SCALE + t) * Math.PI * 4;
+      const nx = p.x + Math.cos(a) * 1.4, ny = p.y + Math.sin(a) * 1.4;
+      ctx.strokeStyle = `hsla(${hueBase + (a * 20) % 80}, 80%, 65%, 0.35)`;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nx, ny); ctx.stroke();
+      p.x = nx; p.y = ny; p.life--;
+      if (p.life < 0 || p.x < 0 || p.x > W || p.y < 0 || p.y > H) { p.x = Math.random() * W; p.y = Math.random() * H; p.life = 100 + Math.random() * 200; }
+    }
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  cv.addEventListener("click", () => { seed++; reset(); });
+  addEventListener("resize", reset);
+  reset();
+  if (Demo.reduced) for (let i = 0; i < 200; i++) frame();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

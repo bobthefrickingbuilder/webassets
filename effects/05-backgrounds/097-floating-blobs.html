@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Floating Blurred Blobs</title>
+<meta name="description" content="A soft, modern hero background: large blurred colour blobs drift on independent looping paths, pure CSS with no JavaScript.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .blobs { position: fixed; inset: 0; overflow: hidden; background: #0a0a14; z-index: -1; }
+  .blob { position: absolute; width: 50vmax; height: 50vmax; border-radius: 50%; filter: blur(80px); opacity: .65; mix-blend-mode: screen; will-change: transform; }
+  .b1 { background: #7c3aed; top: -10%; left: -10%; animation: d1 18s ease-in-out infinite alternate; }
+  .b2 { background: #06b6d4; bottom: -20%; right: -10%; animation: d2 22s ease-in-out infinite alternate; }
+  .b3 { background: #ec4899; top: 30%; left: 30%; width: 35vmax; height: 35vmax; animation: d3 16s ease-in-out infinite alternate; }
+  .b4 { background: #f59e0b; top: 50%; left: -15%; width: 30vmax; height: 30vmax; opacity: .4; animation: d4 25s ease-in-out infinite alternate; }
+  @keyframes d1 { to { transform: translate(40vw, 30vh) scale(1.2); } }
+  @keyframes d2 { to { transform: translate(-35vw, -40vh) scale(.85); } }
+  @keyframes d3 { 50% { transform: translate(-20vw, 20vh) scale(1.3); } to { transform: translate(15vw, -25vh) scale(.9); } }
+  @keyframes d4 { to { transform: translate(60vw, -30vh) scale(1.4); } }
+  .grain { position: fixed; inset: 0; pointer-events: none; opacity: .12; z-index: -1;
+           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .hero { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 16px; }
+  .hero h1 { font-size: clamp(44px, 9vw, 130px); letter-spacing: -.05em; line-height: .95; margin: 0; }
+  .hero p { color: rgb(255 255 255 / .7); font-size: 20px; }
+  @media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+</style>
+</head>
+<body>
+<div class="blobs" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div></div>
+<div class="grain" aria-hidden="true"></div>
+<section class="hero"><div><h1>Soft focus</h1><p>Four blurred circles, screen-blended, with a grain overlay.</p></div></section>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

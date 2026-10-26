@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Starfield Warp Speed</title>
+<meta name="description" content="Fly through a 3D starfield; hold the mouse (or Space) to engage hyperdrive and stretch stars into blue-shifted streaks. The pointer steers the vanishing point.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .hud { position: fixed; bottom: 24px; left: 0; right: 0; text-align: center; font: 13px var(--mono); color: #64748b; letter-spacing: .1em; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<div class="hud">HOLD MOUSE / SPACE FOR WARP · <span class="spd">1.0</span>c</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d"), spdEl = document.querySelector(".spd");
+  let W, H, dpr, cx, cy, tcx, tcy, speed = 2, target = 2;
+  const N = 1400, DEPTH = 1000, stars = [];
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; cx = tcx = W / 2; cy = tcy = H / 2; }
+  addEventListener("resize", resize); resize();
+  const spawn = (s, z) => { s.x = (Math.random() - .5) * W * 2; s.y = (Math.random() - .5) * H * 2; s.z = z ?? DEPTH; s.pz = s.z; return s; };
+  for (let i = 0; i < N; i++) stars.push(spawn({}, Math.random() * DEPTH));
+  const on = () => (target = 40), off = () => (target = 2);
+  addEventListener("pointerdown", on); addEventListener("pointerup", off);
+  addEventListener("keydown", (e) => e.code === "Space" && on()); addEventListener("keyup", (e) => e.code === "Space" && off());
+  addEventListener("pointermove", (e) => { tcx = W / 2 + (e.clientX * dpr - W / 2) * -0.3; tcy = H / 2 + (e.clientY * dpr - H / 2) * -0.3; });
+  function frame() {
+    speed += (target - speed) * 0.04;
+    cx += (tcx - cx) * 0.05; cy += (tcy - cy) * 0.05;
+    const warp = Math.min(1, (speed - 2) / 38);
+    ctx.fillStyle = `rgba(0,0,0,${0.9 - warp * 0.5})`; ctx.fillRect(0, 0, W, H);
+    const F = W * 0.35;
+    for (const s of stars) {
+      s.pz = s.z; s.z -= speed;
+      if (s.z < 1) { spawn(s); continue; }
+      const x = cx + (s.x / s.z) * F, y = cy + (s.y / s.z) * F;
+      const px = cx + (s.x / s.pz) * F, py = cy + (s.y / s.pz) * F;
+      if (x < 0 || x > W || y < 0 || y > H) { spawn(s); continue; }
+      const b = 1 - s.z / DEPTH;
+      ctx.strokeStyle = `hsla(${210 - warp * 20}, ${warp * 90}%, ${60 + b * 40}%, ${b})`;
+      ctx.lineWidth = Math.max(0.5, b * 2.6) * dpr * 0.6;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+    }
+    spdEl.textContent = (speed / 2).toFixed(1);
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

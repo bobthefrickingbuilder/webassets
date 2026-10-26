@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Dotted Globe with Arcs</title>
+<meta name="description" content="A spinning Three.js globe made of land dots on a Fibonacci sphere, with a fresnel atmosphere, pulsing city markers and animated flight arcs. Drag to rotate.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: radial-gradient(circle at 50% 40%, #0f1730, #05060a 70%); overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .copy { position: fixed; left: 6vw; top: 50%; transform: translateY(-50%); max-width: 420px; pointer-events: none; }
+  .copy h1 { font-size: clamp(36px, 5vw, 72px); letter-spacing: -.04em; line-height: 1; margin: 0 0 12px; }
+  .copy p { color: var(--muted); }
+  @media (max-width: 800px) { .copy { top: auto; bottom: 24px; transform: none; } }
+</style>
+</head>
+<body>
+<canvas aria-label="Interactive globe showing connections between cities. Drag to rotate."></canvas>
+<div class="copy"><h1>Everywhere,<br>at once.</h1><p>Drag to spin the globe. Scroll to zoom.</p></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script src="../../assets/world.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0.6, 3.4], fov: 45 });
+  const { scene, camera, renderer } = kit;
+  const controls = ThreeKit.orbit(camera, renderer.domElement, { autoRotate: 0.0015, minDistance: 1.8, maxDistance: 6 });
+  const globe = new THREE.Group();
+  scene.add(globe);
+  // Shift the globe right on wide screens so the copy has room.
+  const placeGlobe = () => (globe.position.x = innerWidth > 800 ? 0.7 : 0);
+  addEventListener("resize", placeGlobe); placeGlobe();
+  controls.target = globe.position;
+
+  const R = 1;
+  const toVec = (lat, lon, r = R) => {
+    const phi = (90 - lat) * Math.PI / 180, th = (lon + 180) * Math.PI / 180;
+    return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+  };
+
+  // Ocean sphere
+  globe.add(new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 64, 64), new THREE.MeshBasicMaterial({ color: 0x0a1020 })));
+
+  // Land dots on an evenly distributed Fibonacci sphere.
+  const mask = WORLD.landMask(1024, 512);
+  const N = 16000, pos = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2, rad = Math.sqrt(1 - y * y), th = golden * i;
+    const v = new THREE.Vector3(Math.cos(th) * rad, y, Math.sin(th) * rad);
+    const lat = Math.asin(v.y) * 180 / Math.PI;
+    const lon = ((Math.atan2(v.z, -v.x) * 180 / Math.PI) - 180 + 540) % 360 - 180;
+    if (mask.isLand(((lon + 180) / 360) * 1024, ((90 - lat) / 180) * 512)) pos.push(v.x * R, v.y * R, v.z * R);
+  }
+  const dotGeo = new THREE.BufferGeometry();
+  dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  globe.add(new THREE.Points(dotGeo, new THREE.PointsMaterial({ color: 0x8ea6ff, size: 0.012, sizeAttenuation: true })));
+
+  // Fresnel atmosphere: brighter where the surface faces away from the camera.
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.15, 64, 64), new THREE.ShaderMaterial({
+    vertexShader: "varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
+    fragmentShader: "varying vec3 vN; void main(){ float i = pow(.72 - dot(vN, vec3(0, 0, 1.)), 3.); gl_FragColor = vec4(.3, .55, 1., 1.) * i; }",
+    blending: THREE.AdditiveBlending, side: THREE.BackSide, transparent: true, depthWrite: false,
+  }));
+  globe.add(atmo);
+
+  // City markers with pulsing rings.
+  const rings = [];
+  for (const c of WORLD.CITIES) {
+    const p = toVec(c.lat, c.lon, R * 1.002);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 12), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+    dot.position.copy(p); globe.add(dot);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.02, 0.026, 32), new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, side: THREE.DoubleSide }));
+    ring.position.copy(p); ring.lookAt(p.clone().multiplyScalar(2)); ring.userData.phase = Math.random();
+    globe.add(ring); rings.push(ring);
+  }
+
+  // Arcs: a curved line whose visible window (drawRange) travels from start to end.
+  const arcs = [], SEG = 80;
+  function spawnArc() {
+    const a = WORLD.CITIES[(Math.random() * WORLD.CITIES.length) | 0];
+    let b; do b = WORLD.CITIES[(Math.random() * WORLD.CITIES.length) | 0]; while (b === a);
+    const va = toVec(a.lat, a.lon), vb = toVec(b.lat, b.lon);
+    const lift = 1 + va.distanceTo(vb) * 0.45;
+    const mid = va.clone().add(vb).normalize().multiplyScalar(R * lift);
+    const curve = new THREE.QuadraticBezierCurve3(va, mid, vb);
+    const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(SEG));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color().setHSL(0.5 + Math.random() * 0.35, 0.9, 0.65), transparent: true }));
+    globe.add(line);
+    arcs.push({ line, t: 0, speed: 0.4 + Math.random() * 0.4 });
+  }
+
+  kit.onFrame((t, dt) => {
+    controls.update();
+    if (Math.random() < 0.04 && arcs.length < 12) spawnArc();
+    for (let i = arcs.length - 1; i >= 0; i--) {
+      const a = arcs[i]; a.t += dt * a.speed;
+      const head = Math.min(1, a.t), tail = Math.max(0, a.t - 0.5);
+      a.line.geometry.setDrawRange(Math.floor(tail * SEG), Math.max(2, Math.floor((head - tail) * SEG) + 1));
+      if (a.t > 1.5) { globe.remove(a.line); a.line.geometry.dispose(); arcs.splice(i, 1); }
+    }
+    for (const r of rings) { const k = (t * 0.6 + r.userData.phase) % 1; r.scale.setScalar(1 + k * 2.5); r.material.opacity = 1 - k; }
+  }).start();
+</script>
+</body>
+</html>

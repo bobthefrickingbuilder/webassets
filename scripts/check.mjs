@@ -30,7 +30,9 @@ for (const file of pages) {
   page.on("console", (m) => {
     if (m.type() === "error" && !/WebGPU|webgpu|GPU stall|favicon/i.test(m.text())) errors.push("console: " + m.text().slice(0, 300));
   });
-  try {
+  const t0 = Date.now();
+  // A page that starves the renderer can stall input events forever, so bound the whole exercise.
+  const exercise = (async () => {
     await page.goto(pathToFileURL(file).href, { waitUntil: "load", timeout: 15000 });
     await page.waitForTimeout(400);
     await page.mouse.move(400, 300);
@@ -42,6 +44,9 @@ for (const file of pages) {
     await page.waitForTimeout(500);
     await page.mouse.wheel(0, -400);
     await page.waitForTimeout(200);
+  })();
+  try {
+    await Promise.race([exercise, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out after 30s (page too slow?)")), 30000))]);
   } catch (e) {
     errors.push("load: " + e.message.split("\n")[0]);
   }
@@ -49,7 +54,7 @@ for (const file of pages) {
   if (errors.length) {
     failures++;
     console.log("FAIL " + rel + "\n  " + [...new Set(errors)].join("\n  "));
-  } else if (process.env.VERBOSE) console.log("ok   " + rel);
+  } else if (process.env.VERBOSE) console.log("ok   " + rel + "  " + (Date.now() - t0) + "ms");
   await page.close();
 }
 

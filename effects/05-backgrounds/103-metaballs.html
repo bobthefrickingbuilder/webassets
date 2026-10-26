@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metaballs Lava Lamp</title>
+<meta name="description" content="GPU metaballs: an implicit field from moving blobs is thresholded into gooey shapes with a glossy rim, and the pointer is one of the blobs.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas aria-label="Lava lamp metaballs; your pointer is one of the blobs"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const N = 10;
+  const FRAG = `
+    #define N ${N}
+    uniform vec2 u_res; uniform float u_time; uniform vec4 u_mouse; uniform vec3 u_balls[N];
+    void main(){
+      vec2 p = gl_FragCoord.xy / u_res.y;
+      float f = 0.;
+      // Sum of inverse-square falloffs: overlapping blobs merge smoothly.
+      for (int i = 0; i < N; i++){ vec2 d = p - u_balls[i].xy; f += u_balls[i].z * u_balls[i].z / dot(d, d); }
+      vec2 dm = p - u_mouse.xy / u_res.y; f += .012 / dot(dm, dm);
+      float edge = smoothstep(.95, 1.05, f);
+      float rim = smoothstep(1.0, 1.4, f) * (1. - smoothstep(1.4, 3., f));
+      vec3 bg = mix(vec3(.06, .02, .1), vec3(.2, .04, .2), gl_FragCoord.y / u_res.y);
+      vec3 inner = mix(vec3(1., .35, .1), vec3(1., .1, .45), clamp(f / 6., 0., 1.));
+      vec3 col = mix(bg, inner, edge);
+      col += rim * vec3(1., .8, .5) * .25;
+      col += smoothstep(4., 12., f) * .25;      // hot core
+      o = vec4(col, 1.);
+    }`;
+  const state = GL.fullscreen(document.querySelector("canvas"), FRAG, { dpr: 1 });
+  const balls = Array.from({ length: N }, (_, i) => ({ ph: i * 1.7, sp: 0.15 + (i % 4) * 0.06, r: 0.05 + (i % 3) * 0.025, ax: 0.3 + (i % 5) * 0.12 }));
+  const data = new Float32Array(N * 3);
+  if (state) state.uniforms = (t) => {
+    const aspect = innerWidth / innerHeight;
+    balls.forEach((b, i) => {
+      data[i * 3] = aspect / 2 + Math.sin(t * b.sp + b.ph) * b.ax * aspect * 0.6;
+      data[i * 3 + 1] = 0.5 + Math.sin(t * b.sp * 0.7 + b.ph * 2.1) * 0.42;     // rise and fall like wax
+      data[i * 3 + 2] = b.r;
+    });
+    return { u_balls: data };
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interactive Water Ripples</title>
+<meta name="description" content="A GPU height-field wave simulation: move or click to disturb the water, and the image underneath refracts through the ripples with specular highlights.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: pointer; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas aria-label="Water surface over an image. Move or click to make ripples."></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const gl = GL.context(canvas);
+  if (!gl) return;
+  // Wave equation on a grid: r = height, g = previous height.
+  const STEP = GL.program(gl, `
+    uniform sampler2D u_h; uniform vec2 u_texel; uniform vec3 u_drop;
+    void main(){
+      vec2 h = texture(u_h, v_uv).rg;
+      float avg = (texture(u_h, v_uv + vec2(u_texel.x, 0)).r + texture(u_h, v_uv - vec2(u_texel.x, 0)).r +
+                   texture(u_h, v_uv + vec2(0, u_texel.y)).r + texture(u_h, v_uv - vec2(0, u_texel.y)).r) * .5;
+      float next = (avg - h.g) * .985;                    // damping
+      float d = distance(v_uv / u_texel, u_drop.xy);
+      next += u_drop.z * max(0., 1. - d / 8.) ;
+      o = vec4(next, h.r, 0, 1);
+    }`);
+  const SHOW = GL.program(gl, `
+    uniform sampler2D u_h; uniform sampler2D u_img; uniform vec2 u_texel;
+    void main(){
+      float l = texture(u_h, v_uv - vec2(u_texel.x, 0)).r, r = texture(u_h, v_uv + vec2(u_texel.x, 0)).r;
+      float b = texture(u_h, v_uv - vec2(0, u_texel.y)).r, t = texture(u_h, v_uv + vec2(0, u_texel.y)).r;
+      vec3 n = normalize(vec3(l - r, b - t, .25));
+      vec3 c = texture(u_img, v_uv + n.xy * .06).rgb;      // refraction offset
+      float spec = pow(max(0., dot(n, normalize(vec3(-.4, .6, 1.)))), 60.);
+      o = vec4(c + spec * .6, 1);
+    }`);
+  let sim, texel, img;
+  const drop = [0, 0, 0];
+  function reset() {
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+    const w = Math.round(innerWidth / 2), h = Math.round(innerHeight / 2);
+    sim = GL.doubleTarget(gl, w, h, { float: true }); texel = [1 / w, 1 / h];
+    if (img) gl.deleteTexture(img);
+    img = GL.texture(gl, 0, 0, { source: Demo.art(1280, 800, 1) });
+  }
+  function disturb(e, amount) { drop[0] = (e.clientX / innerWidth) / texel[0]; drop[1] = (1 - e.clientY / innerHeight) / texel[1]; drop[2] = amount; }
+  canvas.addEventListener("pointermove", (e) => disturb(e, 0.08));
+  canvas.addEventListener("pointerdown", (e) => disturb(e, 1.2));
+  addEventListener("resize", reset); reset();
+  // Raindrops so the surface is alive before interaction.
+  setInterval(() => { if (!drop[2]) { drop[0] = Math.random() / texel[0]; drop[1] = Math.random() / texel[1]; drop[2] = 0.6; } }, 700);
+  (function frame() {
+    for (let i = 0; i < 2; i++) {
+      STEP.use().set("u_h", sim.read).set("u_texel", texel).set("u_drop", drop);
+      GL.draw(gl, sim.write); sim.swap(); drop[2] = 0;
+    }
+    SHOW.use().set("u_h", sim.read).set("u_img", img).set("u_texel", texel);
+    GL.draw(gl, null);
+    requestAnimationFrame(frame);
+  })();
+})();
+</script>
+</body>
+</html>

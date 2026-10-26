@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Voronoi Cells</title>
+<meta name="description" content="Living cellular texture: Worley/Voronoi noise with wandering seed points, glowing borders and a cell that lights up under the pointer.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const FRAG = `
+    uniform vec2 u_res; uniform float u_time; uniform vec4 u_mouse;
+    vec2 hash2(vec2 p){ p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+    // Returns (distance to nearest seed, distance to border, cell id hash)
+    vec3 voronoi(vec2 x, float t){
+      vec2 n = floor(x), f = fract(x), mg, mr; float md = 8.;
+      for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){
+        vec2 g = vec2(i, j), o = .5 + .45 * sin(t + 6.2831 * hash2(n + g));
+        vec2 r = g + o - f; float d = dot(r, r);
+        if (d < md){ md = d; mr = r; mg = g; }
+      }
+      float bd = 8.;   // second pass: exact distance to the cell border
+      for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++){
+        vec2 g = mg + vec2(i, j), o = .5 + .45 * sin(t + 6.2831 * hash2(n + g));
+        vec2 r = g + o - f;
+        if (dot(mr - r, mr - r) > .00001) bd = min(bd, dot(.5 * (mr + r), normalize(r - mr)));
+      }
+      return vec3(sqrt(md), bd, hash2(n + mg).x);
+    }
+    void main(){
+      float s = 6. / u_res.y;
+      vec2 p = gl_FragCoord.xy * s;
+      vec3 v = voronoi(p, u_time * .6);
+      vec3 vm = voronoi(u_mouse.xy * s, u_time * .6);
+      vec3 col = .5 + .5 * cos(6.2831 * (v.z * .35 + vec3(.6, .7, .9)));
+      col *= .18 + .25 * (1. - v.x);
+      float hovered = step(abs(v.z - vm.z), .0001);
+      col += hovered * vec3(.2, .5, .7) * (1. - v.x);
+      float edge = 1. - smoothstep(.0, .04, v.y);
+      col = mix(col, vec3(.6, .9, 1.), edge * .9);
+      col += exp(-v.y * 40.) * .25 * vec3(.4, .8, 1.);   // border glow
+      o = vec4(col, 1.);
+    }`;
+  GL.fullscreen(document.querySelector("canvas"), FRAG, { dpr: 1.5 });
+</script>
+</body>
+</html>

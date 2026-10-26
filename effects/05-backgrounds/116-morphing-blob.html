@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morphing Organic Blob</title>
+<meta name="description" content="A smooth SVG blob whose outline is generated each frame from noise around a circle, drawn with Catmull-Rom curves; it swells toward the pointer.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .blob-svg { width: min(70vmin, 560px); height: min(70vmin, 560px); overflow: visible; }
+  .blob-wrap { position: relative; display: grid; place-items: center; }
+  .blob-wrap h1 { position: absolute; font-size: clamp(32px, 6vw, 72px); letter-spacing: -.04em; margin: 0; mix-blend-mode: difference; }
+</style>
+</head>
+<body>
+<main class="center">
+  <div class="blob-wrap">
+    <svg class="blob-svg" viewBox="-250 -250 500 500" aria-hidden="true">
+      <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f472b6"/><stop offset=".5" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+      <path class="blob" fill="url(#bg)"/>
+    </svg>
+    <h1>Organic</h1>
+  </div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const path = document.querySelector(".blob"), svg = document.querySelector(".blob-svg");
+  const N = 10, R = 170;
+  let mx = 0, my = 0, pull = 0;
+  addEventListener("pointermove", (e) => {
+    const r = svg.getBoundingClientRect();
+    mx = ((e.clientX - r.left) / r.width - .5) * 500; my = ((e.clientY - r.top) / r.height - .5) * 500;
+  });
+  // Closed Catmull-Rom spline through the points, converted to cubic Bézier segments.
+  function smooth(pts) {
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length; i++) {
+      const p0 = pts[(i - 1 + pts.length) % pts.length], p1 = pts[i], p2 = pts[(i + 1) % pts.length], p3 = pts[(i + 2) % pts.length];
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += `C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d + "Z";
+  }
+  function frame(t) {
+    const s = t / 1000;
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      // Sum of a few sines at different speeds per point = cheap smooth noise.
+      let r = R + Math.sin(s * 1.1 + i * 1.7) * 18 + Math.sin(s * 0.7 + i * 2.9) * 14 + Math.sin(s * 1.9 + i * 0.6) * 8;
+      const dx = Math.cos(a), dy = Math.sin(a);
+      const toward = Math.max(0, (dx * mx + dy * my) / (Math.hypot(mx, my) || 1));
+      r += Math.pow(toward, 4) * Math.min(80, Math.hypot(mx, my) * 0.3);    // bulge toward the pointer
+      pts.push([dx * r, dy * r]);
+    }
+    path.setAttribute("d", smooth(pts));
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
