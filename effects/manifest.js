@@ -1850,5 +1850,147 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "07-navigation",
   "path": "effects/07-navigation/156-theme-toggle-wipe.html"
+ },
+ {
+  "num": 157,
+  "title": "30 Pure-CSS Loaders",
+  "description": "A pack of thirty lightweight loading indicators in plain CSS: rings, dots, bars, orbits, 3D cubes, waves and more. Each uses currentColor and one or two elements.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/157-css-spinner-pack.html"
+ },
+ {
+  "num": 158,
+  "title": "Skeleton Loading Placeholders",
+  "description": "Content-shaped skeleton screens with a synchronized shimmer sweep, which cross-fade into the real content once 'loaded'. Includes card, list and profile layouts.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/158-skeleton-shimmer.html"
+ },
+ {
+  "num": 159,
+  "title": "Morphing Shape Loader",
+  "description": "A loader that endlessly morphs between a circle, square, triangle and star, each with its own colour, by interpolating SVG paths with matching point counts.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/159-svg-morph-loader.html"
+ },
+ {
+  "num": 160,
+  "title": "Bouncing Ball Loader",
+  "description": "A cartoon physics loader: a ball falls with gravity easing, squashes on impact, stretches on the way up, and its shadow scales with height. Three staggered variants.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/160-bouncing-ball-loader.html"
+ },
+ {
+  "num": 161,
+  "title": "DNA Helix Loader",
+  "description": "A rotating double helix built from pairs of dots and rungs; each pair is phase-shifted so the strands appear to twist in 3D, with depth-based size and opacity.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/161-dna-helix-loader.html"
+ },
+ {
+  "num": 162,
+  "title": "Liquid Fill Percentage Loader",
+  "description": "A circular flask fills with sloshing liquid as progress climbs; two offset SVG waves scroll on the surface and the percentage text inverts colour where the liquid covers it.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/162-liquid-fill-loader.html"
+ },
+ {
+  "num": 163,
+  "title": "Pac-Man Loader",
+  "description": "A retro arcade loader: Pac-Man chomps with two rotating half-discs while pellets stream into his mouth, plus a chasing ghost with wobbling skirt.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/163-pacman-loader.html"
+ },
+ {
+  "num": 164,
+  "title": "Gradient Progress Rings",
+  "description": "Activity-ring style progress: SVG rings stroked with gradients that animate to their values with rounded caps, an overflow lap past 100%, and a counting centre label.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/164-gradient-progress-ring.html"
+ },
+ {
+  "num": 165,
+  "title": "Glitchy Terminal Boot Sequence",
+  "description": "A hacker-movie boot loader: log lines stream in with [ OK ] statuses, an ASCII progress bar fills, the screen glitches, and it resolves into 'ACCESS GRANTED'.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/165-terminal-boot.html"
+ },
+ {
+  "num": 166,
+  "title": "Hourglass with Falling Sand",
+  "description": "A canvas hourglass where individual grains of sand fall through the neck and pile into a mound below, then the glass flips over and starts again.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/166-hourglass-sand.html"
+ },
+ {
+  "num": 167,
+  "title": "Infinity Path Loader",
+  "description": "A glowing comet travels endlessly around a figure-eight track: one SVG lemniscate path with an animated dash offset and a faint trail.",
+  "tech": [
+   "SVG",
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/167-infinity-loader.html"
+ },
+ {
+  "num": 168,
+  "title": "Chat Typing Indicator",
+  "description": "A messaging thread with an iMessage-style typing bubble whose dots ripple, which grows into the incoming message when it arrives. Includes an AI-style 'thinking' shimmer.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "08-loaders",
+  "path": "effects/08-loaders/168-typing-indicator.html"
  }
 ];

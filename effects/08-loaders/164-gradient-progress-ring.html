@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gradient Progress Rings</title>
+<meta name="description" content="Activity-ring style progress: SVG rings stroked with gradients that animate to their values with rounded caps, an overflow lap past 100%, and a counting centre label.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .rings { width: 240px; height: 240px; position: relative; }
+  .rings svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .rings circle { fill: none; stroke-linecap: round; }
+  .rings .track { stroke: rgb(255 255 255 / .07); }
+  .rings .val { transition: stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1); }
+  .rings .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .rings .center b { font-size: 40px; letter-spacing: -.03em; display: block; } .rings .center span { color: var(--muted); font-size: 13px; }
+  .legend { display: flex; gap: 18px; font-size: 14px; color: var(--muted); } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .ctrl button { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="rings">
+    <svg viewBox="0 0 240 240" aria-hidden="true">
+      <defs>
+        <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#fb7185"/><stop offset="1" stop-color="#f43f5e"/></linearGradient>
+        <linearGradient id="g2" x1="0" x2="1"><stop offset="0" stop-color="#a3e635"/><stop offset="1" stop-color="#22c55e"/></linearGradient>
+        <linearGradient id="g3" x1="0" x2="1"><stop offset="0" stop-color="#67e8f9"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>
+      </defs>
+    </svg>
+    <div class="center" role="status" aria-live="polite"><div><b>0%</b><span>of daily goal</span></div></div>
+  </div>
+  <div class="legend"><span><i style="background:#f43f5e"></i>Move</span><span><i style="background:#22c55e"></i>Exercise</span><span><i style="background:#3b82f6"></i>Stand</span></div>
+  <div class="ctrl"><button>Randomise</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const svg = document.querySelector(".rings svg"), NS = "http://www.w3.org/2000/svg", label = document.querySelector(".center b");
+  const rings = [[100, "g1"], [76, "g2"], [52, "g3"]].map(([r, g]) => {
+    const mk = (cls, stroke) => { const c = document.createElementNS(NS, "circle"); c.setAttribute("cx", 120); c.setAttribute("cy", 120); c.setAttribute("r", r); c.setAttribute("class", cls); c.setAttribute("stroke", stroke); c.setAttribute("stroke-width", 20); svg.appendChild(c); return c; };
+    mk("track", "");
+    const v = mk("val", `url(#${g})`), C = 2 * Math.PI * r;
+    v.style.strokeDasharray = C; v.style.strokeDashoffset = C;
+    return { v, C };
+  });
+  function set(values) {
+    rings.forEach(({ v, C }, i) => (v.style.strokeDashoffset = C * (1 - Math.min(values[i], 0.999))));
+    const avg = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100);
+    // Count the centre label up in step with the ring animation.
+    const from = parseInt(label.textContent), start = performance.now();
+    (function tick(now) { const t = Math.min(1, (now - start) / 1600), e = 1 - Math.pow(1 - t, 3); label.textContent = Math.round(from + (avg - from) * e) + "%"; if (t < 1) requestAnimationFrame(tick); })(start);
+  }
+  document.querySelector(".ctrl button").onclick = () => set([Math.random(), Math.random(), Math.random()]);
+  setTimeout(() => set([0.82, 0.64, 0.45]), 300);
+</script>
+</body>
+</html>

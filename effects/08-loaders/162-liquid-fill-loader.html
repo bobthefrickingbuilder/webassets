@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Liquid Fill Percentage Loader</title>
+<meta name="description" content="A circular flask fills with sloshing liquid as progress climbs; two offset SVG waves scroll on the surface and the percentage text inverts colour where the liquid covers it.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .flask { width: 220px; height: 220px; border-radius: 50%; border: 4px solid #22d3ee; padding: 6px; }
+  .flask svg { width: 100%; height: 100%; border-radius: 50%; display: block; }
+  .flask .w1 { fill: #22d3ee; } .flask .w2 { fill: #0891b2; opacity: .7; }
+  .flask text { font: 800 40px var(--font); text-anchor: middle; dominant-baseline: central; }
+  .ctrl button { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="flask" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Upload progress">
+    <svg viewBox="0 0 200 200">
+      <defs>
+        <clipPath id="circ"><circle cx="100" cy="100" r="100"/></clipPath>
+        <path id="wave" d="M0 0 Q 25 -12 50 0 T 100 0 T 150 0 T 200 0 T 250 0 T 300 0 T 350 0 T 400 0 V 300 H 0 Z"/>
+        <clipPath id="liquid"><use href="#wave" class="clipw"/></clipPath>
+      </defs>
+      <g clip-path="url(#circ)">
+        <rect width="200" height="200" fill="#0b1d24"/>
+        <text x="100" y="100" fill="#22d3ee" class="t">0%</text>
+        <use href="#wave" class="w2"/><use href="#wave" class="w1"/>
+        <!-- Text again, white, clipped to the liquid: looks inverted where submerged. -->
+        <g clip-path="url(#liquid)"><text x="100" y="100" fill="#06222b" class="t">0%</text></g>
+      </g>
+    </svg>
+  </div>
+  <div class="ctrl"><button>Restart</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const flask = document.querySelector(".flask"), w1 = document.querySelector(".w1"), w2 = document.querySelector(".w2"), clipw = document.querySelector(".clipw"), texts = document.querySelectorAll(".t");
+  let p = 0, shown = 0;
+  function frame(t) {
+    shown += (p - shown) * 0.05;
+    const level = 200 - shown * 2.1 - 4;                 // y of the surface
+    const x1 = -((t / 12) % 100), x2 = -((t / 18 + 30) % 100);
+    w1.setAttribute("transform", `translate(${x1}, ${level})`);
+    clipw.setAttribute("transform", `translate(${x1}, ${level})`);
+    w2.setAttribute("transform", `translate(${x2}, ${level - 3}) scale(1, 1.2)`);
+    texts.forEach((tx) => (tx.textContent = Math.round(shown) + "%"));
+    flask.setAttribute("aria-valuenow", Math.round(shown));
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  function run() { p = 0; shown = 0; clearInterval(run.t); run.t = setInterval(() => { p = Math.min(100, p + Math.random() * 7); if (p >= 100) clearInterval(run.t); }, 220); }
+  document.querySelector(".ctrl button").onclick = run;
+  run();
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat Typing Indicator</title>
+<meta name="description" content="A messaging thread with an iMessage-style typing bubble whose dots ripple, which grows into the incoming message when it arrives. Includes an AI-style 'thinking' shimmer.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .chat { width: min(420px, 92vw); display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 24px; background: #0f1116; border: 1px solid var(--line); min-height: 420px; justify-content: flex-end; }
+  .msg { max-width: 75%; padding: 10px 14px; border-radius: 20px; font-size: 15px; line-height: 1.4; animation: pop .35s cubic-bezier(.2,1.4,.4,1); transform-origin: bottom left; }
+  .msg.me { align-self: flex-end; background: #2563eb; border-bottom-right-radius: 6px; transform-origin: bottom right; }
+  .msg.them { align-self: flex-start; background: #262a36; border-bottom-left-radius: 6px; }
+  @keyframes pop { from { opacity: 0; transform: scale(.6); } }
+  .typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
+  .typing i { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; animation: dot 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-5px); opacity: 1; } }
+  .thinking { font-size: 14px; background: linear-gradient(90deg, #6b7280 35%, #e5e7eb 50%, #6b7280 65%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sh 1.6s linear infinite; padding: 6px 2px; align-self: flex-start; }
+  @keyframes sh { from { background-position: 125% 0; } to { background-position: -125% 0; } }
+  form { display: flex; gap: 8px; width: min(420px, 92vw); }
+  form input { flex: 1; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg); font: inherit; }
+  form button { padding: 0 18px; border-radius: 999px; border: 0; background: #2563eb; cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="chat" role="log" aria-live="polite"><div class="msg them">Hey! Send me a message 👋</div></div>
+  <form><input placeholder="Type a message…" aria-label="Message"><button>Send</button></form>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const chat = document.querySelector(".chat"), form = document.querySelector("form"), input = form.querySelector("input");
+  const replies = ["Ooh, tell me more.", "Ha! That's great 😄", "Hmm, let me think about that…", "Totally agree.", "Wait, really?!"];
+  let k = 0;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim() || "Hello!"; input.value = "";
+    chat.insertAdjacentHTML("beforeend", `<div class="msg me"></div>`); chat.lastElementChild.textContent = text;
+    // Every other reply shows the AI-style "thinking" shimmer instead of dots.
+    const useThinking = k % 2 === 1;
+    setTimeout(() => {
+      chat.insertAdjacentHTML("beforeend", useThinking ? '<div class="thinking" aria-label="Thinking">Thinking…</div>' : '<div class="msg them typing" aria-label="Typing"><i></i><i></i><i></i></div>');
+      const ind = chat.lastElementChild;
+      setTimeout(() => {
+        const reply = document.createElement("div"); reply.className = "msg them"; reply.textContent = replies[k++ % replies.length];
+        ind.replaceWith(reply);
+      }, 1400 + Math.random() * 1200);
+    }, 400);
+  });
+</script>
+</body>
+</html>

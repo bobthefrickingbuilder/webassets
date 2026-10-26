@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morphing Shape Loader</title>
+<meta name="description" content="A loader that endlessly morphs between a circle, square, triangle and star, each with its own colour, by interpolating SVG paths with matching point counts.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .morph-loader { width: 140px; height: 140px; }
+  .morph-loader path { transition: fill .6s; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <svg class="morph-loader" viewBox="-60 -60 120 120" role="status" aria-label="Loading"><path/></svg>
+  <p class="hint">Every shape is resampled to 60 points, so any pair can morph.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const N = 60;
+  // Generate shapes as N points by walking their outline at equal parameter steps.
+  function polygon(sides, r, rot = -Math.PI / 2, inner = null) {
+    const verts = [];
+    const count = inner ? sides * 2 : sides;
+    for (let i = 0; i < count; i++) { const a = rot + (i / count) * Math.PI * 2, rr = inner && i % 2 ? inner : r; verts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const t = (i / N) * verts.length, k = Math.floor(t), f = t - k;
+      const a = verts[k % verts.length], b = verts[(k + 1) % verts.length];
+      pts.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+    }
+    return pts;
+  }
+  const circle = Array.from({ length: N }, (_, i) => { const a = -Math.PI / 2 + (i / N) * Math.PI * 2; return [Math.cos(a) * 46, Math.sin(a) * 46]; });
+  const shapes = [[circle, "#22d3ee"], [polygon(4, 56, -Math.PI / 4 - Math.PI / 2), "#a78bfa"], [polygon(3, 54), "#f472b6"], [polygon(5, 56, -Math.PI / 2, 24), "#facc15"]];
+  const path = document.querySelector("path");
+  const toD = (pts) => "M" + pts.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join("L") + "Z";
+  const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  let i = 0, start = performance.now();
+  const MORPH = 700, HOLD = 500;
+  path.setAttribute("d", toD(shapes[0][0])); path.style.fill = shapes[0][1];
+  (function frame(now) {
+    const el = now - start;
+    const a = shapes[i][0], b = shapes[(i + 1) % shapes.length][0];
+    if (el > HOLD) {
+      const t = ease(Math.min(1, (el - HOLD) / MORPH));
+      path.setAttribute("d", toD(a.map((p, k) => [p[0] + (b[k][0] - p[0]) * t, p[1] + (b[k][1] - p[1]) * t])));
+      path.setAttribute("transform", `rotate(${t * 90})`);
+      path.style.fill = shapes[(i + 1) % shapes.length][1];   // CSS transition blends the colour during the morph
+      if (t >= 1) { i = (i + 1) % shapes.length; start = now; path.setAttribute("transform", ""); path.setAttribute("d", toD(b)); }
+    }
+    if (!Demo.reduced) requestAnimationFrame(frame);
+  })(start);
+</script>
+</body>
+</html>

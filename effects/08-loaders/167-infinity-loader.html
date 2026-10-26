@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infinity Path Loader</title>
+<meta name="description" content="A glowing comet travels endlessly around a figure-eight track: one SVG lemniscate path with an animated dash offset and a faint trail.">
+<meta name="tech" content="SVG, CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .inf { width: 220px; height: 110px; overflow: visible; }
+  .inf path { fill: none; stroke-linecap: round; }
+  .inf .track { stroke: rgb(255 255 255 / .07); stroke-width: 8; }
+  .inf .comet { stroke: url(#ig); stroke-width: 8; stroke-dasharray: 60 240; animation: run 1.8s linear infinite; filter: drop-shadow(0 0 6px #22d3ee); }
+  .inf .trail { stroke: #22d3ee; stroke-width: 8; opacity: .25; stroke-dasharray: 120 180; animation: run 1.8s linear infinite; animation-delay: -.05s; }
+  @keyframes run { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .inf path { animation-duration: 6s; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <svg class="inf" viewBox="0 0 200 100" role="status" aria-label="Loading">
+    <defs><linearGradient id="ig"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+    <!-- pathLength normalises the dash maths regardless of the curve's real length. -->
+    <path class="track" pathLength="300" d="M100 50 C 130 10, 185 10, 185 50 S 130 90, 100 50 S 15 10, 15 50 S 70 90, 100 50"/>
+    <path class="trail" pathLength="300" d="M100 50 C 130 10, 185 10, 185 50 S 130 90, 100 50 S 15 10, 15 50 S 70 90, 100 50"/>
+    <path class="comet" pathLength="300" d="M100 50 C 130 10, 185 10, 185 50 S 130 90, 100 50 S 15 10, 15 50 S 70 90, 100 50"/>
+  </svg>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

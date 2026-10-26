@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hourglass with Falling Sand</title>
+<meta name="description" content="A canvas hourglass where individual grains of sand fall through the neck and pile into a mound below, then the glass flips over and starts again.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { width: 220px; height: 340px; transition: transform .8s cubic-bezier(.6,-0.2,.3,1.3); }
+  canvas.flip { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<main class="center"><canvas width="220" height="340" role="status" aria-label="Loading"></canvas></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  const W = 220, H = 340, CX = W / 2, MID = H / 2, TOP = 30, BOT = H - 30, HALF_W = 80, NECK = 4;
+  // Width of the glass interior at height y (two cones meeting at the neck).
+  const widthAt = (y) => NECK + (HALF_W - NECK) * Math.pow(Math.abs(y - MID) / (MID - TOP), 1.1);
+  const COLS = 80, colW = (HALF_W * 2) / COLS;
+  // upper/lower: sand height per column; base: where each upper column rests on the glass.
+  let upper, lower, base, grains, flipped = false, done = false;
+  function reset() {
+    upper = new Float32Array(COLS); lower = new Float32Array(COLS); base = new Float32Array(COLS);
+    // Fill the upper bulb with a sand volume.
+    for (let c = 0; c < COLS; c++) {
+      const x = -HALF_W + (c + .5) * colW;
+      // Height of sand in this column: from y=TOP+20 down to where the glass narrows to |x|.
+      let yLimit = MID; while (yLimit > TOP && widthAt(yLimit) < Math.abs(x)) yLimit -= 1;
+      base[c] = yLimit;
+      upper[c] = Math.max(0, yLimit - (TOP + 40));
+    }
+    grains = []; done = false;
+  }
+  // Angle of repose: whenever a column stands more than REPOSE px above its neighbour, sand slides across.
+  // Upper bulb: sand slides toward the centre, forming a funnel. Lower bulb: the pile spreads outward,
+  // but only as far as the glass allows at that height.
+  const REPOSE = 1.6;
+  const colX = (c) => -HALF_W + (c + .5) * colW;
+  function relax() {
+    for (let pass = 0; pass < 4; pass++) {
+      for (let c = 0; c < COLS; c++) {
+        const inward = c < COLS / 2 ? c + 1 : c - 1;
+        if (inward >= 0 && inward < COLS) {
+          const drop = (base[inward] - upper[inward]) - (base[c] - upper[c]);   // how much lower the inner surface is
+          if (drop > REPOSE && upper[c] > 0) { const m = Math.min(upper[c], (drop - REPOSE) / 2); upper[c] -= m; upper[inward] += m; }
+        }
+        for (const n of [c - 1, c + 1]) {
+          if (n < 0 || n >= COLS) continue;
+          const diff = lower[c] - lower[n];
+          if (diff > REPOSE && widthAt(BOT - lower[n] - 1) > Math.abs(colX(n))) { const m = (diff - REPOSE) / 2; lower[c] -= m; lower[n] += m; }
+        }
+      }
+    }
+  }
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    // Glass outline
+    ctx.beginPath();
+    for (let y = TOP; y <= BOT; y += 4) ctx.lineTo(CX - widthAt(y) - 6, y);
+    for (let y = BOT; y >= TOP; y -= 4) ctx.lineTo(CX + widthAt(y) + 6, y);
+    ctx.closePath(); ctx.fillStyle = "rgb(255 255 255 / .04)"; ctx.fill(); ctx.strokeStyle = "rgb(255 255 255 / .35)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = "#c08a3e"; ctx.fillRect(CX - HALF_W - 18, TOP - 14, HALF_W * 2 + 36, 12); ctx.fillRect(CX - HALF_W - 18, BOT + 2, HALF_W * 2 + 36, 12);
+    // Drain: grains leave from the columns over the neck (or the nearest ones that still hold sand).
+    let total = 0;
+    for (let k = 0; k < 2; k++) {
+      let best = -1;
+      for (let c = 0; c < COLS; c++) if (upper[c] > 0.5 && (best < 0 || Math.abs(c + .5 - COLS / 2) < Math.abs(best + .5 - COLS / 2))) best = c;
+      if (best >= 0) { upper[best] = Math.max(0, upper[best] - 1.2); grains.push({ x: CX + (Math.random() - .5) * 3, y: MID, vy: 1 }); }
+    }
+    relax();
+    ctx.fillStyle = "#f5c97a";
+    for (let c = 0; c < COLS; c++) {
+      total += upper[c];
+      const x = CX - HALF_W + c * colW;
+      if (upper[c] > 0) ctx.fillRect(x, base[c] - upper[c], colW + .5, upper[c]);
+      if (lower[c] > 0) ctx.fillRect(x, BOT - lower[c], colW + .5, lower[c]);
+    }
+    // Falling grains land on the pile and slide to keep a natural slope.
+    for (let i = grains.length - 1; i >= 0; i--) {
+      const g = grains[i]; g.vy += 0.25; g.y += g.vy;
+      const c = Math.max(0, Math.min(COLS - 1, Math.floor((g.x - (CX - HALF_W)) / colW)));
+      if (g.y >= BOT - lower[c]) { lower[c] += 1.2; grains.splice(i, 1); }
+      else ctx.fillRect(g.x, g.y, 2, 2);
+    }
+    if (total < 1 && !grains.length && !done) {
+      done = true;
+      setTimeout(() => { flipped = !flipped; cv.classList.toggle("flip", flipped); setTimeout(reset, 800); }, 600);
+    }
+    requestAnimationFrame(frame);
+  }
+  reset();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

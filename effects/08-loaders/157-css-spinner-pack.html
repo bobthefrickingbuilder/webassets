@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>30 Pure-CSS Loaders</title>
+<meta name="description" content="A pack of thirty lightweight loading indicators in plain CSS: rings, dots, bars, orbits, 3D cubes, waves and more. Each uses currentColor and one or two elements.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .pack { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; width: min(1100px, 94vw); padding: 90px 0 40px; }
+  .cell { display: grid; place-items: center; gap: 14px; padding: 26px 10px 14px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); color: var(--accent-2); }
+  .cell small { color: var(--muted); font: 11px var(--mono); }
+  .l { width: 48px; height: 48px; position: relative; display: grid; place-items: center; }
+  .l i { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .l1 { border-radius: 50%; border: 4px solid rgb(255 255 255 / .1); border-top-color: currentColor; animation: spin .8s linear infinite; }
+  .l2 { border-radius: 50%; border: 4px solid transparent; border-top-color: currentColor; border-bottom-color: var(--accent-3); animation: spin 1s cubic-bezier(.6,.2,.4,.8) infinite; }
+  .l3 { display: flex; gap: 6px; } .l3 i { width: 10px; height: 10px; border-radius: 50%; background: currentColor; animation: b3 .6s ease-in-out infinite alternate; }
+  .l3 i:nth-child(2) { animation-delay: .2s; } .l3 i:nth-child(3) { animation-delay: .4s; }
+  @keyframes b3 { to { transform: translateY(-14px); } }
+  .l4 { display: flex; gap: 6px; } .l4 i { width: 10px; height: 10px; border-radius: 50%; background: currentColor; animation: f4 1.2s infinite; }
+  .l4 i:nth-child(2) { animation-delay: .2s; } .l4 i:nth-child(3) { animation-delay: .4s; }
+  @keyframes f4 { 0%, 80%, 100% { opacity: .2; transform: scale(.7); } 40% { opacity: 1; transform: none; } }
+  .l5 { display: flex; gap: 4px; align-items: center; } .l5 i { width: 6px; height: 40px; border-radius: 3px; background: currentColor; animation: eq 1s ease-in-out infinite; }
+  .l5 i:nth-child(2) { animation-delay: -.8s; } .l5 i:nth-child(3) { animation-delay: -.6s; } .l5 i:nth-child(4) { animation-delay: -.4s; } .l5 i:nth-child(5) { animation-delay: -.2s; }
+  @keyframes eq { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+  .l6 i { width: 48px; height: 48px; border-radius: 50%; background: currentColor; animation: pulse 1.2s ease-out infinite; }
+  @keyframes pulse { from { transform: scale(0); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+  .l7 i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid currentColor; animation: pulse 1.6s cubic-bezier(0,.2,.8,1) infinite; }
+  .l7 i:nth-child(2) { animation-delay: -.8s; }
+  .l8 i { width: 32px; height: 32px; background: currentColor; animation: flip8 1.2s infinite ease-in-out; }
+  @keyframes flip8 { 0% { transform: perspective(120px) rotateX(0) rotateY(0); } 50% { transform: perspective(120px) rotateX(-180deg) rotateY(0); } 100% { transform: perspective(120px) rotateX(-180deg) rotateY(-180deg); } }
+  .l9 { border-radius: 50%; border: 2px dashed rgb(255 255 255 / .15); animation: spin 1.4s linear infinite; }
+  .l9 i { position: absolute; top: -5px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+  .l10 svg, .l11 svg { width: 48px; height: 48px; }
+  .l10 circle { fill: none; stroke: currentColor; stroke-width: 4; stroke-dasharray: 8 6; transform-origin: center; animation: spin 2s linear infinite; }
+  .l11 svg { animation: spin 1.6s linear infinite; }
+  .l11 circle { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; animation: dash 1.4s ease-in-out infinite; }
+  @keyframes dash { 0% { stroke-dasharray: 1 150; stroke-dashoffset: 0; } 50% { stroke-dasharray: 90 150; stroke-dashoffset: -35; } 100% { stroke-dasharray: 90 150; stroke-dashoffset: -124; } }
+  .l12 { grid-template-columns: repeat(3, 12px); gap: 4px; } .l12 i { width: 12px; height: 12px; background: currentColor; border-radius: 2px; animation: f4 1.2s infinite; animation-delay: calc(var(--d) * .1s); }
+  .l13 { animation: spin 2s linear infinite; } .l13 i { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: currentColor; top: 0; animation: grow 2s ease-in-out infinite; }
+  .l13 i:nth-child(2) { top: auto; bottom: 0; background: var(--accent-3); animation-delay: -1s; }
+  @keyframes grow { 0%, 100% { transform: scale(0); } 50% { transform: scale(1); } }
+  .l14 { border-radius: 50%; border: 3px solid currentColor; } .l14 i { position: absolute; left: 50%; bottom: 50%; width: 3px; margin-left: -1.5px; background: currentColor; border-radius: 2px; transform-origin: bottom; }
+  .l14 i:nth-child(1) { height: 16px; animation: spin 1s linear infinite; } .l14 i:nth-child(2) { height: 11px; animation: spin 12s linear infinite; }
+  .l15 { animation: hg 2s ease-in-out infinite; } .l15 i { width: 0; height: 0; border: 16px solid transparent; }
+  .l15 i:first-child { border-top-color: currentColor; border-bottom: 0; } .l15 i:last-child { border-bottom-color: var(--accent-3); border-top: 0; }
+  @keyframes hg { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+  .l16 i { width: 26px; height: 26px; background: #f43f5e; transform: rotate(45deg); animation: beat 1s ease-in-out infinite; }
+  .l16 i::before, .l16 i::after { content: ""; position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #f43f5e; }
+  .l16 i::before { left: -13px; } .l16 i::after { top: -13px; }
+  @keyframes beat { 0%, 100% { transform: rotate(45deg) scale(.8); } 15% { transform: rotate(45deg) scale(1.05); } 30% { transform: rotate(45deg) scale(.85); } 45% { transform: rotate(45deg) scale(1); } }
+  .l17 { width: 80px; height: 8px; border-radius: 4px; background: rgb(255 255 255 / .1); overflow: hidden; display: block; } .l17 i { height: 100%; width: 40%; background: currentColor; border-radius: 4px; animation: slide17 1.2s ease-in-out infinite; }
+  @keyframes slide17 { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+  .l18 { width: 90px; height: 12px; border-radius: 6px; display: block; background: repeating-linear-gradient(-45deg, currentColor 0 8px, color-mix(in srgb, currentColor 40%, transparent) 8px 16px) 0 0 / 22.6px 100%; animation: stripes .5s linear infinite; }
+  @keyframes stripes { to { background-position: 22.6px 0; } }
+  .l19 { width: 90px; height: 4px; display: block; background: rgb(255 255 255 / .1); overflow: hidden; } .l19 i { height: 100%; background: currentColor; animation: indet 1.6s cubic-bezier(.65,.05,.35,1) infinite; transform-origin: left; }
+  @keyframes indet { 0% { transform: translateX(0) scaleX(0); } 40% { transform: translateX(0) scaleX(.6); } 100% { transform: translateX(100%) scaleX(.2); } }
+  .l20 i { position: absolute; left: 50%; top: 50%; width: 4px; height: 18px; margin: -18px 0 0 -2px; border-radius: 2px; background: currentColor; transform-origin: 50% 18px; animation: f20 1s linear infinite; }
+  @keyframes f20 { from { opacity: 1; } to { opacity: .1; } }
+  .l21 { border-radius: 50%; background: conic-gradient(transparent 20%, currentColor); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); animation: spin 1s linear infinite; }
+  .l22 i { width: 30px; height: 30px; background: currentColor; animation: morph 2s ease-in-out infinite; }
+  @keyframes morph { 0%, 100% { border-radius: 0; transform: rotate(0); } 50% { border-radius: 50%; transform: rotate(180deg); background: var(--accent-3); } }
+  .l23 i:first-child { width: 18px; height: 18px; border-radius: 50%; background: currentColor; animation: ball 0.6s cubic-bezier(.5,0,.5,1) infinite alternate; }
+  .l23 i:last-child { position: absolute; bottom: 0; width: 22px; height: 5px; border-radius: 50%; background: rgb(0 0 0 / .6); animation: shadow .6s cubic-bezier(.5,0,.5,1) infinite alternate; }
+  @keyframes ball { from { transform: translateY(-16px); } to { transform: translateY(14px) scale(1.1, .9); } }
+  @keyframes shadow { from { transform: scale(.5); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+  .l24 i { position: absolute; top: 0; left: 50%; width: 2px; height: 34px; background: rgb(255 255 255 / .4); transform-origin: top; animation: swing 1s ease-in-out infinite alternate; }
+  .l24 i::after { content: ""; position: absolute; bottom: -8px; left: -7px; width: 16px; height: 16px; border-radius: 50%; background: currentColor; }
+  @keyframes swing { from { transform: rotate(40deg); } to { transform: rotate(-40deg); } }
+  .l25 { display: flex; gap: 4px; align-items: center; } .l25 i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: wave25 1s ease-in-out infinite; animation-delay: calc(var(--d) * -.15s); }
+  @keyframes wave25 { 0%, 100% { transform: translateY(8px); } 50% { transform: translateY(-8px); } }
+  .l26 { perspective: 200px; } .l26 i { width: 26px; height: 26px; transform-style: preserve-3d; animation: cube 2.4s linear infinite; background: color-mix(in srgb, currentColor 30%, transparent); border: 2px solid currentColor; }
+  @keyframes cube { to { transform: rotateX(360deg) rotateY(720deg); } }
+  .l27 { width: auto; font: 700 14px var(--mono); letter-spacing: .05em; display: flex; } .l27 i { font-style: normal; animation: wave25 1.2s ease-in-out infinite; animation-delay: calc(var(--d) * -.1s); }
+  .l28 i { position: absolute; border-radius: 50%; border: 3px solid transparent; border-top-color: currentColor; animation: spin 1.2s linear infinite; }
+  .l28 i:nth-child(1) { inset: 0; } .l28 i:nth-child(2) { inset: 7px; animation-duration: .9s; border-top-color: var(--accent-3); animation-direction: reverse; } .l28 i:nth-child(3) { inset: 14px; animation-duration: .6s; border-top-color: var(--accent); }
+  .l29 { width: 56px; height: 28px; border: 3px solid currentColor; border-radius: 5px; padding: 3px; display: block; } .l29::after { content: ""; position: absolute; right: -8px; top: 7px; width: 4px; height: 8px; border-radius: 0 2px 2px 0; background: currentColor; }
+  .l29 i { height: 100%; background: #4ade80; border-radius: 2px; animation: charge 2s steps(5) infinite; }
+  @keyframes charge { from { width: 0; } to { width: 100%; } }
+  .l30 i { position: absolute; inset: 4px; border-radius: 50%; border: 2px solid currentColor; border-left-color: transparent; border-right-color: transparent; }
+  .l30 i:nth-child(1) { animation: atom1 1.2s linear infinite; } .l30 i:nth-child(2) { animation: atom2 1.2s linear infinite; } .l30 i:nth-child(3) { animation: atom3 1.2s linear infinite; }
+  .l30::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-3); }
+  @keyframes atom1 { from { transform: rotateZ(0) rotateX(65deg) rotateZ(0); } to { transform: rotateZ(0) rotateX(65deg) rotateZ(360deg); } }
+  @keyframes atom2 { from { transform: rotateZ(60deg) rotateX(65deg) rotateZ(0); } to { transform: rotateZ(60deg) rotateX(65deg) rotateZ(360deg); } }
+  @keyframes atom3 { from { transform: rotateZ(120deg) rotateX(65deg) rotateZ(0); } to { transform: rotateZ(120deg) rotateX(65deg) rotateZ(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .l, .l *, .l::after { animation-duration: 3s !important; } }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:0"><div class="pack" role="list"></div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Markup per loader: number of child <i> elements (or custom HTML).
+  const defs = {
+    1: 0, 2: 0, 3: 3, 4: 3, 5: 5, 6: 1, 7: 2, 8: 1, 9: 1,
+    10: '<svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"/></svg>', 11: '<svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"/></svg>',
+    12: 9, 13: 2, 14: 2, 15: 2, 16: 1, 17: 1, 18: 0, 19: 1, 20: 12, 21: 0, 22: 1, 23: 2, 24: 1, 25: 5, 26: 1,
+    27: [..."LOADING"].map((c, i) => `<i style="--d:${i}">${c}</i>`).join(""), 28: 3, 29: 1, 30: 3,
+  };
+  const names = ["ring", "dual ring", "bounce dots", "pulse dots", "equalizer", "pulse", "ripple", "flip square", "orbit", "dashed", "material", "grid", "chase", "clock", "hourglass", "heartbeat", "slider", "stripes", "indeterminate", "fan", "conic", "morph", "ball", "pendulum", "wave", "cube 3D", "text wave", "spiral", "battery", "atom"];
+  const pack = document.querySelector(".pack");
+  for (let n = 1; n <= 30; n++) {
+    const d = defs[n];
+    let inner = typeof d === "number" ? Array.from({ length: d }, (_, k) => `<i style="--d:${k}"></i>`).join("") : d;
+    if (n === 20) inner = Array.from({ length: 12 }, (_, k) => `<i style="transform:rotate(${k * 30}deg);animation-delay:${-(11 - k) / 12}s"></i>`).join("");
+    pack.insertAdjacentHTML("beforeend", `<div class="cell" role="listitem"><div class="l l${n}" role="status" aria-label="Loading">${inner}</div><small>${String(n).padStart(2, "0")} ${names[n - 1]}</small></div>`);
+  }
+</script>
+</body>
+</html>

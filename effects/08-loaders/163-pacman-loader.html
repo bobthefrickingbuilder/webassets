@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pac-Man Loader</title>
+<meta name="description" content="A retro arcade loader: Pac-Man chomps with two rotating half-discs while pellets stream into his mouth, plus a chasing ghost with wobbling skirt.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; }
+  .arcade { position: relative; width: 300px; height: 80px; overflow: hidden; }
+  .pac { position: absolute; left: 70px; top: 10px; width: 60px; height: 60px; z-index: 2; }
+  /* Two half-circles rotate in opposite directions to open and close the mouth. */
+  .pac::before, .pac::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 30px solid #facc15; border-right-color: transparent; box-sizing: border-box; }
+  .pac::before { border-bottom-color: transparent; animation: chomp-top .3s ease-in-out infinite alternate; }
+  .pac::after { border-top-color: transparent; animation: chomp-bot .3s ease-in-out infinite alternate; }
+  @keyframes chomp-top { from { transform: rotate(-45deg); } to { transform: rotate(0); } }
+  @keyframes chomp-bot { from { transform: rotate(45deg); } to { transform: rotate(0); } }
+  .dots { position: absolute; left: 100px; top: 36px; display: flex; gap: 28px; animation: eat .9s linear infinite; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; background: #fde68a; flex: none; }
+  @keyframes eat { from { transform: translateX(38px); } to { transform: translateX(0); } }
+  .ghost { position: absolute; left: 0; top: 14px; width: 46px; height: 52px; background: #f472b6; border-radius: 23px 23px 0 0; animation: hover .5s ease-in-out infinite alternate; }
+  .ghost::before, .ghost::after { content: ""; position: absolute; top: 14px; width: 12px; height: 14px; border-radius: 50%; background: #fff; box-shadow: inset 4px 0 0 2px #1d4ed8; }
+  .ghost::before { left: 9px; } .ghost::after { left: 25px; }
+  .ghost i { position: absolute; bottom: -6px; width: 12px; height: 12px; background: #f472b6; transform: rotate(45deg); animation: skirt .25s steps(1) infinite; }
+  .ghost i:nth-child(1) { left: 2px; } .ghost i:nth-child(2) { left: 17px; } .ghost i:nth-child(3) { left: 32px; }
+  @keyframes hover { to { transform: translateY(-4px); } }
+  @keyframes skirt { 50% { bottom: -3px; } }
+  .label { font: 700 14px var(--mono); color: #facc15; letter-spacing: .3em; }
+  @media (prefers-reduced-motion: reduce) { .arcade * , .pac::before, .pac::after { animation-duration: 2s !important; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="arcade" role="status" aria-label="Loading">
+    <div class="ghost"><i></i><i></i><i></i></div>
+    <div class="pac"></div>
+    <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="label">LOADING…</div>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

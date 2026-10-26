@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skeleton Loading Placeholders</title>
+<meta name="description" content="Content-shaped skeleton screens with a synchronized shimmer sweep, which cross-fade into the real content once 'loaded'. Includes card, list and profile layouts.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .sk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; width: min(1000px, 94vw); }
+  .card { border-radius: 16px; background: var(--bg-2); border: 1px solid var(--line); padding: 16px; display: grid; gap: 12px; }
+  /* background-attachment: fixed keeps the shimmer band aligned across every skeleton on the page. */
+  .sk { border-radius: 8px; background: linear-gradient(100deg, #1b1e27 30%, #2a2e3b 50%, #1b1e27 70%) fixed; background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+  .sk.img { aspect-ratio: 16/9; border-radius: 10px; } .sk.line { height: 12px; } .sk.title { height: 18px; width: 70%; } .sk.short { width: 45%; }
+  .sk.avatar { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+  .row { display: flex; gap: 12px; align-items: center; } .row > div { flex: 1; display: grid; gap: 8px; }
+  .real { display: none; } .loaded .real { display: grid; gap: 10px; animation: in .5s ease; } .loaded .skel { display: none; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+  .real img { width: 100%; border-radius: 10px; aspect-ratio: 16/9; object-fit: cover; }
+  .real h3 { margin: 0; } .real p { margin: 0; color: var(--muted); font-size: 14px; }
+  .ctrl button { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="sk-grid" aria-busy="true" aria-live="polite"></div>
+  <div class="ctrl"><button>Reload</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const grid = document.querySelector(".sk-grid");
+  const skel = '<div class="skel" style="display:grid;gap:12px"><div class="sk img"></div><div class="sk title"></div><div class="sk line"></div><div class="sk line short"></div><div class="row"><span class="sk avatar"></span><div><div class="sk line"></div><div class="sk line short"></div></div></div></div>';
+  function load() {
+    grid.setAttribute("aria-busy", "true");
+    grid.innerHTML = Array.from({ length: 3 }, (_, i) => `<article class="card">${skel}<div class="real"><img alt="" src="${Demo.artURL(560, 315, i + 1)}"><h3>Story ${i + 1}</h3><p>${Demo.lorem(20, i)}</p></div></article>`).join("");
+    // Stagger the "network" responses so cards resolve one by one.
+    [...grid.children].forEach((c, i) => setTimeout(() => { c.classList.add("loaded"); if (i === 2) grid.setAttribute("aria-busy", "false"); }, 1600 + i * 600));
+  }
+  document.querySelector(".ctrl button").onclick = load;
+  load();
+</script>
+</body>
+</html>
