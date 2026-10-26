@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slide to Confirm</title>
+<meta name="description" content="Drag the handle across the track to confirm. The label fades as you go, short drags spring back, and arrow keys work for keyboard users.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .slide { position: relative; width: min(360px, 90vw); height: 64px; border-radius: 32px; background: #15171d; border: 1px solid var(--line); overflow: hidden; touch-action: none; user-select: none; }
+  .slide .trail { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--x, 0px) + 64px); background: linear-gradient(90deg, #4c1d95, #7c3aed); border-radius: 32px; }
+  .slide .text { position: absolute; inset: 0; display: grid; place-items: center; padding-left: 40px; color: #9ca3af; font-weight: 500; opacity: calc(1 - var(--p, 0) * 1.6);
+                 background: linear-gradient(110deg, #6b7280 35%, #fff 50%, #6b7280 65%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 2.4s linear infinite; }
+  @keyframes shine { from { background-position: 125% 0; } to { background-position: -125% 0; } }
+  .slide .handle { position: absolute; left: 4px; top: 4px; width: 56px; height: 56px; border-radius: 50%; background: #fff; color: #4c1d95; display: grid; place-items: center; font-size: 22px; cursor: grab; transform: translateX(var(--x, 0px)); box-shadow: 0 4px 12px rgb(0 0 0 / .4); }
+  .slide .handle:focus-visible { outline: 3px solid var(--accent-2); }
+  .slide.snap .handle, .slide.snap .trail { transition: transform .4s cubic-bezier(.2,1.4,.4,1), width .4s cubic-bezier(.2,1.4,.4,1); }
+  .slide.done { background: #166534; border-color: #166534; }
+  .slide.done .trail { background: #16a34a; }
+  .slide.done .text { opacity: 1; animation: none; color: #fff; background: none; padding-left: 0; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="slide"><div class="trail"></div><div class="text">Slide to pay $49</div>
+    <div class="handle" role="slider" tabindex="0" aria-label="Slide to confirm payment" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">→</div></div>
+  <button class="hint" style="background:none;border:0;cursor:pointer;text-decoration:underline">Reset</button>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const slide = document.querySelector(".slide"), handle = slide.querySelector(".handle"), text = slide.querySelector(".text");
+  let max = 0, x = 0, startX = 0, dragging = false, done = false;
+  const measure = () => (max = slide.clientWidth - 64);
+  function set(v) {
+    x = Math.max(0, Math.min(max, v));
+    slide.style.setProperty("--x", x + "px"); slide.style.setProperty("--p", x / max);
+    handle.setAttribute("aria-valuenow", Math.round((x / max) * 100));
+  }
+  function release() {
+    slide.classList.add("snap");
+    if (x > max * 0.9) { set(max); done = true; slide.classList.add("done"); text.textContent = "Payment sent ✓"; handle.textContent = "✓"; }
+    else set(0);
+  }
+  handle.addEventListener("pointerdown", (e) => { if (done) return; dragging = true; startX = e.clientX - x; slide.classList.remove("snap"); handle.setPointerCapture(e.pointerId); });
+  handle.addEventListener("pointermove", (e) => dragging && set(e.clientX - startX));
+  handle.addEventListener("pointerup", () => { if (dragging) { dragging = false; release(); } });
+  handle.addEventListener("keydown", (e) => {
+    if (done) return;
+    if (e.key === "ArrowRight") { slide.classList.add("snap"); set(x + max / 5); if (x >= max) release(); }
+    if (e.key === "ArrowLeft") { slide.classList.add("snap"); set(x - max / 5); }
+  });
+  document.querySelector("button").onclick = () => { done = false; slide.classList.remove("done"); text.textContent = "Slide to pay $49"; handle.textContent = "→"; slide.classList.add("snap"); set(0); };
+  addEventListener("resize", measure); measure();
+</script>
+</body>
+</html>

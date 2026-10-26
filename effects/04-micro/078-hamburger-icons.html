@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hamburger to X Icons</title>
+<meta name="description" content="Ten accessible menu-toggle animations from three bars to a close icon: squeeze, spin, elastic, arrow, collapse, slider, vortex, stand, minus and draw.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .burgers { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; width: min(900px, 92vw); }
+  .cell { display: grid; justify-items: center; gap: 10px; padding: 22px 8px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+  .cell small { color: var(--muted); font-family: var(--mono); }
+  .hb { width: 48px; height: 48px; border: 0; background: none; cursor: pointer; position: relative; padding: 0; }
+  .hb i { position: absolute; left: 10px; right: 10px; height: 3px; border-radius: 2px; background: var(--fg); transition: transform .35s cubic-bezier(.7,0,.3,1), opacity .2s, top .35s cubic-bezier(.7,0,.3,1), width .35s, left .35s, right .35s; }
+  .hb i:nth-child(1) { top: 15px; } .hb i:nth-child(2) { top: 22.5px; } .hb i:nth-child(3) { top: 30px; }
+  [aria-expanded="true"] i:nth-child(2) { opacity: 0; }
+
+  /* 1 squeeze: bars meet in the middle, then rotate */
+  .squeeze[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(45deg); }
+  .squeeze[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(-45deg); }
+  /* 2 spin: the whole icon spins while forming the X */
+  .spin { transition: transform .5s cubic-bezier(.7,0,.3,1); }
+  .spin[aria-expanded="true"] { transform: rotate(180deg); }
+  .spin[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(45deg); }
+  .spin[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(-45deg); }
+  /* 3 elastic: overshooting spring */
+  .elastic i { transition-timing-function: cubic-bezier(.5,-0.6,.3,1.8); transition-duration: .55s; }
+  .elastic[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(135deg); }
+  .elastic[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(-135deg); }
+  /* 4 arrow: becomes a back arrow */
+  .arrow[aria-expanded="true"] i:nth-child(2) { opacity: 1; }
+  .arrow[aria-expanded="true"] i:nth-child(1) { transform: translate(-3px, 4px) rotate(-40deg) scaleX(.6); transform-origin: left; }
+  .arrow[aria-expanded="true"] i:nth-child(3) { transform: translate(-3px, -4px) rotate(40deg) scaleX(.6); transform-origin: left; }
+  /* 5 collapse: bars fall from the top */
+  .collapse[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(-45deg); transition-delay: .1s; }
+  .collapse[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(45deg); }
+  /* 6 slider: middle bar slides away */
+  .slider[aria-expanded="true"] i:nth-child(2) { transform: translateX(-30px); }
+  .slider[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(45deg); }
+  .slider[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(-45deg); }
+  /* 7 vortex: bars twist through 3/4 turns */
+  .vortex[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(-315deg); }
+  .vortex[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(315deg); }
+  /* 8 stand: becomes vertical first */
+  .stand[aria-expanded="true"] { transform: rotate(90deg); transition: transform .4s; }
+  .stand[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(45deg); }
+  .stand[aria-expanded="true"] i:nth-child(3) { top: 22.5px; transform: rotate(-45deg); }
+  /* 9 minus: collapses to a single line */
+  .minus[aria-expanded="true"] i { top: 22.5px; }
+  .minus[aria-expanded="true"] i:nth-child(2) { opacity: 1; }
+  /* 10 staggered widths that become an X */
+  .widths i:nth-child(2) { right: 18px; } .widths i:nth-child(3) { right: 24px; }
+  .widths[aria-expanded="true"] i:nth-child(1) { top: 22.5px; transform: rotate(45deg); }
+  .widths[aria-expanded="true"] i:nth-child(3) { top: 22.5px; right: 10px; transform: rotate(-45deg); }
+  @media (prefers-reduced-motion: reduce) { .hb, .hb i { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="burgers"></div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const kinds = ["squeeze", "spin", "elastic", "arrow", "collapse", "slider", "vortex", "stand", "minus", "widths"];
+  const wrap = document.querySelector(".burgers");
+  kinds.forEach((k) => wrap.insertAdjacentHTML("beforeend",
+    `<div class="cell"><button class="hb ${k}" aria-label="Toggle menu" aria-expanded="false"><i></i><i></i><i></i></button><small>${k}</small></div>`));
+  // aria-expanded is both the accessibility state and the CSS hook.
+  wrap.addEventListener("click", (e) => {
+    const b = e.target.closest(".hb");
+    if (b) b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") !== "true");
+  });
+</script>
+</body>
+</html>

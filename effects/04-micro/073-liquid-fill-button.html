@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Liquid Fill Button</title>
+<meta name="description" content="On hover, liquid rises inside the button with a sloshing surface made from a giant rotating rounded square. Pure CSS.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .liquid { --c: #22d3ee; position: relative; overflow: hidden; isolation: isolate; padding: 18px 44px; border-radius: 14px; border: 2px solid var(--c); background: transparent;
+            color: var(--c); font: 700 17px var(--font); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: color .5s; }
+  /* A huge, slightly squarish blob spinning below the button; raising it reads as a wavy liquid surface. */
+  .liquid::before, .liquid::after { content: ""; position: absolute; left: 50%; width: 400%; aspect-ratio: 1; z-index: -1; transition: top 1s cubic-bezier(.3,.6,.3,1); top: 140%; }
+  .liquid::before { margin-left: -200%; border-radius: 42%; background: var(--c); animation: slosh 6s linear infinite; }
+  .liquid::after { margin-left: -195%; border-radius: 38%; background: color-mix(in srgb, var(--c) 55%, transparent); animation: slosh 9s linear infinite reverse; }
+  .liquid:hover, .liquid:focus-visible { color: #0b0c10; }
+  .liquid:hover::before, .liquid:focus-visible::before { top: -320%; }
+  .liquid:hover::after, .liquid:focus-visible::after { top: -310%; }
+  @keyframes slosh { to { transform: rotate(360deg); } }
+  .liquid.pink { --c: #f472b6; } .liquid.lime { --c: #a3e635; }
+  @media (prefers-reduced-motion: reduce) { .liquid::before, .liquid::after { animation: none; transition-duration: .01s; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="row"><button class="liquid">Hover me</button><button class="liquid pink">Pour</button><button class="liquid lime">Fill up</button></div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

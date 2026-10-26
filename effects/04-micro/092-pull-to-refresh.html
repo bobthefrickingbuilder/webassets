@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Custom Pull to Refresh</title>
+<meta name="description" content="A phone-style feed you can drag down: a ring fills with resistance as you pull, spins while refreshing, then new items slide in at the top.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .phone { width: 360px; max-width: 92vw; height: 640px; max-height: 80vh; border-radius: 36px; border: 8px solid #1d2029; background: #0f1116; overflow: hidden; position: relative; }
+  .feed { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-x; }
+  .inner { will-change: transform; }
+  .ptr { position: absolute; left: 0; right: 0; top: 0; height: 70px; display: grid; place-items: center; pointer-events: none; }
+  .ptr svg { width: 34px; height: 34px; transform: rotate(-90deg); }
+  .ptr circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+  .ptr .bg { stroke: #262a36; } .ptr .fg { stroke: var(--accent-2); stroke-dasharray: 88; stroke-dashoffset: 88; }
+  .ptr.spin svg { animation: spin .8s linear infinite; }
+  .ptr.spin .fg { stroke-dashoffset: 60; }
+  @keyframes spin { to { transform: rotate(270deg); } }
+  .item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #1a1d25; background: #0f1116; }
+  .item .av { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+  .item b { display: block; font-size: 14px; } .item span { color: var(--muted); font-size: 13px; }
+  .item.new { animation: slideIn .5s cubic-bezier(.2,.8,.2,1) both; background: #13161e; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-20px); } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="phone"><div class="ptr" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="14"/><circle class="fg" cx="18" cy="18" r="14"/></svg></div>
+    <div class="feed" tabindex="0" aria-label="Feed"><div class="inner"></div></div></div>
+  <p class="hint">Drag the feed down with the mouse or finger (or press R).</p>
+  <p class="hint" role="status" aria-live="polite" style="min-height:1.5em"></p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const feed = document.querySelector(".feed"), inner = document.querySelector(".inner"), ptr = document.querySelector(".ptr"), fg = ptr.querySelector(".fg"), status = document.querySelector("[role=status]");
+  let n = 0;
+  function item(isNew) {
+    n++;
+    return `<div class="item${isNew ? " new" : ""}"><div class="av" style="background:hsl(${n * 47 % 360} 70% 55%)"></div><div><b>User ${n}</b><span>${Demo.lorem(9, n)}</span></div></div>`;
+  }
+  for (let i = 0; i < 14; i++) inner.insertAdjacentHTML("beforeend", item(false));
+  const THRESH = 80;
+  let startY = null, pull = 0, refreshing = false;
+  function setPull(px) {
+    pull = px;
+    inner.style.transform = `translateY(${px}px)`;
+    fg.style.strokeDashoffset = 88 - Math.min(1, px / THRESH) * 80;
+    ptr.style.opacity = Math.min(1, px / 30);
+  }
+  feed.addEventListener("pointerdown", (e) => { if (feed.scrollTop <= 0 && !refreshing) { startY = e.clientY; feed.setPointerCapture(e.pointerId); inner.style.transition = "none"; } });
+  feed.addEventListener("pointermove", (e) => {
+    if (startY === null) return;
+    const dy = e.clientY - startY;
+    if (dy > 0) setPull(Math.pow(dy, 0.82));    // rubber-band resistance
+  });
+  feed.addEventListener("pointerup", () => { if (startY === null) return; startY = null; release(); });
+  function release() {
+    inner.style.transition = "transform .35s cubic-bezier(.2,.8,.2,1)";
+    if (pull >= THRESH) refresh(); else setPull(0);
+  }
+  function refresh() {
+    refreshing = true; setPull(60); ptr.classList.add("spin"); status.textContent = "Refreshing…";
+    setTimeout(() => {
+      inner.insertAdjacentHTML("afterbegin", item(true) + item(true));
+      ptr.classList.remove("spin"); setPull(0); refreshing = false; status.textContent = "2 new posts";
+    }, 1400);
+  }
+  addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && !refreshing) { inner.style.transition = "transform .35s"; refresh(); } });
+</script>
+</body>
+</html>

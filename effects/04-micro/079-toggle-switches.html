@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Toggle Switches</title>
+<meta name="description" content="Three accessible checkbox-based switches: a day/night scene with sun, moon, clouds and stars; a gooey liquid knob; and a chunky 3D rocker.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .sw { position: relative; display: inline-block; cursor: pointer; }
+  .sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 2; }
+  .sw input:focus-visible + .track { outline: 2px solid var(--accent-2); outline-offset: 4px; }
+
+  /* 1. Day / night */
+  .dn .track { display: block; width: 120px; height: 56px; border-radius: 30px; background: linear-gradient(#7dd3fc, #38bdf8); position: relative; overflow: hidden; transition: background .6s; box-shadow: inset 0 3px 8px rgb(0 0 0 / .25); }
+  .dn .knob { position: absolute; top: 6px; left: 6px; width: 44px; height: 44px; border-radius: 50%; background: #fde047; box-shadow: 0 0 20px #fde047, inset -3px -3px 0 #facc15; transition: transform .6s cubic-bezier(.5,-0.3,.3,1.3), background .6s, box-shadow .6s; }
+  .dn .knob::before, .dn .knob::after { content: ""; position: absolute; border-radius: 50%; background: #94a3b8; opacity: 0; transition: opacity .4s; }
+  .dn .knob::before { width: 10px; height: 10px; left: 10px; top: 12px; } .dn .knob::after { width: 7px; height: 7px; left: 24px; top: 26px; }
+  .dn .cloud { position: absolute; right: 12px; top: 20px; width: 34px; height: 12px; border-radius: 10px; background: #fff; transition: transform .6s; box-shadow: -10px -6px 0 2px #fff; }
+  .dn .stars { position: absolute; left: 18px; top: 10px; width: 3px; height: 3px; border-radius: 50%; background: #fff; transform: translateY(-50px); transition: transform .6s;
+               box-shadow: 14px 16px 0 #fff, 30px 4px 0 1px #fff, 8px 30px 0 #fff, 40px 26px 0 #fff; }
+  .dn input:checked + .track { background: linear-gradient(#1e1b4b, #312e81); }
+  .dn input:checked + .track .knob { transform: translateX(64px); background: #e2e8f0; box-shadow: 0 0 16px rgb(226 232 240 / .6), inset -3px -3px 0 #cbd5e1; }
+  .dn input:checked + .track .knob::before, .dn input:checked + .track .knob::after { opacity: 1; }
+  .dn input:checked + .track .cloud { transform: translateY(60px); }
+  .dn input:checked + .track .stars { transform: none; }
+
+  /* 2. Gooey liquid: the knob stretches as it travels */
+  .goo .track { display: block; width: 96px; height: 44px; border-radius: 30px; background: #262a36; position: relative; transition: background .4s; }
+  .goo .knob { position: absolute; top: 6px; left: 6px; height: 32px; width: 32px; border-radius: 20px; background: #fff; transition: left .3s cubic-bezier(.6,0,.3,1) .1s, width .3s cubic-bezier(.6,0,.3,1), background .3s; }
+  .goo input:checked + .track { background: #db2777; }
+  .goo input:checked + .track .knob { left: 58px; width: 32px; transition: left .3s cubic-bezier(.6,0,.3,1), width .3s cubic-bezier(.6,0,.3,1) .1s; }
+  .goo input:active + .track .knob { width: 46px; }
+  .goo input:checked:active + .track .knob { left: 44px; }
+
+  /* 3. 3D rocker */
+  .rock .track { display: flex; width: 120px; height: 52px; border-radius: 10px; background: #0f1115; padding: 4px; perspective: 300px; box-shadow: inset 0 2px 6px #000; }
+  .rock .face { flex: 1; display: grid; place-items: center; font: 700 13px var(--mono); letter-spacing: .1em; color: #6b7280; background: linear-gradient(#2b2f3a, #1d2028); transition: transform .25s, background .25s, color .25s; }
+  .rock .off { border-radius: 7px 0 0 7px; transform-origin: right; transform: rotateY(-18deg); background: linear-gradient(#3a3f4d, #2b2f3a); color: #e5e7eb; }
+  .rock .on { border-radius: 0 7px 7px 0; transform-origin: left; }
+  .rock input:checked + .track .off { transform: none; background: linear-gradient(#2b2f3a, #1d2028); color: #6b7280; }
+  .rock input:checked + .track .on { transform: rotateY(18deg); background: linear-gradient(#22c55e, #15803d); color: #fff; }
+  .labels { display: flex; gap: 64px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .labels > div { display: grid; gap: 12px; justify-items: center; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="labels">
+  <div><label class="sw dn"><input type="checkbox" role="switch" aria-label="Dark mode"><span class="track"><span class="stars"></span><span class="cloud"></span><span class="knob"></span></span></label>Day / Night</div>
+  <div><label class="sw goo"><input type="checkbox" role="switch" aria-label="Notifications" checked><span class="track"><span class="knob"></span></span></label>Liquid (press & hold)</div>
+  <div><label class="sw rock"><input type="checkbox" role="switch" aria-label="Power"><span class="track"><span class="face off">OFF</span><span class="face on">ON</span></span></label>3D rocker</div>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

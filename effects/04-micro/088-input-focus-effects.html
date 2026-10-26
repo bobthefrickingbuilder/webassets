@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Floating Label Input Effects</title>
+<meta name="description" content="Twelve CSS-only text field treatments: floating labels, growing underlines, outline notches, glow, gradient borders and more, all driven by :focus and :placeholder-shown.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 24px; width: min(1000px, 92vw); padding: 40px 0; }
+  .f { position: relative; }
+  .f input { width: 100%; font: 16px var(--font); color: var(--fg); background: transparent; border: 0; outline: 0; padding: 22px 14px 8px; }
+  .f label { position: absolute; left: 14px; top: 16px; color: var(--muted); pointer-events: none; transition: all .25s cubic-bezier(.2,.8,.2,1); transform-origin: left; }
+  /* Shared float rule: placeholder=" " lets :placeholder-shown detect emptiness. */
+  .f input:focus + label, .f input:not(:placeholder-shown) + label { transform: translateY(-11px) scale(.78); color: var(--accent-2); }
+  .tag { position: absolute; right: 0; top: -18px; font: 11px var(--mono); color: #4b5068; }
+
+  .f1 input { border-bottom: 2px solid #3a3f4d; }
+  .f1::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent-2); transform: scaleX(0); transition: transform .35s; }
+  .f1:focus-within::after { transform: scaleX(1); }
+  .f2 input { border-bottom: 2px solid #3a3f4d; }
+  .f2::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-3)); transition: width .4s; }
+  .f2:focus-within::after { width: 100%; }
+  .f3 input { border: 2px solid #3a3f4d; border-radius: 10px; transition: border-color .25s; }
+  .f3 input:focus { border-color: var(--accent-2); }
+  .f3 input:focus + label, .f3 input:not(:placeholder-shown) + label { transform: translateY(-26px) scale(.78); background: var(--bg); padding: 0 6px; margin-left: -6px; }
+  .f3 input { padding: 16px 14px; }
+  .f4 input { background: #15171d; border-radius: 10px; box-shadow: 0 0 0 0 transparent; transition: box-shadow .3s; }
+  .f4 input:focus { box-shadow: 0 0 0 3px rgb(124 92 255 / .5), 0 0 24px rgb(124 92 255 / .4); }
+  .f5 { padding: 2px; border-radius: 12px; background: #2a2e3b; }
+  .f5:focus-within { background: linear-gradient(120deg, #7c5cff, #22d3ee, #f472b6); }
+  .f5 input { background: var(--bg); border-radius: 10px; }
+  .f5 label { left: 16px; top: 18px; }
+  .f6 input { border-bottom: 2px solid #3a3f4d; }
+  .f6::before, .f6::after { content: ""; position: absolute; bottom: 0; height: 2px; width: 0; background: #facc15; transition: width .3s; }
+  .f6::before { left: 50%; } .f6::after { right: 50%; }
+  .f6:focus-within::before, .f6:focus-within::after { width: 50%; }
+  .f7 input { background: #15171d; border-radius: 10px 10px 0 0; border-bottom: 2px solid #3a3f4d; transition: background .3s; }
+  .f7 input:focus { background: #1d2029; border-bottom-color: var(--accent-3); }
+  .f8 input { border: 2px solid #3a3f4d; border-radius: 999px; padding-left: 22px; transition: border-color .3s, padding .3s; }
+  .f8 label { left: 22px; }
+  .f8 input:focus { border-color: #4ade80; padding-left: 26px; }
+  .f9 input { border-bottom: 2px dashed #3a3f4d; transition: border-color .3s; }
+  .f9 input:focus { border-bottom-style: solid; border-color: #fb923c; }
+  .f9 input:focus + label { color: #fb923c; }
+  .f10 { border-radius: 10px; background: #15171d; }
+  .f10::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgb(124 92 255 / .18); transform: scaleX(0); transform-origin: left; transition: transform .4s; pointer-events: none; }
+  .f10:focus-within::after { transform: none; }
+  .f11 input { border: 2px solid #3a3f4d; border-radius: 10px; }
+  .f11:focus-within input { animation: nudge .4s; border-color: var(--accent-2); }
+  @keyframes nudge { 30% { transform: translateX(3px); } 60% { transform: translateX(-2px); } }
+  .f12 input { border-bottom: 2px solid #3a3f4d; }
+  .f12 label { transition: all .35s cubic-bezier(.3,1.6,.4,1); }
+  .f12 input:focus + label, .f12 input:not(:placeholder-shown) + label { transform: translate(-4px, -14px) scale(.78) rotate(-4deg); color: var(--accent-3); }
+  @media (prefers-reduced-motion: reduce) { .f *, .f::before, .f::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="fields"></div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const names = ["Underline grow", "Gradient sweep", "Outlined notch", "Glow ring", "Gradient border", "Center split", "Filled tonal", "Pill shift", "Dashed to solid", "Slide fill", "Nudge", "Bouncy label"];
+  const host = document.querySelector(".fields");
+  names.forEach((n, i) => host.insertAdjacentHTML("beforeend",
+    `<div class="f f${i + 1}"><span class="tag">${String(i + 1).padStart(2, "0")} ${n}</span><input id="i${i}" placeholder=" "><label for="i${i}">Your name</label></div>`));
+</script>
+</body>
+</html>

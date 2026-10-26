@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gooey Segmented Control</title>
+<meta name="description" content="A segmented control whose indicator stretches like liquid between options: the front edge leads, the back edge lags, and an SVG goo filter fuses the blobs.">
+<meta name="tech" content="CSS, SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .seg { position: relative; display: grid; grid-template-columns: repeat(4, 110px); padding: 6px; border-radius: 999px; background: #15171d; border: 1px solid var(--line); }
+  .seg .goo { position: absolute; inset: 6px; filter: url(#goo); pointer-events: none; }
+  .seg .blob { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent-3); }
+  .seg label { position: relative; z-index: 1; text-align: center; padding: 12px 0; cursor: pointer; font-weight: 600; color: var(--muted); transition: color .3s; }
+  .seg input { position: absolute; opacity: 0; }
+  .seg input:checked + label { color: #fff; }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent-2); border-radius: 999px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/><feColorMatrix in="b" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 22 -9"/></filter></svg>
+<main class="center"><div class="stack">
+  <div class="seg" role="radiogroup" aria-label="View">
+    <div class="goo"><span class="blob a"></span><span class="blob b"></span></div>
+  </div>
+  <p class="hint">Two blobs: the leading one moves fast, the trailing one lags. The goo filter melts them together mid-move.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const seg = document.querySelector(".seg");
+  ["Day", "Week", "Month", "Year"].forEach((v, i) => seg.insertAdjacentHTML("beforeend", `<input type="radio" name="v" id="v${i}" ${i ? "" : "checked"}><label for="v${i}">${v}</label>`));
+  const a = seg.querySelector(".blob.a"), b = seg.querySelector(".blob.b");
+  const W = 110;
+  [a, b].forEach((el) => { el.style.width = W + "px"; el.style.left = "0px"; });
+  a.style.transition = "left .35s cubic-bezier(.5,0,.2,1)";
+  b.style.transition = "left .6s cubic-bezier(.5,0,.2,1) .05s";
+  seg.addEventListener("change", (e) => {
+    const i = [...seg.querySelectorAll("input")].indexOf(e.target);
+    a.style.left = b.style.left = i * W + "px";
+  });
+</script>
+</body>
+</html>

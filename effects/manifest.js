@@ -861,5 +861,264 @@ window.EFFECTS = [
   "complexity": 3,
   "category": "03-cursor",
   "path": "effects/03-cursor/072-distortion-lens.html"
+ },
+ {
+  "num": 73,
+  "title": "Liquid Fill Button",
+  "description": "On hover, liquid rises inside the button with a sloshing surface made from a giant rotating rounded square. Pure CSS.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/073-liquid-fill-button.html"
+ },
+ {
+  "num": 74,
+  "title": "Rotating Gradient Border Button",
+  "description": "Buttons with a spinning conic-gradient border and blurred glow, animated via a registered @property angle. Includes a 'beam' variant.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/074-gradient-border-button.html"
+ },
+ {
+  "num": 75,
+  "title": "Glossy Shine Sweep Button",
+  "description": "A skewed highlight sweeps across glossy buttons on hover, plus an idle variant that glints periodically to draw attention.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/075-shine-sweep-button.html"
+ },
+ {
+  "num": 76,
+  "title": "Loading / Success / Error Button",
+  "description": "A submit button that morphs into a spinner circle while working, then into a drawn checkmark or a shaking cross before restoring itself.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/076-stateful-submit-button.html"
+ },
+ {
+  "num": 77,
+  "title": "Like Heart Burst",
+  "description": "Twitter-style like: the heart pops from a collapsing ring, a burst of coloured dots sprays outward and the count rolls up.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/077-like-heart-burst.html"
+ },
+ {
+  "num": 78,
+  "title": "Hamburger to X Icons",
+  "description": "Ten accessible menu-toggle animations from three bars to a close icon: squeeze, spin, elastic, arrow, collapse, slider, vortex, stand, minus and draw.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/078-hamburger-icons.html"
+ },
+ {
+  "num": 79,
+  "title": "Animated Toggle Switches",
+  "description": "Three accessible checkbox-based switches: a day/night scene with sun, moon, clouds and stars; a gooey liquid knob; and a chunky 3D rocker.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/079-toggle-switches.html"
+ },
+ {
+  "num": 80,
+  "title": "Animated Checkboxes and Radios",
+  "description": "Native inputs restyled with draw-on SVG checkmarks, a bouncy fill, a strike-through todo list and radio dots that jelly into place.",
+  "tech": [
+   "CSS",
+   "SVG"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/080-animated-checkboxes.html"
+ },
+ {
+  "num": 81,
+  "title": "Jelly Button Press",
+  "description": "Buttons squash on press and wobble like jelly on release, using a spring-generated CSS linear() easing curve.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/081-jelly-button.html"
+ },
+ {
+  "num": 82,
+  "title": "Copy to Clipboard Button",
+  "description": "A code block copy button whose clipboard icon morphs into a checkmark, with a small toast confirming the copy and a graceful fallback.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/082-copy-button.html"
+ },
+ {
+  "num": 83,
+  "title": "Hold to Confirm",
+  "description": "A destructive action that must be held for 1.5 seconds: the fill grows while held, rewinds if released early, and shakes on completion. Works with keyboard too.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/083-hold-to-confirm.html"
+ },
+ {
+  "num": 84,
+  "title": "Slide to Confirm",
+  "description": "Drag the handle across the track to confirm. The label fades as you go, short drags spring back, and arrow keys work for keyboard users.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/084-slide-to-confirm.html"
+ },
+ {
+  "num": 85,
+  "title": "Animated Star Rating",
+  "description": "A radio-group star rating: stars preview on hover, pop in sequence when chosen, and a label describes the rating. Fully keyboard accessible.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/085-star-rating.html"
+ },
+ {
+  "num": 86,
+  "title": "Tabs with Sliding Indicator",
+  "description": "Accessible tabs whose highlight pill glides and resizes to the active tab, with directional panel transitions and arrow-key navigation.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/086-sliding-tabs.html"
+ },
+ {
+  "num": 87,
+  "title": "Gooey Segmented Control",
+  "description": "A segmented control whose indicator stretches like liquid between options: the front edge leads, the back edge lags, and an SVG goo filter fuses the blobs.",
+  "tech": [
+   "CSS",
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/087-gooey-segmented-control.html"
+ },
+ {
+  "num": 88,
+  "title": "Floating Label Input Effects",
+  "description": "Twelve CSS-only text field treatments: floating labels, growing underlines, outline notches, glow, gradient borders and more, all driven by :focus and :placeholder-shown.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/088-input-focus-effects.html"
+ },
+ {
+  "num": 89,
+  "title": "Password Strength Meter",
+  "description": "Live password feedback: a four-segment meter that fills and recolours, a checklist that ticks off requirements, and a show/hide toggle.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/089-password-strength.html"
+ },
+ {
+  "num": 90,
+  "title": "Animated Download Button",
+  "description": "Click to download: the arrow drops into a progress bar that fills with a live percentage, then the button settles into a 'Done' state with a checkmark.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/090-download-button.html"
+ },
+ {
+  "num": 91,
+  "title": "Morphing SVG Icons",
+  "description": "Play to pause, menu to close, search to close and plus to check: SVG paths with matching point structure are interpolated with a tiny JS morph helper that works in every browser.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/091-morphing-icons.html"
+ },
+ {
+  "num": 92,
+  "title": "Custom Pull to Refresh",
+  "description": "A phone-style feed you can drag down: a ring fills with resistance as you pull, spins while refreshing, then new items slide in at the top.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/092-pull-to-refresh.html"
+ },
+ {
+  "num": 93,
+  "title": "Anchor-positioned Tooltips",
+  "description": "Tooltips and a popover menu positioned with CSS anchor positioning and the Popover API, flipping automatically near edges, with a JS fallback for older browsers.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "04-micro",
+  "path": "effects/04-micro/093-anchor-tooltips.html"
+ },
+ {
+  "num": 94,
+  "title": "Notification Bell",
+  "description": "A bell that rings with a swinging clapper when a notification arrives, while the badge count pops and a dropdown lists the new items.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "04-micro",
+  "path": "effects/04-micro/094-notification-bell.html"
  }
 ];

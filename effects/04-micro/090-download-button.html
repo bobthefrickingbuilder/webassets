@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Download Button</title>
+<meta name="description" content="Click to download: the arrow drops into a progress bar that fills with a live percentage, then the button settles into a 'Done' state with a checkmark.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .dl { position: relative; width: 220px; height: 60px; border-radius: 16px; border: 0; background: #2563eb; color: #fff; font: 600 16px var(--font); cursor: pointer; overflow: hidden; transition: width .4s cubic-bezier(.6,0,.3,1), background .4s, border-radius .4s; }
+  .dl .content { display: flex; align-items: center; justify-content: center; gap: 10px; transition: opacity .2s, transform .3s; }
+  .dl .arrow { display: inline-block; transition: transform .4s cubic-bezier(.6,-0.5,.4,1.5); }
+  .dl .bar { position: absolute; left: 16px; right: 16px; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: rgb(255 255 255 / .2); opacity: 0; transition: opacity .2s; }
+  .dl .bar b { display: block; height: 100%; width: 0; border-radius: 3px; background: #fff; }
+  .dl .pct { position: absolute; left: 0; right: 0; top: 8px; font: 600 12px var(--mono); opacity: 0; transition: opacity .2s; }
+  .dl .done { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0; transform: translateY(20px); transition: all .35s cubic-bezier(.2,1.4,.4,1); }
+  .dl .done svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .4s .2s; }
+  .dl.busy { width: 280px; background: #1e3a8a; cursor: default; }
+  .dl.busy .content { opacity: 0; transform: translateY(20px); }
+  .dl.busy .arrow { transform: translateY(30px); }
+  .dl.busy .bar, .dl.busy .pct { opacity: 1; }
+  .dl.complete { background: #16a34a; width: 180px; }
+  .dl.complete .bar, .dl.complete .pct, .dl.complete .content { opacity: 0; }
+  .dl.complete .done { opacity: 1; transform: none; }
+  .dl.complete .done svg { stroke-dashoffset: 0; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <button class="dl"><span class="content"><span class="arrow">↓</span>Download</span><span class="bar"><b></b></span><span class="pct">0%</span><span class="done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Done</span></button>
+  <p class="hint" role="status" aria-live="polite"></p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const btn = document.querySelector(".dl"), bar = btn.querySelector(".bar b"), pct = btn.querySelector(".pct"), status = document.querySelector("[role=status]");
+  btn.addEventListener("click", () => {
+    if (btn.classList.contains("busy") || btn.classList.contains("complete")) return;
+    btn.classList.add("busy"); btn.setAttribute("aria-busy", "true"); status.textContent = "Downloading…";
+    let p = 0;
+    // Simulated download with uneven chunk sizes so the bar feels real.
+    (function chunk() {
+      p = Math.min(100, p + Math.random() * 12 + (p > 80 ? 1 : 3));
+      bar.style.width = p + "%"; pct.textContent = Math.floor(p) + "%";
+      if (p < 100) setTimeout(chunk, 80 + Math.random() * 180);
+      else setTimeout(() => {
+        btn.classList.replace("busy", "complete"); btn.removeAttribute("aria-busy"); status.textContent = "Download complete.";
+        setTimeout(() => { btn.classList.remove("complete"); bar.style.width = "0"; status.textContent = ""; }, 2400);
+      }, 300);
+    })();
+  });
+</script>
+</body>
+</html>

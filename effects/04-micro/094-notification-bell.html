@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notification Bell</title>
+<meta name="description" content="A bell that rings with a swinging clapper when a notification arrives, while the badge count pops and a dropdown lists the new items.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .bell-wrap { position: relative; }
+  .bell { position: relative; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; display: grid; place-items: center; }
+  .bell svg { width: 30px; height: 30px; transform-origin: 50% 8%; fill: none; stroke: var(--fg); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .bell .clapper { transform-origin: 12px 4px; }
+  .bell.ring svg { animation: ring 1s ease-in-out; }
+  .bell.ring .clapper { animation: clap 1s ease-in-out; }
+  @keyframes ring { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(18deg); } 25% { transform: rotate(-16deg); } 40% { transform: rotate(12deg); } 55% { transform: rotate(-8deg); } 70% { transform: rotate(4deg); } 85% { transform: rotate(-2deg); } }
+  @keyframes clap { 0%, 100% { transform: translateX(0); } 10% { transform: translateX(-3px); } 25% { transform: translateX(3px); } 40% { transform: translateX(-2px); } 55% { transform: translateX(2px); } }
+  .badge { position: absolute; top: 2px; right: 2px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: #ef4444; color: #fff; font: 700 12px/22px var(--font); text-align: center; transform: scale(0); transition: transform .3s cubic-bezier(.2,1.8,.4,1); border: 2px solid var(--bg); }
+  .badge.show { transform: scale(1); }
+  .badge.bump { animation: bump .35s cubic-bezier(.2,1.8,.4,1); }
+  @keyframes bump { 50% { transform: scale(1.45); } }
+  .drop { position: absolute; top: 76px; left: 50%; width: 300px; margin-left: -150px; border-radius: 14px; background: #15171d; border: 1px solid var(--line); padding: 6px; box-shadow: 0 20px 50px rgb(0 0 0 / .5);
+          opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity .2s, transform .2s; }
+  .drop.open { opacity: 1; transform: none; pointer-events: auto; }
+  .drop .n { display: flex; gap: 10px; padding: 10px; border-radius: 10px; font-size: 14px; animation: in .4s cubic-bezier(.2,.8,.2,1); }
+  .drop .n i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); margin-top: 6px; flex: none; }
+  .drop .empty { padding: 16px; color: var(--muted); text-align: center; font-size: 14px; }
+  @keyframes in { from { opacity: 0; transform: translateX(-10px); } }
+  .controls button { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .bell.ring svg, .bell.ring .clapper, .badge.bump { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack" style="gap:200px">
+  <div class="bell-wrap">
+    <button class="bell" aria-label="Notifications, 0 unread" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path class="clapper" d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+      <span class="badge" aria-hidden="true">0</span>
+    </button>
+    <div class="drop" role="region" aria-label="Notifications"><div class="empty">You're all caught up.</div></div>
+  </div>
+  <div class="controls"><button>Simulate notification</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const bell = document.querySelector(".bell"), badge = bell.querySelector(".badge"), drop = document.querySelector(".drop");
+  const msgs = ["Ana commented on your design", "Build #482 passed", "New follower: @pixel", "Your export is ready", "Leo mentioned you"];
+  let count = 0, k = 0;
+  function notify() {
+    count++;
+    badge.textContent = count > 99 ? "99+" : count;
+    badge.classList.add("show");
+    badge.classList.remove("bump"); void badge.offsetWidth; badge.classList.add("bump");
+    bell.classList.remove("ring"); void bell.offsetWidth; bell.classList.add("ring");
+    bell.setAttribute("aria-label", `Notifications, ${count} unread`);
+    drop.querySelector(".empty")?.remove();
+    drop.insertAdjacentHTML("afterbegin", `<div class="n"><i></i>${msgs[k++ % msgs.length]}</div>`);
+  }
+  document.querySelector(".controls button").onclick = notify;
+  bell.onclick = () => {
+    const open = drop.classList.toggle("open");
+    bell.setAttribute("aria-expanded", open);
+    if (open) { count = 0; badge.classList.remove("show"); bell.setAttribute("aria-label", "Notifications, 0 unread"); }
+  };
+  setTimeout(notify, 800);
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anchor-positioned Tooltips</title>
+<meta name="description" content="Tooltips and a popover menu positioned with CSS anchor positioning and the Popover API, flipping automatically near edges, with a JS fallback for older browsers.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .tt-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+  .tt-btn { padding: 12px 20px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  /* Tooltip bubble */
+  .tip { position: fixed; margin: 0; padding: 8px 12px; border: 0; border-radius: 8px; background: #f5f5f4; color: #111; font-size: 13px; font-weight: 500; max-width: 220px; inset: auto;
+         opacity: 0; transform: translateY(4px) scale(.96); transition: opacity .18s, transform .18s cubic-bezier(.2,1.4,.4,1), display .18s allow-discrete, overlay .18s allow-discrete; }
+  .tip:popover-open { opacity: 1; transform: none; }
+  @starting-style { .tip:popover-open { opacity: 0; transform: translateY(4px) scale(.96); } }
+  /* Native anchor positioning: sit above the anchor; flip below if there's no room. */
+  @supports (anchor-name: --a) {
+    .tip { position-area: top; margin-bottom: 8px; position-try-fallbacks: flip-block; }
+  }
+  .menu { position: fixed; margin: 0; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: #15171d; color: var(--fg); min-width: 180px; inset: auto;
+          box-shadow: 0 20px 50px rgb(0 0 0 / .5); opacity: 0; transform: translateY(-6px); transition: opacity .2s, transform .2s, display .2s allow-discrete, overlay .2s allow-discrete; }
+  .menu:popover-open { opacity: 1; transform: none; }
+  @starting-style { .menu:popover-open { opacity: 0; transform: translateY(-6px); } }
+  @supports (anchor-name: --a) { .menu { position-area: bottom span-right; margin-top: 6px; position-try-fallbacks: flip-block, flip-inline; } }
+  .menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+  .menu button:hover, .menu button:focus-visible { background: #262a36; outline: 0; }
+  .edge { position: fixed; bottom: 16px; right: 16px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="tt-row">
+    <button class="tt-btn" data-tip="Saves your work to the cloud">Save</button>
+    <button class="tt-btn" data-tip="Share a read-only link with anyone">Share</button>
+    <button class="tt-btn" data-tip="Permanently delete. This can't be undone!">Delete</button>
+    <button class="tt-btn" popovertarget="m1" style="anchor-name:--menu">Options ▾</button>
+  </div>
+  <p class="hint">Native anchor positioning where supported; the JS fallback positions manually.</p>
+</div></main>
+<button class="tt-btn edge" data-tip="I flip to stay on screen near edges">Edge case</button>
+<div class="menu" id="m1" popover style="position-anchor:--menu"><button>Rename</button><button>Duplicate</button><button>Move to…</button><button style="color:#f87171">Delete</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const native = CSS.supports("anchor-name: --a");
+  let n = 0;
+  document.querySelectorAll("[data-tip]").forEach((el) => {
+    const id = "tip" + n++;
+    const tip = document.createElement("div");
+    tip.className = "tip"; tip.id = id; tip.setAttribute("popover", "manual"); tip.setAttribute("role", "tooltip"); tip.textContent = el.dataset.tip;
+    document.body.appendChild(tip);
+    el.setAttribute("aria-describedby", id);
+    if (native) { el.style.anchorName = "--" + id; tip.style.positionAnchor = "--" + id; }
+    const show = () => { tip.showPopover?.(); if (!native) place(el, tip); };
+    const hide = () => tip.hidePopover?.();
+    el.addEventListener("mouseenter", show); el.addEventListener("focus", show);
+    el.addEventListener("mouseleave", hide); el.addEventListener("blur", hide);
+    el.addEventListener("keydown", (e) => e.key === "Escape" && hide());
+  });
+  // Fallback: above the anchor, flipped below if it would overflow the top.
+  function place(anchor, tip) {
+    const a = anchor.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    let top = a.top - t.height - 8; if (top < 8) top = a.bottom + 8;
+    let left = a.left + a.width / 2 - t.width / 2; left = Math.max(8, Math.min(innerWidth - t.width - 8, left));
+    Object.assign(tip.style, { top: top + "px", left: left + "px" });
+  }
+  if (!native) {
+    const menu = document.getElementById("m1"), trigger = document.querySelector("[popovertarget=m1]");
+    menu.addEventListener("toggle", (e) => {
+      if (e.newState !== "open") return;
+      const a = trigger.getBoundingClientRect();
+      Object.assign(menu.style, { top: a.bottom + 6 + "px", left: Math.min(a.left, innerWidth - menu.offsetWidth - 8) + "px" });
+    });
+  }
+  document.querySelectorAll(".menu button").forEach((b) => b.addEventListener("click", () => document.getElementById("m1").hidePopover()));
+</script>
+</body>
+</html>

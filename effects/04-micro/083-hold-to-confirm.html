@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hold to Confirm</title>
+<meta name="description" content="A destructive action that must be held for 1.5 seconds: the fill grows while held, rewinds if released early, and shakes on completion. Works with keyboard too.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .hold { position: relative; overflow: hidden; padding: 18px 40px; border-radius: 14px; border: 1px solid #7f1d1d; background: #1c0d0d; color: #fca5a5; font: 600 16px var(--font); cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: none; min-width: 240px; }
+  .hold .fill { position: absolute; inset: 0; background: #dc2626; transform-origin: left; transform: scaleX(var(--p, 0)); }
+  .hold .lbl { position: relative; }
+  .hold.done { background: #dc2626; color: #fff; animation: shake .45s; }
+  @keyframes shake { 25% { transform: translateX(-6px) rotate(-1deg); } 75% { transform: translateX(6px) rotate(1deg); } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <button class="hold"><span class="fill"></span><span class="lbl">Hold to delete project</span></button>
+  <p class="hint" aria-live="polite">Press and hold (mouse, touch, Space or Enter).</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const btn = document.querySelector(".hold"), lbl = btn.querySelector(".lbl"), hint = document.querySelector(".hint");
+  const DURATION = 1500;
+  let p = 0, holding = false, last = 0, raf, done = false;
+  function tick(now) {
+    const dt = now - last; last = now;
+    // Fill while held; drain three times faster on release.
+    p = Math.min(1, Math.max(0, p + (holding ? dt / DURATION : -dt * 3 / DURATION)));
+    btn.style.setProperty("--p", p);
+    if (p >= 1 && !done) {
+      done = true; holding = false; btn.classList.add("done"); lbl.textContent = "Deleted"; hint.textContent = "Project deleted (not really).";
+      setTimeout(() => { done = false; p = 0; btn.classList.remove("done"); lbl.textContent = "Hold to delete project"; hint.textContent = "Press and hold (mouse, touch, Space or Enter)."; btn.style.setProperty("--p", 0); }, 2200);
+      return;
+    }
+    if (holding || p > 0) raf = requestAnimationFrame(tick);
+  }
+  function start(e) { if (done || holding) return; if (e) e.preventDefault(); holding = true; last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+  function stop() { if (!holding) return; holding = false; last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+  btn.addEventListener("pointerdown", start);
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, stop));
+  btn.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) start(e); });
+  btn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") stop(); });
+  btn.addEventListener("click", (e) => e.preventDefault());
+</script>
+</body>
+</html>

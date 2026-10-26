@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jelly Button Press</title>
+<meta name="description" content="Buttons squash on press and wobble like jelly on release, using a spring-generated CSS linear() easing curve.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .jelly { padding: 22px 46px; border: 0; border-radius: 18px; font: 800 20px var(--font); color: #fff; cursor: pointer; background: linear-gradient(180deg, #34d399, #059669);
+           box-shadow: inset 0 -5px 0 rgb(0 0 0 / .2), 0 10px 24px -8px #059669; transition: transform .1s; }
+  .jelly:active { transform: scale(1.12, .82); transition: transform .08s; }
+  .jelly.wobble { animation: wobble var(--dur, .9s) var(--spring, ease-out); }
+  @keyframes wobble { from { transform: scale(1.12, .82); } to { transform: scale(1, 1); } }
+  .jelly.pink { background: linear-gradient(180deg, #f472b6, #db2777); box-shadow: inset 0 -5px 0 rgb(0 0 0 / .2), 0 10px 24px -8px #db2777; }
+  .jelly.round { width: 110px; height: 110px; border-radius: 50%; padding: 0; background: linear-gradient(180deg, #a78bfa, #6d28d9); box-shadow: inset 0 -6px 0 rgb(0 0 0 / .2), 0 10px 24px -8px #6d28d9; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="row"><button class="jelly">Squish</button><button class="jelly pink">Boing</button><button class="jelly round">Pop</button></div>
+  <p class="hint">Press and release. The release uses a damped spring sampled into CSS <code>linear()</code>.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* Simulate a damped spring once and convert it into a CSS linear() easing, so the
+     wobble runs entirely on the compositor without per-frame JS. */
+  function springEasing({ stiffness = 180, damping = 9, mass = 1, steps = 60 } = {}) {
+    let x = 0, v = 0; const dt = 1 / 60, pts = [];
+    let t = 0;
+    for (; t < 3; t += dt) { const f = -stiffness * (x - 1) - damping * v; v += (f / mass) * dt; x += v * dt; pts.push(x); if (t > 0.3 && Math.abs(x - 1) < 0.001 && Math.abs(v) < 0.01) break; }
+    const every = Math.max(1, Math.floor(pts.length / steps));
+    const out = pts.filter((_, i) => i % every === 0).map((p) => p.toFixed(3));
+    out.push("1");
+    return { easing: `linear(0, ${out.join(", ")})`, duration: t };
+  }
+  const { easing, duration } = springEasing();
+  const supported = CSS.supports("animation-timing-function", "linear(0, 1)");
+  document.querySelectorAll(".jelly").forEach((b) => {
+    if (supported) { b.style.setProperty("--spring", easing); b.style.setProperty("--dur", duration.toFixed(2) + "s"); }
+    b.addEventListener("pointerup", () => { b.classList.remove("wobble"); void b.offsetWidth; if (!Demo.reduced) b.classList.add("wobble"); });
+    b.addEventListener("animationend", () => b.classList.remove("wobble"));
+  });
+</script>
+</body>
+</html>

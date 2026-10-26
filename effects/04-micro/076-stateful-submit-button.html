@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading / Success / Error Button</title>
+<meta name="description" content="A submit button that morphs into a spinner circle while working, then into a drawn checkmark or a shaking cross before restoring itself.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .sbtn { position: relative; height: 56px; width: 200px; border: 0; border-radius: 28px; background: var(--accent); color: #fff; font: 600 16px var(--font); cursor: pointer;
+          transition: width .4s cubic-bezier(.6,0,.3,1), background .3s; display: grid; place-items: center; }
+  .sbtn > * { grid-area: 1 / 1; transition: opacity .2s; }
+  .sbtn .spin, .sbtn svg { opacity: 0; }
+  .sbtn .spin { width: 24px; height: 24px; border-radius: 50%; border: 3px solid rgb(255 255 255 / .3); border-top-color: #fff; animation: spin .8s linear infinite; }
+  .sbtn svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  .sbtn svg path { stroke-dasharray: 40; stroke-dashoffset: 40; }
+  .sbtn.loading, .sbtn.success, .sbtn.error { width: 56px; pointer-events: none; }
+  .sbtn.loading .label, .sbtn.success .label, .sbtn.error .label { opacity: 0; }
+  .sbtn.loading .spin { opacity: 1; }
+  .sbtn.success { background: #16a34a; } .sbtn.success .ok { opacity: 1; } .sbtn.success .ok path { animation: draw .45s .15s ease-out forwards; }
+  .sbtn.error { background: #dc2626; animation: shake .5s; } .sbtn.error .bad { opacity: 1; } .sbtn.error .bad path { animation: draw .3s .1s ease-out forwards; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <button class="sbtn" data-result="success"><span class="label">Submit</span><span class="spin" aria-hidden="true"></span>
+    <svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <svg class="bad" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button class="sbtn" data-result="error" style="background:#334155"><span class="label">Will fail</span><span class="spin" aria-hidden="true"></span>
+    <svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <svg class="bad" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <p class="hint" role="status" aria-live="polite"></p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const status = document.querySelector("[role=status]");
+  const fakeRequest = (ok) => new Promise((res, rej) => setTimeout(() => (ok ? res() : rej()), 1600));
+  document.querySelectorAll(".sbtn").forEach((btn) => btn.addEventListener("click", async () => {
+    const original = btn.style.background;
+    btn.className = "sbtn loading"; btn.setAttribute("aria-busy", "true"); status.textContent = "Sending…";
+    try { await fakeRequest(btn.dataset.result === "success"); btn.className = "sbtn success"; status.textContent = "Sent!"; }
+    catch { btn.style.background = ""; btn.className = "sbtn error"; status.textContent = "Something went wrong."; }
+    btn.removeAttribute("aria-busy");
+    setTimeout(() => { btn.className = "sbtn"; btn.style.background = original; status.textContent = ""; }, 1800);
+  }));
+</script>
+</body>
+</html>

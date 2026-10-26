@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rotating Gradient Border Button</title>
+<meta name="description" content="Buttons with a spinning conic-gradient border and blurred glow, animated via a registered @property angle. Includes a 'beam' variant.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  .gb { --a: 0deg; position: relative; padding: 16px 34px; border-radius: 14px; border: 2px solid transparent; cursor: pointer; color: #fff; font: 600 16px var(--font);
+        /* inner fill on padding-box, gradient on border-box: the border shows the gradient */
+        background: linear-gradient(#111319, #111319) padding-box, conic-gradient(from var(--a), #7c5cff, #22d3ee, #f472b6, #facc15, #7c5cff) border-box;
+        animation: rot 3s linear infinite; }
+  .gb::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; z-index: -1; background: conic-gradient(from var(--a), #7c5cff, #22d3ee, #f472b6, #facc15, #7c5cff); filter: blur(16px); opacity: .5; transition: opacity .3s; }
+  .gb:hover::after { opacity: .9; }
+  /* Beam: only a short arc of the border is lit, like a light running around the edge. */
+  .gb.beam { background: linear-gradient(#111319, #111319) padding-box, conic-gradient(from var(--a), transparent 0 75%, #22d3ee 90%, #fff 100%) border-box; }
+  .gb.beam::after { background: conic-gradient(from var(--a), transparent 0 75%, #22d3ee 100%); }
+  .gb.slow { animation-duration: 6s; }
+  @keyframes rot { to { --a: 360deg; } }
+  @media (prefers-reduced-motion: reduce) { .gb { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="row" style="gap:36px"><button class="gb">Get started</button><button class="gb beam">Beam border</button><button class="gb slow">Slow spin</button></div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

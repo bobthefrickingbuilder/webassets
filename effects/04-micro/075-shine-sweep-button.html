@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glossy Shine Sweep Button</title>
+<meta name="description" content="A skewed highlight sweeps across glossy buttons on hover, plus an idle variant that glints periodically to draw attention.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .shine { position: relative; overflow: hidden; padding: 18px 40px; border: 0; border-radius: 14px; cursor: pointer; font: 700 16px var(--font); color: #fff;
+           background: linear-gradient(180deg, #8b6cff, #5b3fe0); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 30px -10px #7c5cff; }
+  .shine::before { content: ""; position: absolute; top: 0; left: -75%; width: 50%; height: 100%; transform: skewX(-25deg);
+                   background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent); transition: left .7s; }
+  .shine:hover::before, .shine:focus-visible::before { left: 130%; }
+  .shine.gold { background: linear-gradient(180deg, #fcd34d, #d97706); color: #451a03; box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), 0 10px 30px -10px #d97706; }
+  .shine.idle::before { animation: glint 3.5s ease-in-out infinite; }
+  @keyframes glint { 0%, 70% { left: -75%; } 100% { left: 130%; } }
+  .shine.dark { background: linear-gradient(180deg, #2a2d38, #15171d); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); }
+  @media (prefers-reduced-motion: reduce) { .shine::before { display: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="row"><button class="shine">Hover to shine</button><button class="shine gold idle">Premium · auto glint</button><button class="shine dark">Dark gloss</button></div>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

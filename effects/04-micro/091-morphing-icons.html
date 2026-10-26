@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morphing SVG Icons</title>
+<meta name="description" content="Play to pause, menu to close, search to close and plus to check: SVG paths with matching point structure are interpolated with a tiny JS morph helper that works in every browser.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .icons { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .ic { width: 96px; height: 96px; border-radius: 24px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; display: grid; place-items: center; }
+  .ic:hover { border-color: #3d4356; }
+  .ic svg { width: 44px; height: 44px; }
+  .ic path { fill: var(--fg); }
+  .ic.stroke path { fill: none; stroke: var(--fg); stroke-width: 2.4; stroke-linecap: round; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="icons">
+    <button class="ic" aria-label="Play" data-a="M8 5 L8 19 L13.5 15.9 L13.5 8.1 Z M13.5 8.1 L13.5 15.9 L19 12 L19 12 Z" data-b="M7 5 L7 19 L10.5 19 L10.5 5 Z M13.5 5 L13.5 19 L17 19 L17 5 Z" data-labels="Play,Pause"></button>
+    <button class="ic stroke" aria-label="Open menu" data-a="M4 7 L20 7 M4 12 L20 12 M4 17 L20 17" data-b="M6 6 L18 18 M12 12 L12 12 M6 18 L18 6" data-labels="Open menu,Close menu"></button>
+    <button class="ic stroke" aria-label="Search" data-a="M10.5 4 A6.5 6.5 0 1 1 10.49 4 M15.2 15.2 L20 20 M20 20 L20 20" data-b="M12 12 A0.01 0.01 0 1 1 11.99 12 M6 6 L18 18 M18 6 L6 18" data-labels="Search,Close search"></button>
+    <button class="ic stroke" aria-label="Add" data-a="M12 5 L12 19 M5 12 L19 12" data-b="M5 12.5 L10 17.5 M10 17.5 L19 7" data-labels="Add,Added"></button>
+  </div>
+  <p class="hint">Paths with the same commands are tweened number by number.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* morph: splits two path strings into numbers + a template of commands. Author each pair with the
+     same commands in the same order (add zero-length segments if needed) and every number tweens. */
+  const NUM = /-?\d*\.?\d+(?:e-?\d+)?/g;
+  function parse(d) { return { nums: (d.match(NUM) || []).map(Number), tpl: d.split(NUM) }; }
+  function lerpPath(a, b, t) {
+    const out = [];
+    const n = Math.max(a.nums.length, b.nums.length);
+    const tpl = t < 0.5 ? a.tpl : b.tpl;
+    for (let i = 0; i < n; i++) {
+      const x = a.nums[Math.min(i, a.nums.length - 1)], y = b.nums[Math.min(i, b.nums.length - 1)];
+      out.push(+(x + (y - x) * t).toFixed(3));
+    }
+    let s = "";
+    for (let i = 0; i < tpl.length; i++) s += tpl[i] + (i < out.length && i < tpl.length - 1 ? out[i] : "");
+    return s;
+  }
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  document.querySelectorAll(".ic").forEach((btn) => {
+    const A = parse(btn.dataset.a), B = parse(btn.dataset.b);
+    if (A.nums.length !== B.nums.length) console.warn("Morph pair has mismatched structure", btn);
+    btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${btn.dataset.a}"/></svg>`;
+    const path = btn.querySelector("path"), labels = btn.dataset.labels.split(",");
+    let on = false, raf;
+    btn.addEventListener("click", () => {
+      on = !on; btn.setAttribute("aria-label", labels[+on]);
+      const from = on ? A : B, to = on ? B : A, start = performance.now(), dur = Demo.reduced ? 1 : 380;
+      cancelAnimationFrame(raf);
+      (function tick(now) {
+        const t = Math.min(1, (now - start) / dur);
+        path.setAttribute("d", lerpPath(from, to, ease(t)));
+        if (t < 1) raf = requestAnimationFrame(tick);
+      })(start);
+    });
+  });
+</script>
+</body>
+</html>
