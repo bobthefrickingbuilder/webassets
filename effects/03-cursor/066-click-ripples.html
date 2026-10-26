@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Click Ripples</title>
+<meta name="description" content="Material-style ink ripples that grow from the exact press point inside buttons, plus concentric water rings anywhere you click on the page.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .ripple-btn { position: relative; overflow: hidden; padding: 16px 32px; border: 0; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; color: #fff; isolation: isolate; }
+  .ripple-btn .ink { position: absolute; border-radius: 50%; transform: scale(0); background: rgb(255 255 255 / .45); pointer-events: none; z-index: -1; animation: ink .6s ease-out forwards; }
+  @keyframes ink { to { transform: scale(1); opacity: 0; } }
+  .b1 { background: var(--accent); } .b2 { background: #0891b2; } .b3 { background: #111; border: 1px solid var(--line); }
+  .ring { position: fixed; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 2px solid var(--accent-2); pointer-events: none; animation: ring 1s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes ring { to { transform: scale(12); opacity: 0; border-width: .3px; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="row"><button class="ripple-btn b1">Primary</button><button class="ripple-btn b2">Secondary</button><button class="ripple-btn b3">Ghost</button></div>
+  <p class="hint">Click the buttons, or anywhere on the page.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Ink ripple: a circle large enough to cover the farthest corner from the press point.
+  document.querySelectorAll(".ripple-btn").forEach((btn) => btn.addEventListener("pointerdown", (e) => {
+    const r = btn.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const size = 2 * Math.max(Math.hypot(x, y), Math.hypot(r.width - x, y), Math.hypot(x, r.height - y), Math.hypot(r.width - x, r.height - y));
+    const ink = document.createElement("span");
+    ink.className = "ink";
+    Object.assign(ink.style, { width: size + "px", height: size + "px", left: x - size / 2 + "px", top: y - size / 2 + "px" });
+    btn.appendChild(ink);
+    ink.addEventListener("animationend", () => ink.remove());
+  }));
+  // Page rings: three staggered circles.
+  addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".ripple-btn") || Demo.reduced) return;
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement("span");
+      ring.className = "ring";
+      Object.assign(ring.style, { left: e.clientX + "px", top: e.clientY + "px", animationDelay: i * 120 + "ms", opacity: 1 - i * 0.25 });
+      document.body.appendChild(ring);
+      ring.addEventListener("animationend", () => ring.remove());
+    }
+  });
+</script>
+</body>
+</html>

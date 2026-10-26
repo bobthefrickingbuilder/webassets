@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rope Physics Cursor</title>
+<meta name="description" content="A verlet-integrated rope hangs from the pointer, swinging with gravity and inertia, ending in a weighted bob you can whip around.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<main class="center" style="pointer-events:none"><p class="hint" style="font-size:20px">Swing the rope</p></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr;
+  const N = 26, SEG = 14, GRAVITY = 0.45, ITER = 12;
+  const pts = [];
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; }
+  addEventListener("resize", resize); resize();
+  const head = { x: innerWidth / 2, y: innerHeight / 3 };
+  for (let i = 0; i < N; i++) pts.push({ x: head.x, y: head.y + i * SEG, ox: head.x, oy: head.y + i * SEG });
+  addEventListener("pointermove", (e) => { head.x = e.clientX; head.y = e.clientY; });
+
+  function step() {
+    // Verlet: velocity is implied by the difference between the current and previous positions.
+    for (let i = 1; i < N; i++) {
+      const p = pts[i], vx = (p.x - p.ox) * 0.99, vy = (p.y - p.oy) * 0.99;
+      p.ox = p.x; p.oy = p.y;
+      p.x += vx; p.y += vy + GRAVITY;
+    }
+    pts[0].x = head.x; pts[0].y = head.y;
+    // Satisfy distance constraints several times per frame for a stiff rope.
+    for (let k = 0; k < ITER; k++) {
+      for (let i = 0; i < N - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.001, diff = (d - SEG) / d;
+        if (i === 0) { b.x -= dx * diff; b.y -= dy * diff; }
+        else { a.x += dx * diff * 0.5; a.y += dy * diff * 0.5; b.x -= dx * diff * 0.5; b.y -= dy * diff * 0.5; }
+      }
+    }
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save(); ctx.scale(dpr, dpr);
+    const g = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[N - 1].x, pts[N - 1].y);
+    g.addColorStop(0, "#a78bfa"); g.addColorStop(1, "#22d3ee");
+    ctx.strokeStyle = g; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < N - 1; i++) ctx.quadraticCurveTo(pts[i].x, pts[i].y, (pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2);
+    ctx.lineTo(pts[N - 1].x, pts[N - 1].y); ctx.stroke();
+    const end = pts[N - 1];
+    const bob = ctx.createRadialGradient(end.x - 5, end.y - 5, 2, end.x, end.y, 18);
+    bob.addColorStop(0, "#fff"); bob.addColorStop(.3, "#22d3ee"); bob.addColorStop(1, "#0e7490");
+    ctx.fillStyle = bob; ctx.beginPath(); ctx.arc(end.x, end.y, 16, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 5, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+  (function loop() { step(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

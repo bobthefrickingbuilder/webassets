@@ -650,5 +650,216 @@ window.EFFECTS = [
   "complexity": 1,
   "category": "02-text",
   "path": "effects/02-text/054-spotlight-text.html"
+ },
+ {
+  "num": 55,
+  "title": "Smooth Follow Cursor",
+  "description": "A custom cursor: a precise dot plus a lagging ring that eases after it, grows over links, shrinks on press, and hides on touch devices.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/055-smooth-cursor.html"
+ },
+ {
+  "num": 56,
+  "title": "Contextual Label Cursor",
+  "description": "The cursor morphs into a labelled pill ('View', 'Drag', 'Play') or an icon depending on the element underneath, set with a data-cursor attribute.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/056-label-cursor.html"
+ },
+ {
+  "num": 57,
+  "title": "Magnetic Buttons",
+  "description": "Buttons drift toward the cursor inside an activation field, with the label moving further than the body for parallax, and spring back on leave.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/057-magnetic-buttons.html"
+ },
+ {
+  "num": 58,
+  "title": "Cursor Trails",
+  "description": "Three canvas trails to choose from: glowing particles, twinkling sparkles, and a smooth tapered ribbon that follows the pointer.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/058-cursor-trails.html"
+ },
+ {
+  "num": 59,
+  "title": "Flashlight Reveal",
+  "description": "A dark scene where the cursor acts as a torch, revealing a hidden full-colour layer underneath. Scroll the wheel to resize the beam.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/059-flashlight-reveal.html"
+ },
+ {
+  "num": 60,
+  "title": "Inverting Blend Cursor",
+  "description": "A large white circle with mix-blend-mode: difference inverts whatever it passes over, text and images alike, and swells over headings.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/060-blend-mode-cursor.html"
+ },
+ {
+  "num": 61,
+  "title": "Fluid Simulation Cursor",
+  "description": "A real-time GPU Navier-Stokes fluid (advection, vorticity confinement, pressure projection) stirred by the pointer, leaving swirling ink.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/061-fluid-cursor.html"
+ },
+ {
+  "num": 62,
+  "title": "Image Trail",
+  "description": "Images spawn along the cursor's path every few dozen pixels, then shrink and fade away, as on many portfolio landing pages.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/062-image-trail.html"
+ },
+ {
+  "num": 63,
+  "title": "Elastic Blob Cursor",
+  "description": "A jelly cursor that stretches along its direction of travel in proportion to speed, then wobbles back to round with spring physics.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/063-elastic-blob-cursor.html"
+ },
+ {
+  "num": 64,
+  "title": "Cursor-reactive Dot Grid",
+  "description": "A field of dots that bulge, brighten and push away around the pointer; click to send a shockwave ripple across the grid.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/064-reactive-dot-grid.html"
+ },
+ {
+  "num": 65,
+  "title": "3D Tilt Cards with Glare",
+  "description": "Cards rotate in 3D toward the pointer with a moving specular glare and layered content that pops out in depth (translateZ parallax).",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/065-tilt-cards.html"
+ },
+ {
+  "num": 66,
+  "title": "Click Ripples",
+  "description": "Material-style ink ripples that grow from the exact press point inside buttons, plus concentric water rings anywhere you click on the page.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/066-click-ripples.html"
+ },
+ {
+  "num": 67,
+  "title": "Click Confetti and Fireworks",
+  "description": "A tiny dependency-free celebration engine: tumbling paper confetti with flutter and drag, or firework bursts with sparkling trails.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/067-confetti-fireworks.html"
+ },
+ {
+  "num": 68,
+  "title": "Cursor Glow Card Borders",
+  "description": "A grid of cards whose borders light up near the cursor, even on neighbouring cards, using a masked radial gradient driven by CSS variables.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/068-glow-border-cards.html"
+ },
+ {
+  "num": 69,
+  "title": "Rope Physics Cursor",
+  "description": "A verlet-integrated rope hangs from the pointer, swinging with gravity and inertia, ending in a weighted bob you can whip around.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/069-rope-cursor.html"
+ },
+ {
+  "num": 70,
+  "title": "Googly Eyes",
+  "description": "Cartoon eyes whose pupils track the cursor with springy, jiggly physics, blink at random intervals, and go wide when clicked.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/070-googly-eyes.html"
+ },
+ {
+  "num": 71,
+  "title": "Retro Pixel Trail",
+  "description": "The screen is a grid of chunky pixels; cells under the pointer light up in shifting hues and fade out, like an LED wall.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/071-pixel-trail.html"
+ },
+ {
+  "num": 72,
+  "title": "Distortion Lens Cursor",
+  "description": "A WebGL magnifying lens follows the pointer, bulging the content beneath with a refractive edge and chromatic aberration fringe.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "03-cursor",
+  "path": "effects/03-cursor/072-distortion-lens.html"
  }
 ];

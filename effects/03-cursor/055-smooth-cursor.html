@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smooth Follow Cursor</title>
+<meta name="description" content="A custom cursor: a precise dot plus a lagging ring that eases after it, grows over links, shrinks on press, and hides on touch devices.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @media (hover: hover) and (pointer: fine) { html.has-cursor, html.has-cursor * { cursor: none !important; } }
+  .cur-dot, .cur-ring { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 10000; border-radius: 50%; opacity: 0; transition: opacity .3s; }
+  .cur-dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: #fff; }
+  .cur-ring { width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 1.5px solid rgb(255 255 255 / .6); transition: opacity .3s, width .3s, height .3s, margin .3s, background .3s, border-color .3s; }
+  .cur-ring.hover { width: 72px; height: 72px; margin: -36px 0 0 -36px; background: rgb(255 255 255 / .08); border-color: transparent; }
+  .cur-ring.down { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+  .visible .cur-dot, .visible .cur-ring { opacity: 1; }
+  .links { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .links a, .links button { padding: 16px 28px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); text-decoration: none; font-size: 18px; }
+  h1 { font-size: clamp(40px, 7vw, 90px); letter-spacing: -.04em; margin: 0; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <h1>Custom cursor</h1>
+  <div class="links"><a href="#">Hover a link</a><button>Or a button</button><a href="#">Another</a></div>
+  <p class="hint">The ring trails behind with linear interpolation; press to see it contract.</p>
+</div></main>
+<div class="cur-ring" aria-hidden="true"></div><div class="cur-dot" aria-hidden="true"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Only enable on devices with a fine pointer that can hover; touch users keep the native behaviour.
+  if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.documentElement.classList.add("has-cursor");
+    const dot = document.querySelector(".cur-dot"), ring = document.querySelector(".cur-ring");
+    let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+    const LAG = Demo.reduced ? 1 : 0.16;
+    addEventListener("pointermove", (e) => {
+      mx = e.clientX; my = e.clientY;
+      dot.style.transform = `translate(${mx}px, ${my}px)`;
+      document.body.classList.add("visible");
+      ring.classList.toggle("hover", !!e.target.closest("a, button, [data-cursor-hover]"));
+    });
+    document.addEventListener("pointerleave", () => document.body.classList.remove("visible"));
+    addEventListener("pointerdown", () => ring.classList.add("down"));
+    addEventListener("pointerup", () => ring.classList.remove("down"));
+    (function loop() {
+      rx += (mx - rx) * LAG; ry += (my - ry) * LAG;
+      ring.style.transform = `translate(${rx}px, ${ry}px)`;
+      requestAnimationFrame(loop);
+    })();
+  }
+  document.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => e.preventDefault()));
+</script>
+</body>
+</html>

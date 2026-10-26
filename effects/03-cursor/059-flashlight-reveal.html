@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flashlight Reveal</title>
+<meta name="description" content="A dark scene where the cursor acts as a torch, revealing a hidden full-colour layer underneath. Scroll the wheel to resize the beam.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .scene { position: fixed; inset: 0; overflow: hidden; --x: 50%; --y: 50%; --r: 160px; }
+  .layer { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .layer.dark { filter: grayscale(1) brightness(.18) contrast(1.2); }
+  .layer.lit { -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 55%, transparent 100%); mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 55%, transparent 100%); }
+  .secret { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font: 900 clamp(48px, 10vw, 140px)/1 var(--font); letter-spacing: -.05em; color: #fff; text-shadow: 0 6px 30px rgb(0 0 0 / .4); }
+  .tip { position: fixed; bottom: 24px; left: 0; right: 0; text-align: center; color: #666; }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="layer dark"></div>
+  <div class="layer lit"><div class="secret">You found it ✦</div></div>
+</div>
+<p class="tip">Move to explore · scroll to resize the beam</p>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const url = `url(${Demo.artURL(1600, 1000, 4)})`;
+  document.querySelectorAll(".layer").forEach((l) => (l.style.backgroundImage = url));
+  const scene = document.querySelector(".scene");
+  let r = 160, x = innerWidth / 2, y = innerHeight / 2, tx = x, ty = y;
+  addEventListener("pointermove", (e) => { tx = e.clientX; ty = e.clientY; });
+  addEventListener("wheel", (e) => { r = Math.max(60, Math.min(500, r - e.deltaY * 0.3)); scene.style.setProperty("--r", r + "px"); }, { passive: true });
+  (function loop() {
+    x += (tx - x) * 0.2; y += (ty - y) * 0.2;
+    scene.style.setProperty("--x", x + "px"); scene.style.setProperty("--y", y + "px");
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

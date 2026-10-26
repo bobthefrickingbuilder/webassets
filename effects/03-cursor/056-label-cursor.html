@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contextual Label Cursor</title>
+<meta name="description" content="The cursor morphs into a labelled pill ('View', 'Drag', 'Play') or an icon depending on the element underneath, set with a data-cursor attribute.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @media (hover: hover) and (pointer: fine) { .has-cursor, .has-cursor * { cursor: none !important; } }
+  .lc { position: fixed; left: 0; top: 0; z-index: 10000; pointer-events: none; display: grid; place-items: center;
+        width: 14px; height: 14px; border-radius: 999px; background: #fff; color: #0b0c10; font: 600 13px var(--font); letter-spacing: .02em;
+        transform: translate(-50%, -50%); transition: width .35s cubic-bezier(.2,.8,.2,1), height .35s cubic-bezier(.2,.8,.2,1), background .3s, opacity .3s; white-space: nowrap; overflow: hidden; }
+  .lc span { opacity: 0; transition: opacity .2s; }
+  .lc.active { width: 92px; height: 92px; }
+  .lc.active span { opacity: 1; transition-delay: .1s; }
+  .lc[data-theme="accent"] { background: var(--accent); color: #fff; }
+  .lc[data-theme="play"] { background: var(--accent-3); color: #fff; font-size: 26px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; width: min(1000px, 92vw); }
+  .tile { aspect-ratio: 4/3; border-radius: 18px; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="tiles">
+    <div class="tile" data-cursor="View">Project One</div>
+    <div class="tile" data-cursor="Drag" data-cursor-theme="accent">Draggable</div>
+    <div class="tile" data-cursor="▶" data-cursor-theme="play">Video</div>
+    <div class="tile" data-cursor="Open ↗">External</div>
+  </div>
+  <p class="hint">Each tile declares <code>data-cursor="Label"</code> and an optional theme.</p>
+</div></main>
+<div class="lc" aria-hidden="true"><span></span></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelectorAll(".tile").forEach((t, i) => (t.style.backgroundImage = `linear-gradient(transparent 50%, rgb(0 0 0 / .6)), url(${Demo.artURL(500, 375, i + 2)})`));
+  if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.documentElement.classList.add("has-cursor");
+    const c = document.querySelector(".lc"), label = c.querySelector("span");
+    let x = 0, y = 0, tx = 0, ty = 0;
+    addEventListener("pointermove", (e) => {
+      tx = e.clientX; ty = e.clientY;
+      const host = e.target.closest("[data-cursor]");
+      c.classList.toggle("active", !!host);
+      if (host) { label.textContent = host.dataset.cursor; c.dataset.theme = host.dataset.cursorTheme || ""; }
+      else c.dataset.theme = "";
+    });
+    (function loop() {
+      x += (tx - x) * 0.2; y += (ty - y) * 0.2;
+      c.style.left = x + "px"; c.style.top = y + "px";
+      requestAnimationFrame(loop);
+    })();
+  }
+</script>
+</body>
+</html>

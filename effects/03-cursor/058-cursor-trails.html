@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cursor Trails</title>
+<meta name="description" content="Three canvas trails to choose from: glowing particles, twinkling sparkles, and a smooth tapered ribbon that follows the pointer.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .modes { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 2; }
+  .modes button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+</style>
+</head>
+<body>
+<canvas></canvas>
+<main class="center"><p class="hint" style="font-size:20px">Move the pointer around.</p></main>
+<div class="modes"><button data-mode="particles" aria-pressed="true">Particles</button><button data-mode="sparkles" aria-pressed="false">Sparkles</button><button data-mode="ribbon" aria-pressed="false">Ribbon</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, mode = "particles";
+  const parts = [], points = [];
+  let hue = 0, last = null;
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; }
+  addEventListener("resize", resize); resize();
+
+  addEventListener("pointermove", (e) => {
+    const x = e.clientX * dpr, y = e.clientY * dpr;
+    hue = (hue + 2) % 360;
+    if (mode === "ribbon") { points.push({ x, y, life: 1 }); return; }
+    // Emit more particles when moving fast so the trail stays continuous.
+    const dist = last ? Math.hypot(x - last.x, y - last.y) : 0;
+    const n = Math.min(8, 1 + Math.floor(dist / (8 * dpr)));
+    for (let i = 0; i < n; i++) {
+      const t = i / n, px = last ? last.x + (x - last.x) * t : x, py = last ? last.y + (y - last.y) * t : y;
+      parts.push(mode === "particles"
+        ? { x: px, y: py, vx: (Math.random() - .5) * 1.5 * dpr, vy: (Math.random() - .5) * 1.5 * dpr - .5 * dpr, r: (2 + Math.random() * 4) * dpr, life: 1, hue: hue + Math.random() * 40 }
+        : { x: px + (Math.random() - .5) * 20 * dpr, y: py + (Math.random() - .5) * 20 * dpr, vx: 0, vy: .6 * dpr, r: (4 + Math.random() * 8) * dpr, life: 1, hue: 45 + Math.random() * 20, spin: Math.random() * Math.PI });
+    }
+    last = { x, y };
+  });
+
+  function star(x, y, r, rot) {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = rot + (i * Math.PI) / 4, rr = i % 2 ? r * 0.25 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill();
+  }
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.x += p.vx; p.y += p.vy; p.life -= mode === "sparkles" ? 0.02 : 0.025;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      if (mode === "sparkles") {
+        ctx.fillStyle = `hsla(${p.hue}, 100%, 75%, ${p.life * (0.6 + 0.4 * Math.sin(p.life * 30))})`;
+        star(p.x, p.y, p.r * p.life, p.spin + p.life * 2);
+      } else {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3);
+        g.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.life})`); g.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
+        ctx.fillStyle = g; ctx.fillRect(p.x - p.r * 3, p.y - p.r * 3, p.r * 6, p.r * 6);
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+    if (mode === "ribbon") {
+      for (const p of points) p.life -= 0.04;
+      while (points.length && points[0].life <= 0) points.shift();
+      // Tapered ribbon: draw segments thicker toward the head, through midpoints for smoothness.
+      for (let i = 1; i < points.length - 1; i++) {
+        const a = points[i - 1], b = points[i], c = points[i + 1];
+        const t = i / points.length;
+        ctx.strokeStyle = `hsla(${(hue + i * 4) % 360}, 90%, 65%, ${b.life})`;
+        ctx.lineWidth = t * 22 * dpr; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2); ctx.quadraticCurveTo(b.x, b.y, (b.x + c.x) / 2, (b.y + c.y) / 2); ctx.stroke();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => {
+    mode = b.dataset.mode; parts.length = 0; points.length = 0; last = null;
+    document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+  if (!Demo.reduced) requestAnimationFrame(frame);
+</script>
+</body>
+</html>

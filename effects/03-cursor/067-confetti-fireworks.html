@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Click Confetti and Fireworks</title>
+<meta name="description" content="A tiny dependency-free celebration engine: tumbling paper confetti with flutter and drag, or firework bursts with sparkling trails.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+  .celebrate { padding: 18px 36px; border-radius: 999px; border: 0; font-size: 18px; font-weight: 700; cursor: pointer; background: linear-gradient(135deg, #f472b6, #a78bfa); color: #fff; }
+  .modes { display: flex; gap: 8px; }
+  .modes button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<main class="center"><div class="stack">
+  <button class="celebrate">🎉 Celebrate</button>
+  <div class="modes"><button data-mode="confetti" aria-pressed="true">Confetti</button><button data-mode="fireworks" aria-pressed="false">Fireworks</button></div>
+  <p class="hint">Click the button, or anywhere.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  let W, H, dpr, mode = "confetti", running = false;
+  const P = [];
+  const COLORS = ["#f472b6", "#a78bfa", "#22d3ee", "#facc15", "#4ade80", "#fb923c"];
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; }
+  addEventListener("resize", resize); resize();
+
+  function confetti(x, y, n = 140) {
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (Math.random() - .5) * 1.6, s = (8 + Math.random() * 14) * dpr;
+      P.push({ kind: "paper", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, w: (6 + Math.random() * 6) * dpr, h: (10 + Math.random() * 8) * dpr,
+               rot: Math.random() * 6.28, vr: (Math.random() - .5) * .3, tilt: Math.random() * 6.28, c: COLORS[i % COLORS.length], life: 1 });
+    }
+  }
+  function firework(x, y) {
+    const hue = Math.random() * 360, n = 90;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, s = (2 + Math.random() * 5) * dpr;
+      P.push({ kind: "spark", x, y, px: x, py: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, hue: hue + Math.random() * 40, life: 1, decay: .012 + Math.random() * .01 });
+    }
+  }
+  function burst(x, y) {
+    if (mode === "confetti") confetti(x, y);
+    else for (let k = 0; k < 3; k++) setTimeout(() => firework(x + (Math.random() - .5) * 300 * dpr, y + (Math.random() - .5) * 200 * dpr), k * 180);
+    if (!running) { running = true; requestAnimationFrame(frame); }
+  }
+  function frame() {
+    ctx.globalCompositeOperation = "source-over";
+    if (mode === "fireworks") { ctx.fillStyle = "rgba(11,12,16,0.22)"; ctx.fillRect(0, 0, W, H); } else ctx.clearRect(0, 0, W, H);
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i];
+      if (p.kind === "paper") {
+        p.vx *= 0.96; p.vy = p.vy * 0.96 + 0.35 * dpr;            // drag + gravity
+        p.tilt += 0.1; p.x += p.vx + Math.sin(p.tilt) * 1.5 * dpr; p.y += p.vy; p.rot += p.vr;
+        if (p.y > H + 40) { P.splice(i, 1); continue; }
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.scale(1, Math.cos(p.tilt));                           // fake 3D flip
+        ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+      } else {
+        p.px = p.x; p.py = p.y;
+        p.vx *= 0.97; p.vy = p.vy * 0.97 + 0.05 * dpr;
+        p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+        if (p.life <= 0) { P.splice(i, 1); continue; }
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = `hsla(${p.hue}, 100%, ${55 + Math.random() * 25}%, ${p.life})`;
+        ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(p.x, p.y); ctx.stroke();
+      }
+    }
+    if (P.length) requestAnimationFrame(frame);
+    else { running = false; ctx.clearRect(0, 0, W, H); }
+  }
+  document.querySelector(".celebrate").addEventListener("click", (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); burst((r.left + r.width / 2) * dpr, r.top * dpr); });
+  addEventListener("click", (e) => { if (!e.target.closest("button")) burst(e.clientX * dpr, e.clientY * dpr); });
+  document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = (e) => {
+    e.stopPropagation(); mode = b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+</script>
+</body>
+</html>

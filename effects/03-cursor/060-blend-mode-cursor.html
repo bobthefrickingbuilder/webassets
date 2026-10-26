@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inverting Blend Cursor</title>
+<meta name="description" content="A large white circle with mix-blend-mode: difference inverts whatever it passes over, text and images alike, and swells over headings.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @media (hover: hover) and (pointer: fine) { .has-cursor, .has-cursor * { cursor: none !important; } }
+  body { background: #f5f0e6; color: #111; }
+  .inv { position: fixed; left: 0; top: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: #fff; mix-blend-mode: difference; pointer-events: none; z-index: 10000;
+         transition: width .4s cubic-bezier(.2,.8,.2,1), height .4s cubic-bezier(.2,.8,.2,1), margin .4s cubic-bezier(.2,.8,.2,1); }
+  .inv.big { width: 220px; height: 220px; margin: -110px 0 0 -110px; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 120px 16px; display: grid; gap: 48px; }
+  .page h1 { font-size: clamp(56px, 11vw, 160px); line-height: .9; letter-spacing: -.06em; margin: 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+  .split .img { aspect-ratio: 4/3; border-radius: 12px; background-size: cover; }
+  .split p { font-size: 20px; }
+  .black { background: #111; color: #f5f0e6; padding: 48px; border-radius: 16px; font-size: 28px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 data-grow>Invert<br>everything.</h1>
+  <div class="split"><div class="img"></div><p>The cursor is a white circle with <code>mix-blend-mode: difference</code>. White minus any colour gives its inverse, so it reads on light and dark backgrounds alike.</p></div>
+  <div class="black" data-grow>Dark sections invert to light automatically.</div>
+</div>
+<div class="inv" aria-hidden="true"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector(".img").style.backgroundImage = `url(${Demo.artURL(800, 600, 5)})`;
+  if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.documentElement.classList.add("has-cursor");
+    const c = document.querySelector(".inv");
+    let x = 0, y = 0, tx = 0, ty = 0;
+    addEventListener("pointermove", (e) => { tx = e.clientX; ty = e.clientY; c.classList.toggle("big", !!e.target.closest("[data-grow]")); });
+    (function loop() { x += (tx - x) * 0.25; y += (ty - y) * 0.25; c.style.transform = `translate(${x}px, ${y}px)`; requestAnimationFrame(loop); })();
+  }
+</script>
+</body>
+</html>

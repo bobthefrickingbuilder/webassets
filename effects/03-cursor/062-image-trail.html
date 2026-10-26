@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Trail</title>
+<meta name="description" content="Images spawn along the cursor's path every few dozen pixels, then shrink and fade away, as on many portfolio landing pages.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .trail-stage { position: fixed; inset: 0; overflow: hidden; }
+  .trail-img { position: absolute; left: 0; top: 0; width: 180px; aspect-ratio: 3/4; border-radius: 10px; background-size: cover; background-position: center; pointer-events: none; will-change: transform, opacity; box-shadow: 0 20px 40px rgb(0 0 0 / .4); }
+  .trail-title { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; font: 900 clamp(48px, 10vw, 150px)/.9 var(--font); letter-spacing: -.06em; text-align: center; z-index: 1; mix-blend-mode: difference; }
+</style>
+</head>
+<body>
+<div class="trail-stage"></div>
+<div class="trail-title">Move<br>around</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const stage = document.querySelector(".trail-stage");
+  const images = Array.from({ length: 8 }, (_, i) => Demo.artURL(360, 480, i));
+  const GAP = 80;                  // px of travel between spawns
+  let lastX = null, lastY = null, idx = 0, z = 1;
+  function spawn(x, y, angle) {
+    const el = document.createElement("div");
+    el.className = "trail-img";
+    el.style.backgroundImage = `url(${images[idx++ % images.length]})`;
+    el.style.zIndex = z++;
+    stage.appendChild(el);
+    const rot = (Math.random() - 0.5) * 16;
+    const anim = el.animate([
+      { transform: `translate(${x - 90}px, ${y - 120}px) scale(.6) rotate(${rot}deg)`, opacity: 0 },
+      { transform: `translate(${x - 90}px, ${y - 120}px) scale(1) rotate(${rot}deg)`, opacity: 1, offset: .15 },
+      { transform: `translate(${x - 90 + Math.cos(angle) * 40}px, ${y - 120 + Math.sin(angle) * 40 + 60}px) scale(.3) rotate(${rot * 2}deg)`, opacity: 0 },
+    ], { duration: 1400, easing: "cubic-bezier(.2,.8,.2,1)" });
+    anim.onfinish = () => el.remove();
+  }
+  addEventListener("pointermove", (e) => {
+    if (Demo.reduced) return;
+    if (lastX === null) { lastX = e.clientX; lastY = e.clientY; return; }
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (Math.hypot(dx, dy) > GAP) { spawn(e.clientX, e.clientY, Math.atan2(dy, dx)); lastX = e.clientX; lastY = e.clientY; }
+  });
+</script>
+</body>
+</html>

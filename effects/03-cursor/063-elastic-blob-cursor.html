@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elastic Blob Cursor</title>
+<meta name="description" content="A jelly cursor that stretches along its direction of travel in proportion to speed, then wobbles back to round with spring physics.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @media (hover: hover) and (pointer: fine) { .has-cursor, .has-cursor * { cursor: none !important; } }
+  .blob { position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; pointer-events: none; z-index: 10000;
+          background: radial-gradient(circle at 35% 30%, #fff, #c4b5fd 30%, #7c3aed 80%); box-shadow: 0 0 30px rgb(124 58 237 / .6); will-change: transform; }
+  .dot { position: fixed; left: 0; top: 0; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; pointer-events: none; z-index: 10001; }
+  h1 { font-size: clamp(40px, 8vw, 110px); letter-spacing: -.05em; margin: 0; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack"><h1>Wobbly</h1><p class="hint">Flick the mouse quickly, then stop.</p></div></main>
+<div class="blob" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.documentElement.classList.add("has-cursor");
+    const blob = document.querySelector(".blob"), dot = document.querySelector(".dot");
+    let tx = innerWidth / 2, ty = innerHeight / 2;
+    const pos = { x: tx, y: ty, vx: 0, vy: 0 };
+    // Stretch is its own spring so it overshoots (squash) when the blob stops.
+    const st = { v: 0, s: 0 };
+    let angle = 0;
+    addEventListener("pointermove", (e) => { tx = e.clientX; ty = e.clientY; dot.style.transform = `translate(${tx}px, ${ty}px)`; });
+    (function loop() {
+      pos.vx += (tx - pos.x) * 0.12; pos.vy += (ty - pos.y) * 0.12;
+      pos.vx *= 0.68; pos.vy *= 0.68;
+      pos.x += pos.vx; pos.y += pos.vy;
+      const speed = Math.hypot(pos.vx, pos.vy);
+      if (speed > 0.5) angle = Math.atan2(pos.vy, pos.vx);
+      const goal = Math.min(speed / 40, 0.9);
+      st.v += (goal - st.s) * 0.3; st.v *= 0.7; st.s += st.v;
+      blob.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(${angle}rad) scale(${1 + st.s}, ${1 - st.s * 0.5})`;
+      requestAnimationFrame(loop);
+    })();
+  }
+</script>
+</body>
+</html>

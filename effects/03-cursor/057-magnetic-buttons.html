@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Magnetic Buttons</title>
+<meta name="description" content="Buttons drift toward the cursor inside an activation field, with the label moving further than the body for parallax, and spring back on leave.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .mag { position: relative; display: inline-grid; place-items: center; border: 0; cursor: pointer; will-change: transform; transition: transform .6s cubic-bezier(.2,1.6,.4,1); }
+  .mag.near { transition: transform .15s ease-out; }
+  .mag .lbl { display: inline-block; will-change: transform; transition: inherit; }
+  .round { width: 150px; height: 150px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 18px; font-weight: 600; }
+  .pill { padding: 20px 40px; border-radius: 999px; background: #fff; color: #0b0c10; font-size: 18px; font-weight: 600; }
+  .icon { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-2); border: 1px solid var(--line); font-size: 24px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack" style="gap:56px">
+  <div class="row" style="gap:64px">
+    <button class="mag round" data-strength="0.45"><span class="lbl">Get in touch</span></button>
+    <button class="mag pill" data-strength="0.3"><span class="lbl">Start a project →</span></button>
+  </div>
+  <div class="row"><button class="mag icon" aria-label="Twitter" data-strength="0.6"><span class="lbl">𝕏</span></button><button class="mag icon" aria-label="GitHub" data-strength="0.6"><span class="lbl">◐</span></button><button class="mag icon" aria-label="Dribbble" data-strength="0.6"><span class="lbl">◎</span></button></div>
+  <p class="hint">data-strength sets the pull; the field extends 50% beyond each button.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  /* Magnetic: when the pointer is within the button's box plus `padding`, translate toward it.
+     The label moves 1.5x as far, which reads as depth. */
+  function magnetic(el, { strength = 0.35, padding = 0.5 } = {}) {
+    const lbl = el.querySelector(".lbl");
+    addEventListener("pointermove", (e) => {
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const inside = Math.abs(dx) < r.width * (0.5 + padding) && Math.abs(dy) < r.height * (0.5 + padding);
+      el.classList.toggle("near", inside);
+      if (inside) {
+        el.style.transform = `translate(${dx * strength}px, ${dy * strength}px)`;
+        if (lbl) lbl.style.transform = `translate(${dx * strength * 0.5}px, ${dy * strength * 0.5}px)`;
+      } else {
+        el.style.transform = ""; if (lbl) lbl.style.transform = "";
+      }
+    });
+  }
+  if (!Demo.reduced) document.querySelectorAll(".mag").forEach((b) => magnetic(b, { strength: +b.dataset.strength }));
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cursor Glow Card Borders</title>
+<meta name="description" content="A grid of cards whose borders light up near the cursor, even on neighbouring cards, using a masked radial gradient driven by CSS variables.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .glow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; width: min(1000px, 92vw); }
+  .gcard { --mx: -999px; --my: -999px; position: relative; border-radius: 18px; padding: 28px; min-height: 180px; background: #111319; }
+  /* Border glow: gradient painted on the whole card, masked so only the 1.5px ring shows. */
+  .gcard::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+    background: radial-gradient(260px circle at var(--mx) var(--my), #a78bfa, #22d3ee 35%, transparent 70%), linear-gradient(#262a36, #262a36);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  /* Soft inner light */
+  .gcard::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(400px circle at var(--mx) var(--my), rgb(167 139 250 / .08), transparent 50%); }
+  .gcard h3 { margin: 0 0 8px; font-size: 20px; }
+  .gcard p { margin: 0; color: var(--muted); font-size: 14px; }
+  .gcard .ic { font-size: 26px; margin-bottom: 14px; display: block; }
+</style>
+</head>
+<body>
+<main class="center"><div class="glow-grid"></div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const grid = document.querySelector(".glow-grid");
+  [["⚡", "Fast"], ["🔒", "Secure"], ["🧩", "Modular"], ["🌍", "Global"], ["📈", "Scalable"], ["🎨", "Themeable"]].forEach(([i, t], k) =>
+    grid.insertAdjacentHTML("beforeend", `<div class="gcard"><span class="ic">${i}</span><h3>${t}</h3><p>${Demo.lorem(12, k)}</p></div>`));
+  const cards = [...grid.children];
+  // One listener on the grid updates every card, so glows bleed across gaps onto neighbours.
+  grid.addEventListener("pointermove", (e) => {
+    for (const c of cards) {
+      const r = c.getBoundingClientRect();
+      c.style.setProperty("--mx", e.clientX - r.left + "px");
+      c.style.setProperty("--my", e.clientY - r.top + "px");
+    }
+  });
+  grid.addEventListener("pointerleave", () => cards.forEach((c) => { c.style.setProperty("--mx", "-999px"); c.style.setProperty("--my", "-999px"); }));
+</script>
+</body>
+</html>

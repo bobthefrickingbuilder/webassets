@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Tilt Cards with Glare</title>
+<meta name="description" content="Cards rotate in 3D toward the pointer with a moving specular glare and layered content that pops out in depth (translateZ parallax).">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .cards { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; perspective: 1000px; }
+  .tilt { --rx: 0deg; --ry: 0deg; --gx: 50%; --gy: 50%; --ga: 0;
+          width: 280px; aspect-ratio: 3/4; border-radius: 22px; position: relative; transform-style: preserve-3d;
+          transform: rotateX(var(--rx)) rotateY(var(--ry)); transition: transform .5s cubic-bezier(.2,.8,.2,1); background-size: cover; background-position: center;
+          box-shadow: 0 30px 60px -20px rgb(0 0 0 / .6); }
+  .tilt.active { transition: transform .08s linear; }
+  .tilt::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: var(--ga); transition: opacity .3s;
+                 background: radial-gradient(circle at var(--gx) var(--gy), rgb(255 255 255 / .55), transparent 55%); mix-blend-mode: overlay; }
+  .tilt .layer { position: absolute; left: 24px; right: 24px; transform: translateZ(60px); }
+  .tilt .top { top: 24px; font: 600 12px var(--mono); letter-spacing: .1em; opacity: .9; }
+  .tilt .bottom { bottom: 24px; transform: translateZ(90px); }
+  .tilt h3 { margin: 0; font-size: 30px; letter-spacing: -.03em; text-shadow: 0 6px 20px rgb(0 0 0 / .5); }
+  .tilt .badge { position: absolute; right: 20px; top: 50%; width: 64px; height: 64px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-weight: 800; transform: translateZ(120px); box-shadow: 0 10px 30px rgb(0 0 0 / .4); }
+</style>
+</head>
+<body>
+<main class="center">
+  <div class="cards">
+    <div class="tilt"><span class="layer top">NO. 01</span><span class="badge">NEW</span><div class="layer bottom"><h3>Golden hour</h3></div></div>
+    <div class="tilt"><span class="layer top">NO. 02</span><div class="layer bottom"><h3>Deep water</h3></div></div>
+    <div class="tilt"><span class="layer top">NO. 03</span><div class="layer bottom"><h3>Ember fields</h3></div></div>
+  </div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const MAX = 14; // degrees
+  document.querySelectorAll(".tilt").forEach((card, i) => {
+    card.style.backgroundImage = `url(${Demo.artURL(560, 750, [2, 1, 4][i])})`;
+    if (Demo.reduced) return;
+    card.addEventListener("pointermove", (e) => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      card.classList.add("active");
+      card.style.setProperty("--ry", ((px - 0.5) * 2 * MAX).toFixed(2) + "deg");
+      card.style.setProperty("--rx", ((0.5 - py) * 2 * MAX).toFixed(2) + "deg");
+      card.style.setProperty("--gx", px * 100 + "%"); card.style.setProperty("--gy", py * 100 + "%");
+      card.style.setProperty("--ga", 1);
+    });
+    card.addEventListener("pointerleave", () => {
+      card.classList.remove("active");
+      ["--rx", "--ry"].forEach((p) => card.style.setProperty(p, "0deg"));
+      card.style.setProperty("--ga", 0);
+    });
+  });
+</script>
+</body>
+</html>

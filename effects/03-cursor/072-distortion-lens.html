@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Distortion Lens Cursor</title>
+<meta name="description" content="A WebGL magnifying lens follows the pointer, bulging the content beneath with a refractive edge and chromatic aberration fringe.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: none; }
+</style>
+</head>
+<body>
+<canvas aria-label="Poster viewed through a magnifying lens that follows the pointer"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const FRAG = `
+    uniform sampler2D u_tex; uniform vec2 u_res; uniform vec2 u_lens; uniform float u_radius;
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res;
+      vec2 m = u_lens / u_res;
+      vec2 d = (uv - m) * vec2(u_res.x / u_res.y, 1.0);   // aspect-correct offset from lens centre
+      float r = length(d) / u_radius;
+      vec3 col;
+      if (r < 1.0) {
+        // Spherical bulge: sample closer to the centre the nearer we are to it.
+        float k = pow(r, 1.8);
+        vec2 off = (uv - m) * (k - 1.0) * 0.55;
+        float ca = smoothstep(0.6, 1.0, r) * 0.012;          // aberration only near the rim
+        vec2 dir = normalize(uv - m + 1e-5);
+        col.r = texture(u_tex, uv + off + dir * ca).r;
+        col.g = texture(u_tex, uv + off).g;
+        col.b = texture(u_tex, uv + off - dir * ca).b;
+        col += pow(smoothstep(0.75, 1.0, r), 3.0) * 0.35;    // bright rim
+        col += smoothstep(0.5, 0.0, length(d / u_radius - vec2(-0.35, 0.35))) * 0.12;  // specular highlight
+      } else {
+        col = texture(u_tex, uv).rgb;
+        col *= 1.0 - (1.0 - smoothstep(1.0, 1.25, r)) * 0.35;   // soft shadow just outside the rim
+      }
+      o = vec4(col, 1.0);
+    }`;
+  const state = GL.fullscreen(canvas, FRAG, { dpr: 1.5 });
+  if (!state) return;
+  const { gl } = state;
+
+  // Build the "page" texture: artwork + typography drawn on a 2D canvas.
+  let tex;
+  function makeTexture() {
+    const w = canvas.width, h = canvas.height;
+    const c = Demo.art(w, h, 3), g = c.getContext("2d");
+    g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#fff"; g.textAlign = "center";
+    g.font = `900 ${Math.min(w / 6, h / 3.5)}px system-ui, sans-serif`; g.fillText("LOOK", w / 2, h * 0.45);
+    g.font = `500 ${Math.max(14, w / 70)}px ui-monospace, monospace`;
+    for (let i = 0; i < 6; i++) g.fillText("The quick brown fox jumps over the lazy dog · 0123456789 · ".repeat(3), w / 2, h * 0.62 + i * w / 50);
+    if (tex) gl.deleteTexture(tex);
+    tex = GL.texture(gl, w, h, { source: c });
+  }
+  // Wait one frame so the canvas has its real size.
+  requestAnimationFrame(makeTexture);
+  addEventListener("resize", () => requestAnimationFrame(makeTexture));
+  // The lens eases after the pointer so it feels like glass with weight.
+  const lens = [canvas.clientWidth * 0.75, canvas.clientHeight * 0.75];
+  state.uniforms = () => {
+    lens[0] += (state.mouse.x - lens[0]) * 0.15; lens[1] += (state.mouse.y - lens[1]) * 0.15;
+    return { u_tex: tex, u_radius: 0.18, u_lens: lens };
+  };
+})();
+</script>
+</body>
+</html>

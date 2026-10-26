@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Googly Eyes</title>
+<meta name="description" content="Cartoon eyes whose pupils track the cursor with springy, jiggly physics, blink at random intervals, and go wide when clicked.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #fef3c7; }
+  .face { display: flex; gap: 22px; padding: 40px 48px 70px; border-radius: 50% 50% 46% 46%; background: #fb923c; position: relative; box-shadow: inset 0 -16px 0 rgb(0 0 0 / .08); }
+  .face::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 70px; height: 30px; margin-left: -35px; border-radius: 0 0 60px 60px; background: #7c2d12; transition: height .2s; }
+  .face.shock::after { height: 44px; width: 44px; margin-left: -22px; border-radius: 50%; }
+  .eye { position: relative; width: 120px; height: 120px; border-radius: 50%; background: #fff; box-shadow: inset 0 -8px 0 rgb(0 0 0 / .08), 0 4px 0 #c2410c; overflow: hidden; }
+  .pupil { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: #111; transition: width .15s, height .15s, margin .15s; }
+  .pupil::after { content: ""; position: absolute; width: 12px; height: 12px; left: 9px; top: 8px; border-radius: 50%; background: #fff; }
+  .shock .pupil { width: 26px; height: 26px; margin: -13px 0 0 -13px; }
+  .lid { position: absolute; inset: 0; background: #fb923c; transform: translateY(-101%); transition: transform .08s ease-in; }
+  .blink .lid { transform: translateY(0); }
+  .row { gap: 48px; }
+  .small .eye { width: 70px; height: 70px; } .small .pupil { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+  .small.face { padding: 24px 30px 50px; background: #a78bfa; } .small .lid { background: #a78bfa; } .small .eye { box-shadow: inset 0 -6px 0 rgb(0 0 0 / .08), 0 3px 0 #6d28d9; }
+  .small.face::after { width: 40px; height: 16px; margin-left: -20px; bottom: 18px; background: #4c1d95; }
+</style>
+</head>
+<body>
+<main class="center"><div class="row">
+  <div class="face"><div class="eye"><div class="pupil"></div><div class="lid"></div></div><div class="eye"><div class="pupil"></div><div class="lid"></div></div></div>
+  <div class="face small"><div class="eye"><div class="pupil"></div><div class="lid"></div></div><div class="eye"><div class="pupil"></div><div class="lid"></div></div></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  let mx = innerWidth / 2, my = innerHeight / 2;
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  const eyes = [...document.querySelectorAll(".eye")].map((eye) => ({ eye, pupil: eye.querySelector(".pupil"), x: 0, y: 0, vx: 0, vy: 0 }));
+  function frame() {
+    for (const e of eyes) {
+      const r = e.eye.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = mx - cx, dy = my - cy, d = Math.hypot(dx, dy) || 1;
+      const maxR = r.width * 0.28, reach = Math.min(maxR, d * 0.15);
+      // Spring toward the target offset with low damping: the googly wobble.
+      const tx = (dx / d) * reach, ty = (dy / d) * reach;
+      e.vx += (tx - e.x) * 0.12; e.vy += (ty - e.y) * 0.12 + 0.15;   // a little gravity
+      e.vx *= 0.82; e.vy *= 0.82;
+      e.x += e.vx; e.y += e.vy;
+      const len = Math.hypot(e.x, e.y);
+      if (len > maxR) { e.x *= maxR / len; e.y *= maxR / len; e.vx *= -0.4; e.vy *= -0.4; }   // bounce off the rim
+      e.pupil.style.transform = `translate(${e.x}px, ${e.y}px)`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  document.querySelectorAll(".face").forEach((f) => {
+    (function blink() {
+      setTimeout(() => { f.classList.add("blink"); setTimeout(() => { f.classList.remove("blink"); blink(); }, 130); }, 1500 + Math.random() * 4000);
+    })();
+  });
+  addEventListener("pointerdown", () => document.querySelectorAll(".face").forEach((f) => f.classList.add("shock")));
+  addEventListener("pointerup", () => document.querySelectorAll(".face").forEach((f) => f.classList.remove("shock")));
+</script>
+</body>
+</html>
