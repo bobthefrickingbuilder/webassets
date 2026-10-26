@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Letter Blocks Physics</title>
+<meta name="description" content="Extruded letter blocks drop onto a floor and tumble with a lightweight rigid-body integrator (gravity, bounce, friction, box collisions). Click a block to flick it, or type to spawn new letters.">
+<meta name="tech" content="WebGL, Three.js, Physics">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #f3efe6; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+  .hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); color: #555; }
+</style>
+</head>
+<body>
+<canvas aria-label="Letter blocks tumbling. Click to flick, type to add letters."></canvas>
+<p class="hint">Click a block to flick it · type letters to drop more · Space to reset</p>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 6, 13], fov: 40, background: 0xf3efe6, alwaysAnimate: true });
+  const { scene, camera, renderer } = kit;
+  camera.lookAt(0, 1, 0);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  scene.fog = new THREE.Fog(0xf3efe6, 18, 40);   // hides the floor edge
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xcbbfa8, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(5, 10, 6); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 }); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 1 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+  // Each block is a cube with a letter painted on every face (a canvas texture per letter).
+  const COLS = ["#ff5d5d", "#ffb44c", "#4ea8ff", "#7c5cff", "#2ecf9a", "#ff7ac6"];
+  const texCache = {};
+  function letterTex(ch, col) {
+    const k = ch + col; if (texCache[k]) return texCache[k];
+    const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
+    g.fillStyle = col; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = "rgba(255,255,255,.45)"; g.lineWidth = 14; g.strokeRect(10, 10, 236, 236);
+    g.fillStyle = "#fff"; g.font = "900 170px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch, 128, 140);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (texCache[k] = t);
+  }
+  const S = 1;   // block size
+  const geo = new THREE.BoxGeometry(S, S, S);
+  const bodies = [];
+  let nCol = 0;
+  function spawn(ch, x, y, z) {
+    const col = COLS[nCol++ % COLS.length];
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: letterTex(ch, col), roughness: .5 }));
+    m.castShadow = m.receiveShadow = true; scene.add(m);
+    m.position.set(x, y, z);
+    m.quaternion.setFromEuler(new THREE.Euler(Math.random() * 3, Math.random() * 3, Math.random() * 3));
+    bodies.push({ m, v: new THREE.Vector3((Math.random() - .5) * 2, 0, (Math.random() - .5) * 2), w: new THREE.Vector3((Math.random() - .5) * 6, (Math.random() - .5) * 6, (Math.random() - .5) * 6) });
+    if (bodies.length > 80) { const b = bodies.shift(); scene.remove(b.m); b.m.material.dispose(); }
+  }
+  function spell(word) { [...word].forEach((ch, i) => spawn(ch, (i - (word.length - 1) / 2) * 1.3, 6 + i * 0.6, (Math.random() - .5))); }
+  function reset() { bodies.splice(0).forEach((b) => { scene.remove(b.m); b.m.material.dispose(); }); spell("PHYSICS"); setTimeout(() => spell("PLAY"), 700); }
+
+  // --- A deliberately small rigid-body step ---
+  // Floor contact: test the 8 corners, push out of the floor, apply a bounce impulse at each penetrating corner
+  // (which naturally creates the tumbling torque). Block-block: treat as spheres with radius ~S*0.55 for separation.
+  const G = -18, corners = [];
+  for (const x of [-.5, .5]) for (const y of [-.5, .5]) for (const z of [-.5, .5]) corners.push(new THREE.Vector3(x, y, z).multiplyScalar(S));
+  const tmp = new THREE.Vector3(), r = new THREE.Vector3(), vp = new THREE.Vector3(), dq = new THREE.Quaternion(), imp = new THREE.Vector3();
+  const I = 1 / (S * S / 6);   // inverse inertia of a unit-mass cube
+  function step(dt) {
+    for (const b of bodies) {
+      b.v.y += G * dt;
+      b.m.position.addScaledVector(b.v, dt);
+      // integrate rotation from angular velocity
+      dq.set(b.w.x * dt * .5, b.w.y * dt * .5, b.w.z * dt * .5, 0).multiply(b.m.quaternion);
+      b.m.quaternion.set(b.m.quaternion.x + dq.x, b.m.quaternion.y + dq.y, b.m.quaternion.z + dq.z, b.m.quaternion.w + dq.w).normalize();
+      let deepest = 0, contacts = 0;
+      for (const c of corners) {
+        r.copy(c).applyQuaternion(b.m.quaternion);
+        const y = b.m.position.y + r.y;
+        if (y < 0) {
+          deepest = Math.min(deepest, y); contacts++;
+          vp.copy(b.w).cross(r).add(b.v);   // velocity of that corner
+          if (vp.y < 0) {
+            // normal impulse (restitution .3) + friction impulse in the tangent plane
+            const jn = -(1.3) * vp.y / (1 + I * (r.x * r.x + r.z * r.z));
+            imp.set(-vp.x * .25, jn, -vp.z * .25);
+            b.v.addScaledVector(imp, 1 / 8 * 4);
+            b.w.addScaledVector(tmp.copy(r).cross(imp), I / 8 * 4);
+          }
+        }
+      }
+      if (deepest < 0) b.m.position.y -= deepest;
+      if (contacts) { b.w.multiplyScalar(.985); b.v.x *= .985; b.v.z *= .985; }
+      b.w.multiplyScalar(.998);
+    }
+    // block-block separation (sphere approximation) with velocity exchange
+    for (let i = 0; i < bodies.length; i++) for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], c = bodies[j];
+      tmp.subVectors(c.m.position, a.m.position); const d = tmp.length(), min = S * 1.02;
+      if (d > 0 && d < min) {
+        tmp.divideScalar(d); const push = (min - d) / 2;
+        a.m.position.addScaledVector(tmp, -push); c.m.position.addScaledVector(tmp, push);
+        const rel = vp.subVectors(c.v, a.v).dot(tmp);
+        if (rel < 0) { a.v.addScaledVector(tmp, rel * .6); c.v.addScaledVector(tmp, -rel * .6); a.w.addScaledVector(tmp, rel * .3); c.w.addScaledVector(tmp, -rel * .3); }
+      }
+    }
+  }
+  kit.onFrame((t, dt) => { const n = 4; for (let i = 0; i < n; i++) step(dt / n); }).start();
+
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  renderer.domElement.addEventListener("pointerdown", (e) => {
+    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(bodies.map((b) => b.m))[0];
+    if (!hit) { spawn("★", (Math.random() - .5) * 4, 7, 0); return; }
+    const b = bodies.find((x) => x.m === hit.object);
+    b.v.add(ray.ray.direction.clone().multiplyScalar(6)).add(new THREE.Vector3(0, 9, 0));
+    r.subVectors(hit.point, b.m.position); b.w.add(r.cross(ray.ray.direction).multiplyScalar(14));
+  });
+  addEventListener("keydown", (e) => {
+    if (e.key === " ") { e.preventDefault(); reset(); return; }
+    if (e.key.length === 1 && /\S/.test(e.key)) spawn(e.key.toUpperCase(), (Math.random() - .5) * 6, 8, (Math.random() - .5) * 2);
+  });
+  reset();
+</script>
+</body>
+</html>

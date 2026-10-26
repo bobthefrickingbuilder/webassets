@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infinite Tunnel</title>
+<meta name="description" content="A classic demoscene tunnel: polar coordinates map a procedural neon texture onto an endless tube that twists, bends toward the pointer, and fades into the distance.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style> canvas { position: fixed; inset: 0; width: 100%; height: 100%; } </style>
+</head>
+<body>
+<canvas aria-label="Flying through a neon tunnel"></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const FRAG = `
+    uniform vec2 u_res; uniform float u_time; uniform vec4 u_mouse;
+    void main(){
+      vec2 uv = (gl_FragCoord.xy - .5 * u_res) / u_res.y;
+      vec2 bend = (u_mouse.xy / u_res - .5) * .5;
+      uv -= bend * (1. - length(uv));              // pull the vanishing point toward the pointer
+      float r = length(uv), a = atan(uv.y, uv.x);
+      // Depth is 1/r: the centre is infinitely far away. Add time to fly forward, angle offset to twist.
+      float z = .3 / r + u_time * 1.2;
+      float ang = a / 3.14159 + u_time * .05 + .2 * sin(z * .3);
+      // Procedural texture on the tube wall: rings + longitudinal stripes + hex-ish cells.
+      float rings = smoothstep(.45, .5, abs(fract(z * 1.5) - .5));
+      float stripes = smoothstep(.42, .5, abs(fract(ang * 8.) - .5));
+      float cells = smoothstep(.3, .0, length(fract(vec2(ang * 8., z * 1.5)) - .5) - .25);
+      vec3 hue = .5 + .5 * cos(6.2831 * (z * .05 + vec3(0., .33, .67)));
+      vec3 col = hue * (rings * 1.2 + stripes * .7) + hue.zxy * cells * .4;
+      col *= smoothstep(0., .5, r);                 // fade into the depth
+      col += vec3(.8, .6, 1.) * .02 / (r + .02);    // glow at the end of the tunnel
+      o = vec4(col, 1.);
+    }`;
+  GL.fullscreen(document.querySelector("canvas"), FRAG, { dpr: 1.25 });
+</script>
+</body>
+</html>

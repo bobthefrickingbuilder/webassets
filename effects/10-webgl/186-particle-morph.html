@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Particle Shape Morph</title>
+<meta name="description" content="40,000 particles morph between a sphere, a cube, a torus and live text you type. Every target is stored as a GPU attribute and the vertex shader blends between them with curl-noise turbulence mid-flight.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #05050a; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .ui { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .ui button, .ui input { padding: 10px 16px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .15); background: rgb(20 20 30 / .8); color: var(--fg); font: inherit; cursor: pointer; }
+  .ui input { width: 140px; cursor: text; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #111; }
+</style>
+</head>
+<body>
+<canvas aria-label="Particles forming shapes"></canvas>
+<div class="ui" role="group" aria-label="Shape"><button data-s="0">Sphere</button><button data-s="1">Cube</button><button data-s="2">Torus</button><button data-s="3">Text</button><input value="HELLO" maxlength="8" aria-label="Text for particles"></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0, 6], fov: 50, background: 0x05050a });
+  const controls = ThreeKit.orbit(kit.camera, kit.renderer.domElement, { autoRotate: 0.002, minDistance: 3, maxDistance: 12 });
+  const N = 40000;
+  const rnd = Demo.rng(3);
+  function sphere() { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, r = 1.6 * Math.cbrt(0.85 + rnd() * 0.15); const s = Math.sqrt(1 - u * u); a.set([s * Math.cos(th) * r, u * r, s * Math.sin(th) * r], i * 3); } return a; }
+  function cube() { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const p = [rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1]; const f = (rnd() * 3) | 0; p[f] = rnd() < .5 ? -1 : 1; a.set(p.map((v) => v * 1.25), i * 3); } return a; }
+  function torus() { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const u = rnd() * Math.PI * 2, v = rnd() * Math.PI * 2, R = 1.4, r = 0.5; a.set([(R + r * Math.cos(v)) * Math.cos(u), r * Math.sin(v), (R + r * Math.cos(v)) * Math.sin(u)], i * 3); } return a; }
+  // Text: rasterise to a canvas, then place particles on random opaque pixels, with a little depth.
+  function text(str) {
+    const c = document.createElement("canvas"); c.width = 1024; c.height = 256;
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.font = "900 190px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(str || " ", 512, 136);
+    const d = g.getImageData(0, 0, 1024, 256).data, pts = [];
+    for (let y = 0; y < 256; y += 2) for (let x = 0; x < 1024; x += 2) if (d[(y * 1024 + x) * 4 + 3] > 128) pts.push([x, y]);
+    const a = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) { const p = pts.length ? pts[(rnd() * pts.length) | 0] : [512, 128]; a.set([(p[0] - 512) / 150, -(p[1] - 128) / 150, (rnd() - .5) * 0.25], i * 3); }
+    return a;
+  }
+  const targets = [sphere(), cube(), torus(), text("HELLO")];
+  const geo = new THREE.BufferGeometry();
+  const seeds = new Float32Array(N); for (let i = 0; i < N; i++) seeds[i] = rnd();
+  geo.setAttribute("position", new THREE.BufferAttribute(targets[0].slice(), 3));
+  geo.setAttribute("aFrom", new THREE.BufferAttribute(targets[0].slice(), 3));
+  geo.setAttribute("aTo", new THREE.BufferAttribute(targets[0].slice(), 3));
+  geo.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
+  const uniforms = { uT: { value: 1 }, uTime: { value: 0 }, uSize: { value: 9 * kit.renderer.getPixelRatio() } };
+  const mat = new THREE.ShaderMaterial({
+    uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      uniform float uT; uniform float uTime; uniform float uSize; attribute vec3 aFrom; attribute vec3 aTo; attribute float aSeed; varying float vMix; varying float vSeed;
+      vec3 swirl(vec3 p, float s){ return vec3(sin(p.y * 2.1 + s * 6.3 + uTime), sin(p.z * 1.7 + s * 4.1 - uTime), sin(p.x * 1.9 + s * 5.7 + uTime * .7)); }
+      void main(){
+        // Each particle starts its journey slightly later than others (seeded) for a flowing transition.
+        float t = clamp((uT - aSeed * .35) / .65, 0., 1.); t = t * t * (3. - 2. * t);
+        vec3 p = mix(aFrom, aTo, t);
+        p += swirl(p, aSeed) * sin(t * 3.14159) * .9;       // turbulence peaks mid-flight
+        p += swirl(p * 2., aSeed) * .015;                    // idle shimmer
+        vMix = t; vSeed = aSeed;
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uSize * (1. / -mv.z) * (0.6 + aSeed);
+      }`,
+    fragmentShader: `
+      varying float vMix; varying float vSeed;
+      void main(){ float d = length(gl_PointCoord - .5); if (d > .5) discard; vec3 c = mix(vec3(.35, .55, 1.), vec3(1., .4, .8), vSeed); gl_FragColor = vec4(c * (1. - d * 2.), 1.); }`,
+  });
+  kit.scene.add(new THREE.Points(geo, mat));
+  let cur = 0;
+  function morphTo(arr) {
+    // Snapshot "where particles are now" as the new start, so interrupting a morph is seamless.
+    const from = geo.attributes.aFrom.array, to = geo.attributes.aTo.array, t = uniforms.uT.value;
+    for (let i = 0; i < N; i++) {
+      let k = Math.min(1, Math.max(0, (t - seeds[i] * .35) / .65)); k = k * k * (3 - 2 * k);
+      for (let j = 0; j < 3; j++) from[i * 3 + j] = from[i * 3 + j] + (to[i * 3 + j] - from[i * 3 + j]) * k;
+    }
+    to.set(arr);
+    geo.attributes.aFrom.needsUpdate = geo.attributes.aTo.needsUpdate = true;
+    uniforms.uT.value = 0;
+  }
+  const buttons = document.querySelectorAll("[data-s]");
+  const select = (s) => { cur = s; buttons.forEach((b) => b.setAttribute("aria-pressed", +b.dataset.s === s)); morphTo(targets[s]); };
+  buttons.forEach((b) => (b.onclick = () => select(+b.dataset.s)));
+  const input = document.querySelector("input");
+  input.addEventListener("input", () => { targets[3] = text(input.value.toUpperCase()); if (cur === 3) morphTo(targets[3]); });
+  let auto = 0;
+  kit.onFrame((t, dt) => {
+    uniforms.uTime.value = t;
+    uniforms.uT.value = Math.min(1, uniforms.uT.value + dt * 0.45);
+    controls.update();
+    auto += dt; if (auto > 6 && !Demo.reduced) { auto = 0; select((cur + 1) % 4); }
+  }).start();
+  kit.renderer.domElement.addEventListener("pointerdown", () => (auto = -20));   // pause auto-cycling while the user explores
+  buttons[0].setAttribute("aria-pressed", "true");
+</script>
+</body>
+</html>

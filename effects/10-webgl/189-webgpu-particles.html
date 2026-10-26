@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGPU Compute Particles</title>
+<meta name="description" content="Two hundred thousand particles simulated in a WebGPU compute shader each frame (flow field plus pointer gravity), rendered with additive blending. Falls back to a smaller canvas simulation without WebGPU.">
+<meta name="tech" content="WebGPU">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  .hud { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgb(0 0 0 / .6); font: 12px var(--mono); color: #cbd5e1; pointer-events: none; text-align: center; }
+</style>
+</head>
+<body>
+<canvas aria-label="Particle simulation. Hold the pointer down to attract particles."></canvas>
+<div class="hud">starting…</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+(async function () {
+  const canvas = document.querySelector("canvas"), hud = document.querySelector(".hud");
+  const pointer = { x: 0, y: 0, down: 0 };
+  let aspect = 1;
+  function toSim(e) { pointer.x = (e.clientX / innerWidth * 2 - 1) * aspect; pointer.y = -(e.clientY / innerHeight * 2 - 1); }
+  canvas.addEventListener("pointermove", toSim);
+  canvas.addEventListener("pointerdown", (e) => { toSim(e); pointer.down = 1; });
+  addEventListener("pointerup", () => (pointer.down = 0));
+
+  const WGSL = /* wgsl */ `
+    struct Particle { pos: vec2f, vel: vec2f };
+    struct Params { dt: f32, time: f32, mouse: vec2f, aspect: f32, attract: f32, pad: vec2f };
+    @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
+    @group(0) @binding(1) var<uniform> params: Params;
+
+    @compute @workgroup_size(256)
+    fn simulate(@builtin(global_invocation_id) id: vec3u) {
+      let i = id.x;
+      if (i >= arrayLength(&particles)) { return; }
+      var p = particles[i];
+      // A smooth, time-varying flow field built from sines (cheap and divergence-free enough to swirl nicely).
+      let t = params.time;
+      var acc = vec2f(sin(p.pos.y * 2.7 + t * 0.4) + 0.5 * sin(p.pos.y * 5.3 - t * 0.7),
+                      cos(p.pos.x * 2.3 - t * 0.3) + 0.5 * cos(p.pos.x * 4.9 + t * 0.6)) * 0.6;
+      let d = params.mouse - p.pos;
+      let dist2 = dot(d, d) + 0.02;
+      acc += d / dist2 * (0.05 + params.attract * 0.6);
+      p.vel = p.vel * 0.985 + acc * params.dt;
+      p.pos += p.vel * params.dt;
+      let a = params.aspect;
+      if (p.pos.x < -a) { p.pos.x += 2.0 * a; } if (p.pos.x > a) { p.pos.x -= 2.0 * a; }
+      if (p.pos.y < -1.0) { p.pos.y += 2.0; } if (p.pos.y > 1.0) { p.pos.y -= 2.0; }
+      particles[i] = p;
+    }
+
+    struct VOut { @builtin(position) pos: vec4f, @location(0) col: vec4f };
+    @vertex
+    fn vs(@location(0) pos: vec2f, @location(1) vel: vec2f) -> VOut {
+      var o: VOut;
+      o.pos = vec4f(pos.x / params.aspect, pos.y, 0.0, 1.0);
+      let s = clamp(length(vel) * 1.6, 0.0, 1.0);
+      o.col = vec4f(mix(vec3f(0.15, 0.35, 1.0), vec3f(1.0, 0.45, 0.85), s), 0.55);
+      return o;
+    }
+    @fragment
+    fn fs(i: VOut) -> @location(0) vec4f { return i.col; }`;
+
+  async function runWebGPU() {
+    if (!navigator.gpu) return false;
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return false;
+    const device = await adapter.requestDevice();
+    device.addEventListener("uncapturederror", (e) => console.error("WebGPU:", e.error.message));
+    const ctx = canvas.getContext("webgpu");
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    ctx.configure({ device, format, alphaMode: "opaque" });
+    const N = 200000;
+    const init = new Float32Array(N * 4);
+    for (let i = 0; i < N; i++) { init[i * 4] = (Math.random() * 2 - 1) * 2; init[i * 4 + 1] = Math.random() * 2 - 1; }
+    const particleBuf = device.createBuffer({ size: init.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+    device.queue.writeBuffer(particleBuf, 0, init);
+    const paramBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const module = device.createShaderModule({ code: WGSL });
+    const computePipeline = device.createComputePipeline({ layout: "auto", compute: { module, entryPoint: "simulate" } });
+    const renderPipeline = device.createRenderPipeline({
+      layout: "auto",
+      vertex: { module, entryPoint: "vs", buffers: [{ arrayStride: 16, stepMode: "vertex", attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }, { shaderLocation: 1, offset: 8, format: "float32x2" }] }] },
+      fragment: { module, entryPoint: "fs", targets: [{ format, blend: { color: { srcFactor: "src-alpha", dstFactor: "one", operation: "add" }, alpha: { srcFactor: "one", dstFactor: "one", operation: "add" } } }] },
+      primitive: { topology: "point-list" },
+    });
+    const computeBind = device.createBindGroup({ layout: computePipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: particleBuf } }, { binding: 1, resource: { buffer: paramBuf } }] });
+    const renderBind = device.createBindGroup({ layout: renderPipeline.getBindGroupLayout(0), entries: [{ binding: 1, resource: { buffer: paramBuf } }] });
+    const params = new Float32Array(8);
+    hud.textContent = `WebGPU · ${N.toLocaleString()} particles · hold to attract`;
+    let last = performance.now();
+    function frame(now) {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      if (canvas.width !== innerWidth * dpr) { canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; }
+      aspect = innerWidth / innerHeight;
+      params.set([Math.min((now - last) / 1000, 1 / 30), now / 1000, pointer.x, pointer.y, aspect, pointer.down, 0, 0]); last = now;
+      device.queue.writeBuffer(paramBuf, 0, params);
+      const enc = device.createCommandEncoder();
+      const cp = enc.beginComputePass(); cp.setPipeline(computePipeline); cp.setBindGroup(0, computeBind); cp.dispatchWorkgroups(Math.ceil(N / 256)); cp.end();
+      const rp = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: "clear", clearValue: { r: 0, g: 0, b: 0, a: 1 }, storeOp: "store" }] });
+      rp.setPipeline(renderPipeline); rp.setBindGroup(0, renderBind); rp.setVertexBuffer(0, particleBuf); rp.draw(N); rp.end();
+      device.queue.submit([enc.finish()]);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    return true;
+  }
+
+  // Fallback: identical rules on the CPU with fewer particles, drawn to a 2D canvas.
+  function runCanvas() {
+    const g = canvas.getContext("2d"), N = 6000, P = new Float32Array(N * 4);
+    hud.textContent = `WebGPU unavailable · canvas fallback with ${N.toLocaleString()} particles`;
+    let W, H;
+    for (let i = 0; i < N; i++) { P[i * 4] = (Math.random() * 2 - 1) * 2; P[i * 4 + 1] = Math.random() * 2 - 1; }
+    let last = performance.now();
+    (function frame(now) {
+      if (W !== innerWidth || H !== innerHeight) { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+      aspect = W / H;
+      const dt = Math.min((now - last) / 1000, 1 / 30), t = now / 1000; last = now;
+      g.fillStyle = "rgba(0,0,0,0.25)"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "rgba(120,150,255,0.8)";
+      for (let i = 0; i < N; i++) {
+        let x = P[i * 4], y = P[i * 4 + 1], vx = P[i * 4 + 2], vy = P[i * 4 + 3];
+        let ax = (Math.sin(y * 2.7 + t * .4) + .5 * Math.sin(y * 5.3 - t * .7)) * .6, ay = (Math.cos(x * 2.3 - t * .3) + .5 * Math.cos(x * 4.9 + t * .6)) * .6;
+        const dx = pointer.x - x, dy = pointer.y - y, d2 = dx * dx + dy * dy + .02, k = (.05 + pointer.down * .6) / d2;
+        ax += dx * k; ay += dy * k;
+        vx = vx * .985 + ax * dt; vy = vy * .985 + ay * dt; x += vx * dt; y += vy * dt;
+        if (x < -aspect) x += 2 * aspect; if (x > aspect) x -= 2 * aspect; if (y < -1) y += 2; if (y > 1) y -= 2;
+        P[i * 4] = x; P[i * 4 + 1] = y; P[i * 4 + 2] = vx; P[i * 4 + 3] = vy;
+        g.fillRect((x / aspect * .5 + .5) * W, (-y * .5 + .5) * H, 1.5, 1.5);
+      }
+      requestAnimationFrame(frame);
+    })(last);
+  }
+
+  try { if (!(await runWebGPU())) runCanvas(); }
+  catch (e) { console.warn("WebGPU failed, using fallback:", e); runCanvas(); }
+})();
+</script>
+</body>
+</html>

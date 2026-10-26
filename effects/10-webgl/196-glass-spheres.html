@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glass Transmission Spheres</title>
+<meta name="description" content="Physically based glass: Three.js transmission materials refract and tint colourful shapes and text behind them, with thickness, IOR, dispersion-like iridescence and a studio environment. Drag to orbit.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #e9e4f5; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; }
+</style>
+</head>
+<body>
+<canvas aria-label="Glass spheres refracting colourful shapes. Drag to orbit."></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0.4, 6], fov: 40, background: 0xe9e4f5 });
+  const { scene, renderer } = kit;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  scene.environment = ThreeKit.studioEnv(renderer, { room: 0xbab3cf });
+  const controls = ThreeKit.orbit(kit.camera, renderer.domElement, { autoRotate: 0.0015, minDistance: 3, maxDistance: 12 });
+  scene.add(new THREE.AmbientLight(0xffffff, .6));
+  const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(3, 4, 5); scene.add(dl);
+
+  // Things behind the glass to refract: bright stripes, shapes and a word.
+  const back = new THREE.Group(); back.position.z = -2.2; scene.add(back);
+  const cols = [0xff4d6d, 0xffb703, 0x3a86ff, 0x8338ec, 0x06d6a0];
+  for (let i = 0; i < 9; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 6, 0.1), new THREE.MeshStandardMaterial({ color: cols[i % cols.length], roughness: .4 }));
+    bar.position.x = -3.2 + i * 0.8; bar.rotation.z = 0.35; back.add(bar);
+  }
+  const wordCanvas = document.createElement("canvas"); wordCanvas.width = 1024; wordCanvas.height = 256;
+  const wg = wordCanvas.getContext("2d"); wg.fillStyle = "#111"; wg.font = "900 200px system-ui, sans-serif"; wg.textAlign = "center"; wg.textBaseline = "middle"; wg.fillText("REFRACT", 512, 140);
+  const wtex = new THREE.CanvasTexture(wordCanvas); wtex.colorSpace = THREE.SRGBColorSpace;
+  const word = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), new THREE.MeshBasicMaterial({ map: wtex, transparent: true })); word.position.set(0, 0, -1.6); scene.add(word);
+
+  const glass = (color, ior, thick) => new THREE.MeshPhysicalMaterial({ color, metalness: 0, roughness: 0.04, transmission: 1, thickness: thick, ior, iridescence: .4, iridescenceIOR: 1.3, clearcoat: 1, attenuationColor: color, attenuationDistance: 3 });
+  const balls = [
+    new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glass(0xffffff, 1.5, 1.6)),
+    new THREE.Mesh(new THREE.TorusKnotGeometry(0.45, 0.17, 160, 24), glass(0xdbeafe, 1.45, 0.8)),
+    new THREE.Mesh(new THREE.IcosahedronGeometry(0.6, 0), glass(0xfce7f3, 1.7, 1.2)),
+  ];
+  balls[0].position.set(-0.4, 0, 0.5); balls[1].position.set(1.7, 0.6, 0); balls[2].position.set(-2.1, -0.7, -0.2);
+  balls.forEach((b) => scene.add(b));
+  kit.onFrame((t) => {
+    controls.update();
+    balls[0].position.y = Math.sin(t * .8) * .25; balls[1].rotation.set(t * .4, t * .3, 0); balls[2].rotation.set(t * .2, t * .5, 0);
+    back.position.x = Math.sin(t * .3) * .6;
+  }).start();
+</script>
+</body>
+</html>

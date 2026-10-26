@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Three.js Interactive 3D Hero</title>
+<meta name="description" content="A landing-page hero with a glossy iridescent torus knot, orbiting satellites and floating shapes; the scene tilts toward the pointer with smoothed parallax and reacts to scroll.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: radial-gradient(circle at 70% 40%, #1b1440, #07070d 65%); }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .copy { position: relative; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 0 7vw; pointer-events: none; max-width: 700px; }
+  .copy h1 { font-size: clamp(44px, 7vw, 100px); letter-spacing: -.05em; line-height: .95; margin: 0 0 18px; }
+  .copy p { color: #b8bdd0; font-size: 18px; max-width: 440px; }
+  .copy a { pointer-events: auto; display: inline-block; margin-top: 18px; padding: 14px 26px; border-radius: 999px; background: #fff; color: #111; text-decoration: none; font-weight: 600; width: fit-content; }
+  .more { position: relative; min-height: 60vh; display: grid; place-items: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<section class="copy"><h1>Shape the<br>impossible.</h1><p>A real-time 3D hero that follows your pointer. Scroll to see it drift away.</p><a href="#">Get started</a></section>
+<section class="more">Scroll back up</section>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0, 7], fov: 40, alpha: true, alwaysAnimate: true });
+  const { scene, camera, renderer } = kit;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  scene.environment = ThreeKit.studioEnv(renderer, { room: 0x1a1530, rim: 0xff9ad5 });
+  const group = new THREE.Group(); scene.add(group);
+
+  // Hero object: iridescent physical material lit by coloured lights.
+  const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(1.1, 0.36, 220, 32), new THREE.MeshPhysicalMaterial({ color: 0x6b5bff, metalness: 0.6, roughness: 0.18, iridescence: 1, iridescenceIOR: 1.6, clearcoat: 1, clearcoatRoughness: 0.1 }));
+  group.add(knot);
+  scene.add(new THREE.AmbientLight(0x404060, 1.2));
+  const lights = [[0xff4fd8, [4, 3, 3]], [0x22d3ee, [-4, -2, 3]], [0xffffff, [0, 5, -2]]].map(([c, p]) => { const l = new THREE.PointLight(c, 60, 30); l.position.set(...p); scene.add(l); return l; });
+
+  // Satellites orbiting on tilted rings.
+  const sats = [];
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16 + i * 0.05, 1), new THREE.MeshStandardMaterial({ color: [0xffd166, 0x22d3ee, 0xf472b6][i], metalness: .3, roughness: .4, flatShading: true }));
+    const pivot = new THREE.Group(); pivot.rotation.set(Math.random() * 2, Math.random() * 2, 0); pivot.add(m); group.add(pivot);
+    sats.push({ m, pivot, r: 2.2 + i * 0.45, speed: 0.6 - i * 0.12, ph: i * 2 });
+  }
+  // Floating background shapes.
+  const floaters = [];
+  const geos = [new THREE.OctahedronGeometry(0.25), new THREE.TetrahedronGeometry(0.28), new THREE.TorusGeometry(0.2, 0.07, 12, 24)];
+  for (let i = 0; i < 24; i++) {
+    const f = new THREE.Mesh(geos[i % 3], new THREE.MeshStandardMaterial({ color: 0x8b8fff, roughness: .5, metalness: .2, transparent: true, opacity: .6 }));
+    f.position.set((Math.random() - .5) * 14, (Math.random() - .5) * 8, -3 - Math.random() * 6);
+    f.userData = { spin: (Math.random() - .5) * 0.02, bob: Math.random() * 6 };
+    scene.add(f); floaters.push(f);
+  }
+  // Wide screens: object beside the copy. Narrow: centred and pushed back so the headline stays legible.
+  const place = () => { const wide = innerWidth > 900; group.position.x = wide ? 2.2 : 0; group.position.z = wide ? 0 : -4; };
+  addEventListener("resize", place); place();
+
+  let mx = 0, my = 0, sx = 0, sy = 0;
+  addEventListener("pointermove", (e) => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; });
+  kit.onFrame((t) => {
+    const k = Demo.reduced ? 0 : 1;
+    sx += (mx - sx) * 0.05; sy += (my - sy) * 0.05;
+    group.rotation.y = sx * 0.8 + t * 0.15 * k; group.rotation.x = sy * 0.6;
+    knot.rotation.z = t * 0.2 * k;
+    const scrollK = Math.min(1, scrollY / innerHeight);
+    group.position.y = scrollK * 2.5; group.scale.setScalar(1 - scrollK * 0.3);
+    sats.forEach((s) => { const a = t * s.speed * k + s.ph; s.m.position.set(Math.cos(a) * s.r, 0, Math.sin(a) * s.r); s.m.rotation.x = t * k; });
+    floaters.forEach((f) => { f.rotation.x += f.userData.spin * k; f.rotation.y += f.userData.spin * k; f.position.y += Math.sin(t + f.userData.bob) * 0.002 * k; });
+    lights[0].position.x = Math.sin(t * 0.5) * 5; lights[1].position.y = Math.cos(t * 0.4) * 4;
+    camera.position.x = sx * 0.6; camera.position.y = -sy * 0.4; camera.lookAt(0, 0, 0);
+  }).start();
+</script>
+</body>
+</html>

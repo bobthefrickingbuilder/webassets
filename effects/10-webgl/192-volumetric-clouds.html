@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Volumetric Clouds</title>
+<meta name="description" content="Raymarched volumetric clouds from 3D fractal noise: light marching for self-shadowing, a silver-lining phase term, and a sky that shifts through dawn, day and dusk.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style> canvas { position: fixed; inset: 0; width: 100%; height: 100%; } .tod { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; padding: 8px 16px; border-radius: 999px; background: rgb(0 0 0 / .4); font-size: 13px; } </style>
+</head>
+<body>
+<canvas aria-label="Drifting volumetric clouds"></canvas>
+<label class="tod">Time of day <input type="range" min="0" max="1" step="0.01" value="0.45" aria-label="Time of day"></label>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const FRAG = `
+    uniform vec2 u_res; uniform float u_time; uniform float u_tod; uniform vec4 u_mouse;
+    float hash(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    float fbm(vec3 p){ float v = 0., a = .5; for (int i = 0; i < 4; i++){ v += a * noise(p); p = p * 2.02 + vec3(1.7, 9.2, 3.3); a *= .5; } return v; }
+    float density(vec3 p){
+      vec3 q = p + vec3(u_time * .6, 0., u_time * .2);
+      float base = fbm(q * .22);
+      float h = smoothstep(2.5, 3.3, p.y) * smoothstep(5.5, 4.3, p.y);   // cloud deck between y=2.5 and y=5.5
+      return clamp((base - .45) * 2.4 * h, 0., 1.);
+    }
+    void main(){
+      vec2 uv = (gl_FragCoord.xy - .5 * u_res) / u_res.y;
+      float tod = u_tod;
+      vec3 sunDir = normalize(vec3(.6, mix(.05, .9, sin(tod * 3.14159)), -.7));
+      vec3 sunCol = mix(vec3(1., .45, .2), vec3(1., .97, .9), smoothstep(.05, .5, sunDir.y));
+      vec3 ro = vec3(0.), rd = normalize(vec3(uv.x, uv.y + .18 + (u_mouse.y / u_res.y - .5) * .3, -1.));
+      vec3 sky = mix(mix(vec3(.9, .55, .4), vec3(.35, .6, .95), smoothstep(.05, .5, sunDir.y)), vec3(.05, .15, .45), clamp(rd.y * 1.5, 0., 1.));
+      sky += sunCol * pow(max(dot(rd, sunDir), 0.), 300.) * 3. + sunCol * pow(max(dot(rd, sunDir), 0.), 8.) * .3;
+      vec3 col = vec3(0.); float trans = 1.;
+      if (rd.y > .01) {
+        // The camera sits below the deck: march only through the slab between its bottom and top planes.
+        float t0 = 2.5 / rd.y, t1 = min(5.5 / rd.y, 70.);
+        float dt = (t1 - t0) / 32.;
+        float t = t0 + dt * fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5);   // jitter hides banding
+        for (int i = 0; i < 32; i++){
+          if (t > t1 || trans < .03) break;
+          vec3 p = ro + rd * t;
+          float d = density(p);
+          if (d > .01){
+            // Short light march toward the sun estimates how shadowed this sample is.
+            float sh = density(p + sunDir * .5) + density(p + sunDir * 1.2) + density(p + sunDir * 2.2);
+            float light = exp(-sh * 1.3);
+            float phase = .6 + .9 * pow(max(dot(rd, sunDir), 0.), 6.);     // forward scattering: silver lining
+            vec3 c = mix(vec3(.35, .38, .48) * (.6 + .4 * sunCol), sunCol * 1.25, light) * phase;
+            float a = 1. - exp(-d * dt * .9);
+            col += c * a * trans; trans *= 1. - a;
+          }
+          t += dt;
+        }
+        // Distant clouds fade into the sky (aerial perspective).
+        float fade = smoothstep(.0, .25, rd.y);
+        col = mix(sky * (1. - trans), col, fade); trans = mix(1., trans, fade);
+      } else {
+        // Below the horizon: dark hazy land.
+        sky = mix(sky, vec3(.08, .1, .14) * (.5 + .5 * sunCol), smoothstep(0., -.05, rd.y));
+      }
+      col += sky * trans;
+      o = vec4(pow(col, vec3(.9)), 1.);
+    }`;
+  const tod = document.querySelector("input");
+  const state = GL.fullscreen(document.querySelector("canvas"), FRAG, { dpr: 0.6 });
+  if (state) state.uniforms = () => ({ u_tod: +tod.value });
+</script>
+</body>
+</html>

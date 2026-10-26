@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal to Another World</title>
+<meta name="description" content="A doorway in a quiet grey room opens onto a glowing alien landscape: a second scene is rendered into a render target from a camera that mirrors yours, and projected onto the portal in screen space so the parallax is correct. Drag to orbit.">
+<meta name="tech" content="WebGL, Three.js, Render targets">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #c9c9cf; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; }
+</style>
+</head>
+<body>
+<canvas aria-label="A portal opening onto another world. Drag to look around."></canvas>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [2.5, 1.6, 7], fov: 50, background: 0xc9c9cf });
+  const { scene, camera, renderer } = kit;
+  const controls = ThreeKit.orbit(camera, renderer.domElement, { autoRotate: 0.0018, minDistance: 3, maxDistance: 12, target: new THREE.Vector3(0, 1.4, 0) });
+
+  // --- Main world: a grey gallery with a stone door frame ---
+  scene.fog = new THREE.Fog(0xc9c9cf, 12, 30);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x888890, 1.4));
+  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(4, 8, 5); scene.add(key);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({ color: 0xbdbdc4, roughness: .95 }));
+  ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const stone = new THREE.MeshStandardMaterial({ color: 0x8d8a86, roughness: .8, flatShading: true });
+  const frame = new THREE.Group(); scene.add(frame);
+  [[-1.2, 1.5, .3, 3.2], [1.2, 1.5, .3, 3.2]].forEach(([x, y, w, h]) => { const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, .5), stone); p.position.set(x, y, 0); frame.add(p); });
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.9, .35, .55), stone); lintel.position.set(0, 3.2, 0); frame.add(lintel);
+  for (let i = 0; i < 14; i++) {   // scattered rocks so the room has depth cues
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.2 + Math.random() * .4), stone);
+    const a = Math.random() * Math.PI * 2, d = 4 + Math.random() * 8; r.position.set(Math.cos(a) * d, .1, Math.sin(a) * d); scene.add(r);
+  }
+
+  // --- Other world: purple dusk, glowing crystals, a big moon and floating islands ---
+  const other = new THREE.Scene();
+  other.background = new THREE.Color(0x1b0b3a); other.fog = new THREE.FogExp2(0x4a1f7a, 0.03);
+  other.add(new THREE.HemisphereLight(0xff8ad8, 0x1b0b3a, 1.2));
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(5, 48, 48), new THREE.MeshBasicMaterial({ color: 0xffd9a8, fog: false }));
+  moon.position.set(2, 6, -40); other.add(moon);
+  const dune = new THREE.PlaneGeometry(120, 120, 80, 80); dune.rotateX(-Math.PI / 2);
+  const dp = dune.attributes.position; for (let i = 0; i < dp.count; i++) { const x = dp.getX(i), z = dp.getZ(i); dp.setY(i, Math.sin(x * .15) * Math.cos(z * .12) * 1.2 + Math.sin(x * .05 + z * .07) * 2 - (z > 0 ? 0 : 0)); }
+  dune.computeVertexNormals();
+  other.add(new THREE.Mesh(dune, new THREE.MeshStandardMaterial({ color: 0x5a2a8a, roughness: .9, flatShading: true })));
+  const crystals = [];
+  for (let i = 0; i < 40; i++) {
+    const h = .8 + Math.random() * 3, c = new THREE.Mesh(new THREE.ConeGeometry(.25 + Math.random() * .3, h, 5), new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: i % 3 ? 0x0e7490 : 0xc026d3, emissiveIntensity: 1.5, roughness: .2 }));
+    c.position.set((Math.random() - .5) * 30, h / 2 - .2, -3 - Math.random() * 30); c.rotation.z = (Math.random() - .5) * .4; other.add(c); crystals.push(c);
+  }
+  const islands = [];
+  for (let i = 0; i < 6; i++) {
+    const isl = new THREE.Mesh(new THREE.ConeGeometry(1.2 + Math.random(), 2.5, 7), new THREE.MeshStandardMaterial({ color: 0x3b1a63, flatShading: true }));
+    isl.rotation.x = Math.PI; isl.position.set((Math.random() - .5) * 26, 5 + Math.random() * 5, -12 - Math.random() * 20); other.add(isl); islands.push(isl);
+  }
+
+  // --- The portal surface: samples the other world's render target at its own screen position ---
+  const rt = new THREE.WebGLRenderTarget(1, 1);
+  const portalMat = new THREE.ShaderMaterial({
+    uniforms: { tMap: { value: rt.texture }, uRes: { value: new THREE.Vector2() }, uTime: { value: 0 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `
+      uniform sampler2D tMap; uniform vec2 uRes; uniform float uTime; varying vec2 vUv;
+      void main(){
+        vec2 suv = gl_FragCoord.xy / uRes;
+        // a gentle shimmer near the edges of the doorway
+        float edge = min(min(vUv.x, 1. - vUv.x), min(vUv.y, 1. - vUv.y));
+        suv += (1. - smoothstep(0., .12, edge)) * .01 * vec2(sin(vUv.y * 40. + uTime * 4.), cos(vUv.x * 40. + uTime * 3.));
+        vec3 c = texture2D(tMap, suv).rgb;
+        c += vec3(.8, .4, 1.) * (1. - smoothstep(0., .06, edge)) * (.6 + .4 * sin(uTime * 3.));
+        gl_FragColor = vec4(c, 1.);
+        #include <colorspace_fragment>
+      }`,
+  });
+  const portal = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 3.05), portalMat); portal.position.set(0, 1.525, 0); scene.add(portal);
+  // Behind the door you see the same grey room (the portal is one-sided and the back is plain stone).
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 3.05), stone); back.position.set(0, 1.525, -.01); back.rotation.y = Math.PI; scene.add(back);
+
+  const otherCam = camera.clone();
+  const size = new THREE.Vector2();
+  kit.onFrame((t) => {
+    controls.update();
+    renderer.getDrawingBufferSize(size);
+    if (rt.width !== size.x || rt.height !== size.y) rt.setSize(size.x, size.y);
+    portalMat.uniforms.uRes.value.copy(size); portalMat.uniforms.uTime.value = t;
+    // The other world is seen through the same eye: copy the main camera so parallax matches.
+    otherCam.copy(camera);
+    crystals.forEach((c, i) => (c.material.emissiveIntensity = 1.2 + Math.sin(t * 2 + i) * .6));
+    islands.forEach((s, i) => (s.position.y += Math.sin(t + i) * .004));
+    const facingFront = camera.position.z > 0;
+    portal.visible = facingFront;
+    if (facingFront) { renderer.setRenderTarget(rt); renderer.render(other, otherCam); renderer.setRenderTarget(null); }
+  }).start();
+</script>
+</body>
+</html>

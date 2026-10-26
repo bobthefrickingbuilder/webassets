@@ -2184,5 +2184,218 @@ window.EFFECTS = [
   "complexity": 2,
   "category": "09-svg-css",
   "path": "effects/09-svg-css/184-halftone.html"
+ },
+ {
+  "num": 185,
+  "title": "Three.js Interactive 3D Hero",
+  "description": "A landing-page hero with a glossy iridescent torus knot, orbiting satellites and floating shapes; the scene tilts toward the pointer with smoothed parallax and reacts to scroll.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/185-threejs-hero.html"
+ },
+ {
+  "num": 186,
+  "title": "Particle Shape Morph",
+  "description": "40,000 particles morph between a sphere, a cube, a torus and live text you type. Every target is stored as a GPU attribute and the vertex shader blends between them with curl-noise turbulence mid-flight.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/186-particle-morph.html"
+ },
+ {
+  "num": 187,
+  "title": "Post-processing Shader Pack",
+  "description": "Seven fragment-shader post effects over a live animated scene: ASCII art, Bayer dithering, halftone, CRT, a real GPU odd-even pixel sort, chromatic glitch, and none.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/187-post-processing-pack.html"
+ },
+ {
+  "num": 188,
+  "title": "Fluid Simulation Playground",
+  "description": "A tweakable GPU fluid: stir a photograph like paint in water or play with coloured ink, and adjust vorticity, viscosity-like dissipation, pressure iterations and brush size live.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/188-fluid-playground.html"
+ },
+ {
+  "num": 189,
+  "title": "WebGPU Compute Particles",
+  "description": "Two hundred thousand particles simulated in a WebGPU compute shader each frame (flow field plus pointer gravity), rendered with additive blending. Falls back to a smaller canvas simulation without WebGPU.",
+  "tech": [
+   "WebGPU"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/189-webgpu-particles.html"
+ },
+ {
+  "num": 190,
+  "title": "Raymarched SDF Blobs",
+  "description": "A fully procedural 3D scene in one fragment shader: signed distance functions smoothly merge orbiting blobs into a glossy liquid, with soft shadows, ambient occlusion and fresnel rim lighting.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/190-raymarched-sdf.html"
+ },
+ {
+  "num": 191,
+  "title": "GLSL Image Transitions",
+  "description": "A slideshow with eight GPU transitions between images: noise dissolve, angular wipe, circle reveal, doorway, pixelize, swirl, ripple and directional warp. Pick one or let them cycle.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/191-shader-transitions.html"
+ },
+ {
+  "num": 192,
+  "title": "Volumetric Clouds",
+  "description": "Raymarched volumetric clouds from 3D fractal noise: light marching for self-shadowing, a silver-lining phase term, and a sky that shifts through dawn, day and dusk.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/192-volumetric-clouds.html"
+ },
+ {
+  "num": 193,
+  "title": "3D Product Viewer",
+  "description": "An e-commerce 3D viewer for a procedurally modelled smartwatch: orbit and zoom, swap strap colours, and click hotspots that fly the camera to features with HTML annotations tracking the model.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/193-product-viewer.html"
+ },
+ {
+  "num": 194,
+  "title": "Infinite Tunnel",
+  "description": "A classic demoscene tunnel: polar coordinates map a procedural neon texture onto an endless tube that twists, bends toward the pointer, and fades into the distance.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 2,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/194-infinite-tunnel.html"
+ },
+ {
+  "num": 195,
+  "title": "Endless Terrain Flyover",
+  "description": "Fly low over an infinite procedural landscape: a vertex shader displaces a grid with fractal noise that scrolls with the camera, coloured by height and slope, with water, snow caps and fog. Pointer banks the plane.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/195-terrain-flyover.html"
+ },
+ {
+  "num": 196,
+  "title": "Glass Transmission Spheres",
+  "description": "Physically based glass: Three.js transmission materials refract and tint colourful shapes and text behind them, with thickness, IOR, dispersion-like iridescence and a studio environment. Drag to orbit.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/196-glass-spheres.html"
+ },
+ {
+  "num": 197,
+  "title": "Audio-reactive 3D Visualizer",
+  "description": "A pulsing 3D orb and spectrum ring driven by a Web Audio AnalyserNode: play the built-in generative synth track or use your microphone, and the geometry deforms with bass, mids and treble.",
+  "tech": [
+   "WebGL",
+   "Three.js",
+   "Web Audio"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/197-audio-visualizer.html"
+ },
+ {
+  "num": 198,
+  "title": "3D Letter Blocks Physics",
+  "description": "Extruded letter blocks drop onto a floor and tumble with a lightweight rigid-body integrator (gravity, bounce, friction, box collisions). Click a block to flick it, or type to spawn new letters.",
+  "tech": [
+   "WebGL",
+   "Three.js",
+   "Physics"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/198-letter-physics.html"
+ },
+ {
+  "num": 199,
+  "title": "Portal to Another World",
+  "description": "A doorway in a quiet grey room opens onto a glowing alien landscape: a second scene is rendered into a render target from a camera that mirrors yours, and projected onto the portal in screen space so the parallax is correct. Drag to orbit.",
+  "tech": [
+   "WebGL",
+   "Three.js",
+   "Render targets"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/199-portal.html"
+ },
+ {
+  "num": 200,
+  "title": "Point-cloud Image",
+  "description": "An image rebuilt from tens of thousands of points, each pushed forward by its brightness into a 3D relief. The pointer repels points in a ripple, and scroll explodes and reassembles the cloud.",
+  "tech": [
+   "WebGL",
+   "Three.js",
+   "GLSL"
+  ],
+  "complexity": 3,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/200-point-cloud-image.html"
+ },
+ {
+  "num": 201,
+  "title": "Water Caustics",
+  "description": "A sunlit pool floor with dancing caustic light networks, computed per pixel from layered Voronoi-style ridges, plus refraction wobble, chromatic fringes and click ripples that bend the light.",
+  "tech": [
+   "WebGL2",
+   "GLSL"
+  ],
+  "complexity": 2,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/201-water-caustics.html"
+ },
+ {
+  "num": 202,
+  "title": "Webcam ASCII Mirror",
+  "description": "Your webcam rendered live as ASCII art in a fragment shader: each cell picks a glyph from a font atlas by brightness, with green-terminal, colour and inverted modes. Falls back to an animated scene when no camera is available.",
+  "tech": [
+   "WebGL2",
+   "getUserMedia"
+  ],
+  "complexity": 2,
+  "category": "10-webgl",
+  "path": "effects/10-webgl/202-webcam-ascii.html"
  }
 ];

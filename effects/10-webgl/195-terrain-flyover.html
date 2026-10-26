@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Endless Terrain Flyover</title>
+<meta name="description" content="Fly low over an infinite procedural landscape: a vertex shader displaces a grid with fractal noise that scrolls with the camera, coloured by height and slope, with water, snow caps and fog. Pointer banks the plane.">
+<meta name="tech" content="WebGL, Three.js">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #9cc7e8; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .mode { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+  .mode button { padding: 8px 14px; border-radius: 999px; border: 0; background: rgb(0 0 0 / .45); cursor: pointer; }
+  .mode button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas aria-label="Flying over procedurally generated terrain"></canvas>
+<div class="mode" role="group" aria-label="Style"><button data-w="0" aria-pressed="true">Shaded</button><button data-w="1" aria-pressed="false">Neon wireframe</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 5, 0], fov: 60, far: 400, background: 0x9cc7e8 });
+  const { scene, camera } = kit;
+  const NOISE = `
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+    float terrain(vec2 p){
+      float h = 0., a = 1., f = .012;
+      for (int i = 0; i < 6; i++){ float n = noise(p * f); h += a * (i == 0 ? n : (1. - abs(n * 2. - 1.)) * .9); a *= .45; f *= 2.1; }   // ridged octaves
+      return pow(h, 1.6) * 24. - 8.;
+    }`;
+  const uniforms = { uOffset: { value: new THREE.Vector2() }, uFogColor: { value: new THREE.Color(0x9cc7e8) }, uWire: { value: 0 } };
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `${NOISE}
+      uniform vec2 uOffset; varying float vH; varying vec3 vN; varying float vDist;
+      void main(){
+        // The mesh stays under the camera; the noise is sampled at world coordinates + offset, so terrain flows past.
+        vec2 wp = position.xz + uOffset;
+        float h = terrain(wp);
+        float e = 1.;
+        vN = normalize(vec3(terrain(wp - vec2(e, 0)) - terrain(wp + vec2(e, 0)), 2. * e, terrain(wp - vec2(0, e)) - terrain(wp + vec2(0, e))));
+        vH = h;
+        vec4 mv = modelViewMatrix * vec4(position.x, max(h, -1.), position.z, 1.);
+        vDist = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uFogColor; uniform float uWire; varying float vH; varying vec3 vN; varying float vDist;
+      void main(){
+        float slope = 1. - vN.y;
+        vec3 col = vH < -.9 ? vec3(.12, .35, .55) : mix(vec3(.3, .5, .2), vec3(.45, .38, .3), smoothstep(.15, .45, slope));
+        col = mix(col, vec3(.95), smoothstep(21., 27., vH) * (1. - smoothstep(.3, .6, slope)));   // snow on flatter high ground
+        float light = clamp(dot(vN, normalize(vec3(.5, .8, .3))), 0., 1.) * .8 + .25;
+        col *= vH < -.9 ? 1. : light;
+        float fog = 1. - exp(-vDist * vDist * .00004);
+        vec3 wire = vec3(1., .2, .8) * (.4 + .6 * light);
+        gl_FragColor = vec4(mix(mix(col, uFogColor, fog), mix(wire, vec3(.02, 0, .06), fog), uWire), 1.);
+      }`,
+  });
+  const geo = new THREE.PlaneGeometry(400, 400, 220, 220); geo.rotateX(-Math.PI / 2);
+  const land = new THREE.Mesh(geo, mat); scene.add(land);
+  let mx = 0, smx = 0, my = 0, smy = 0, heading = 0;
+  addEventListener("pointermove", (e) => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; });
+  const pos = new THREE.Vector2(0, 0);
+  // Estimate ground height on the CPU too (same noise) so the camera can follow the terrain.
+  const fract = (x) => x - Math.floor(x);
+  const hash = (x, y) => { let px = fract(x * 123.34), py = fract(y * 456.21); const d = px * (px + 45.32) + py * (py + 45.32); px += d; py += d; return fract(px * py); };
+  const noise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+    const a = hash(ix, iy), b = hash(ix + 1, iy), c = hash(ix, iy + 1), d = hash(ix + 1, iy + 1); return (a + (b - a) * ux) + ((c + (d - c) * ux) - (a + (b - a) * ux)) * uy; };
+  const terrain = (x, y) => { let h = 0, a = 1, f = .012; for (let i = 0; i < 6; i++) { const n = noise(x * f, y * f); h += a * (i === 0 ? n : (1 - Math.abs(n * 2 - 1)) * .9); a *= .45; f *= 2.1; } return Math.pow(h, 1.6) * 24 - 8; };
+  let alt = 20;
+  kit.onFrame((t, dt) => {
+    smx += (mx - smx) * 0.03; smy += (my - smy) * 0.03;
+    heading -= smx * dt * 0.8;
+    const speed = Demo.reduced ? 0 : 22;
+    pos.x += Math.sin(heading) * speed * dt; pos.y -= Math.cos(heading) * speed * dt;
+    uniforms.uOffset.value.copy(pos);
+    const ground = Math.max(-1, terrain(pos.x, pos.y), terrain(pos.x + Math.sin(heading) * 30, pos.y - Math.cos(heading) * 30));
+    alt += (ground + 9 - smy * 8 - alt) * 0.03;
+    camera.position.set(0, alt, 0);
+    camera.rotation.set(-0.12 - smy * 0.2, heading, -smx * 0.6, "YXZ");   // bank into turns
+  }).start();
+  document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => {
+    const w = +b.dataset.w; uniforms.uWire.value = w; mat.wireframe = !!w;
+    kit.scene.background = new THREE.Color(w ? 0x05000c : 0x9cc7e8);
+    document.querySelectorAll("[data-w]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+</script>
+</body>
+</html>

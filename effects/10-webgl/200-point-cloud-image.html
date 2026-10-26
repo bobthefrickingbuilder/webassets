@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Point-cloud Image</title>
+<meta name="description" content="An image rebuilt from tens of thousands of points, each pushed forward by its brightness into a 3D relief. The pointer repels points in a ripple, and scroll explodes and reassembles the cloud.">
+<meta name="tech" content="WebGL, Three.js, GLSL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #050508; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .scroll { height: 300vh; }
+  .hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<canvas aria-label="An image made of floating points"></canvas>
+<div class="scroll"></div>
+<p class="hint">Move the pointer through the cloud · scroll to scatter</p>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0, 9], fov: 40, background: 0x050508, alwaysAnimate: true });
+  const { scene, camera } = kit;
+  const W = 260, H = 170;
+  const src = Demo.art(W, H, 11);
+  const px = src.getContext("2d").getImageData(0, 0, W, H).data;
+  const N = W * H;
+  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), rnd = new Float32Array(N * 3), lum = new Float32Array(N);
+  for (let y = 0, i = 0; y < H; y++) for (let x = 0; x < W; x++, i++) {
+    const r = px[i * 4] / 255, g = px[i * 4 + 1] / 255, b = px[i * 4 + 2] / 255;
+    pos.set([(x / W - .5) * 8, -(y / H - .5) * 8 * H / W, 0], i * 3);
+    col.set([r, g, b], i * 3);
+    lum[i] = r * .3 + g * .59 + b * .11;
+    // explosion direction: random point on a big sphere
+    const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u), d = 4 + Math.random() * 8;
+    rnd.set([s * Math.cos(a) * d, s * Math.sin(a) * d, u * d], i * 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geo.setAttribute("aRnd", new THREE.BufferAttribute(rnd, 3));
+  geo.setAttribute("aLum", new THREE.BufferAttribute(lum, 1));
+  const uniforms = { uTime: { value: 0 }, uMouse: { value: new THREE.Vector3(99, 99, 0) }, uExplode: { value: 0 }, uDepth: { value: 1.2 }, uSize: { value: 2 * Math.min(devicePixelRatio, 2) } };
+  const mat = new THREE.ShaderMaterial({
+    uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    vertexShader: `
+      uniform float uTime, uExplode, uDepth, uSize; uniform vec3 uMouse;
+      attribute vec3 aRnd; attribute float aLum; varying vec3 vCol;
+      void main(){
+        vec3 p = position;
+        p.z += aLum * uDepth + sin(p.x * 1.5 + uTime) * .05;          // brightness relief
+        vec2 d = p.xy - uMouse.xy; float dist = length(d);
+        float push = exp(-dist * dist * 2.) * 1.2;                    // repel around the pointer
+        p.xy += normalize(d + 1e-4) * push * .6; p.z += push;
+        p += aRnd * uExplode * uExplode;                              // scroll explosion
+        vCol = color * (1. + push);
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_PointSize = uSize * (1. + aLum) * (9. / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `varying vec3 vCol; void main(){ vec2 c = gl_PointCoord - .5; float a = smoothstep(.5, .2, length(c)); gl_FragColor = vec4(vCol * .9, a); }`,
+  });
+  const cloud = new THREE.Points(geo, mat); scene.add(cloud);
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
+  let mx = 0, my = 0, has = false;
+  addEventListener("pointermove", (e) => { mx = e.clientX / innerWidth * 2 - 1; my = -(e.clientY / innerHeight) * 2 + 1; has = true; });
+  addEventListener("pointerleave", () => (has = false));
+  kit.onFrame((t) => {
+    uniforms.uTime.value = t;
+    const k = Math.min(1, scrollY / (innerHeight * 1.2));
+    uniforms.uExplode.value += (k - uniforms.uExplode.value) * .08;
+    if (has) { ndc.set(mx, my); ray.setFromCamera(ndc, camera); ray.ray.intersectPlane(plane, hit); uniforms.uMouse.value.lerp(hit, .2); }
+    else uniforms.uMouse.value.lerp(new THREE.Vector3(99, 99, 0), .02);
+    cloud.rotation.y = Math.sin(t * .25) * .35 * (Demo.reduced ? 0 : 1) + (mx * .2);
+    cloud.rotation.x = -my * .15 + k * .6;
+  }).start();
+</script>
+</body>
+</html>

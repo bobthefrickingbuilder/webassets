@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GLSL Image Transitions</title>
+<meta name="description" content="A slideshow with eight GPU transitions between images: noise dissolve, angular wipe, circle reveal, doorway, pixelize, swirl, ripple and directional warp. Pick one or let them cycle.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .tr { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 94vw; }
+  .tr button { padding: 7px 12px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); background: rgb(0 0 0 / .6); cursor: pointer; font-size: 13px; }
+  .tr button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas aria-label="Image slideshow with shader transitions"></canvas>
+<div class="tr" role="group" aria-label="Transition"></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const gl = GL.context(canvas); if (!gl) return;
+  const COMMON = `uniform sampler2D u_a; uniform sampler2D u_b; uniform float u_p; uniform vec2 u_res; uniform vec2 u_img;
+    // object-fit: cover for the textures
+    vec2 cover(vec2 uv){ float s = max(u_res.x / u_img.x, u_res.y / u_img.y); vec2 sz = u_img * s; return (uv * u_res - (u_res - sz) * .5) / sz; }
+    vec4 A(vec2 uv){ return texture(u_a, cover(uv)); } vec4 B(vec2 uv){ return texture(u_b, cover(uv)); }
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f); return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }`;
+  const T = {
+    Dissolve: `void main(){ vec2 uv = v_uv; float n = noise(uv * 10.) * .7 + noise(uv * 40.) * .3; float e = smoothstep(u_p - .05, u_p + .05, n * 1.1 - .05);
+      vec4 c = mix(B(uv), A(uv), e); float burn = smoothstep(.0, .06, abs(n * 1.1 - .05 - u_p)); o = mix(vec4(1., .5, .1, 1.), c, burn * step(.001, u_p) + step(u_p, .001)); }`,
+    Wipe: `void main(){ vec2 uv = v_uv; float d = dot(uv - .5, normalize(vec2(1., .6))) + .6; float m = smoothstep(u_p * 1.2 - .02, u_p * 1.2 + .02, d); o = mix(B(uv), A(uv), m); }`,
+    Circle: `void main(){ vec2 uv = v_uv; vec2 p = (uv - .5) * vec2(u_res.x / u_res.y, 1.); float r = u_p * 1.1; o = mix(A(uv), B(uv), 1. - smoothstep(r - .01, r + .01, length(p))); }`,
+    Doorway: `void main(){ vec2 uv = v_uv; float half_ = abs(uv.x - .5); if (half_ > .5 - u_p * .5) { float side = uv.x < .5 ? -1. : 1.; vec2 q = vec2(uv.x + side * u_p * .5, uv.y); o = A(q) * (1. - u_p * .6); }
+      else { float z = mix(.6, 1., u_p); vec2 q = (uv - .5) / z + .5; o = B(q) * smoothstep(0., .3, u_p); } }`,
+    Pixelize: `void main(){ vec2 uv = v_uv; float k = 1. - abs(u_p * 2. - 1.); float cells = mix(400., 12., k * k); vec2 q = (floor(uv * cells * vec2(u_res.x / u_res.y, 1.)) + .5) / (cells * vec2(u_res.x / u_res.y, 1.)); o = u_p < .5 ? A(q) : B(q); }`,
+    Swirl: `void main(){ vec2 uv = v_uv; vec2 p = uv - .5; float r = length(p), k = sin(u_p * 3.14159); float a = k * 6. * (1. - smoothstep(0., .7, r)); p = mat2(cos(a), -sin(a), sin(a), cos(a)) * p; o = mix(A(p + .5), B(p + .5), smoothstep(.35, .65, u_p)); }`,
+    Ripple: `void main(){ vec2 uv = v_uv; vec2 p = uv - .5; float r = length(p); float k = sin(u_p * 3.14159); vec2 off = p / max(r, .001) * sin(r * 60. - u_p * 30.) * .02 * k; o = mix(A(uv + off), B(uv + off), smoothstep(.3, .7, u_p)); }`,
+    Warp: `void main(){ vec2 uv = v_uv; float k = u_p; vec2 dir = vec2(1., .15); float m = smoothstep(-.3, 0., -uv.x + k * 1.6 - .3 + noise(uv * vec2(3., 20.)) * .3);
+      vec4 a = A(uv - dir * k * .4 * (1. - m)), b = B(uv + dir * (1. - k) * .4 * m); o = mix(a, b, m); }`,
+  };
+  const progs = {}; for (const k in T) progs[k] = GL.program(gl, COMMON + T[k]);
+  const IW = 1280, IH = 800;
+  const texs = [0, 1, 2, 3, 4, 5].map((s) => GL.texture(gl, 0, 0, { source: Demo.art(IW, IH, s) }));
+  let cur = 0, next = 1, p = 0, playing = false, fx = "Dissolve", auto = true, timer = 0;
+  const host = document.querySelector(".tr");
+  Object.keys(T).forEach((k) => {
+    const b = document.createElement("button"); b.textContent = k; b.setAttribute("aria-pressed", k === fx);
+    b.onclick = () => { auto = false; fx = k; host.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); go(); };
+    host.appendChild(b);
+  });
+  function go() { if (playing) return; next = (cur + 1) % texs.length; p = 0; playing = true; }
+  canvas.addEventListener("click", go);
+  function resize() { const dpr = Math.min(devicePixelRatio || 1, 1.5); canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; }
+  addEventListener("resize", resize); resize();
+  let last = performance.now();
+  (function frame(now) {
+    const dt = (now - last) / 1000; last = now;
+    if (playing) { p = Math.min(1, p + dt / (Demo.reduced ? .01 : 1.4)); if (p >= 1) { playing = false; cur = next; p = 0; } }
+    else if (auto && (timer += dt) > 2.2) { timer = 0; fx = Object.keys(T)[(Object.keys(T).indexOf(fx) + 1) % 8]; host.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.textContent === fx)); go(); }
+    const eased = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    progs[fx].use().set("u_a", texs[cur]).set("u_b", texs[next]).set("u_p", playing ? eased : 0).set("u_res", [canvas.width, canvas.height]).set("u_img", [IW, IH]);
+    GL.draw(gl, null);
+    requestAnimationFrame(frame);
+  })(last);
+})();
+</script>
+</body>
+</html>

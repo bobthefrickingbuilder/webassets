@@ -76,6 +76,11 @@
     const api = {
       autoRotate: opts.autoRotate || 0,
       target,
+      // Re-read the camera position after moving it by hand (e.g. a scripted fly-to).
+      sync() {
+        s.setFromVector3(camera.position.clone().sub(target));
+        radius = s.radius; vTheta = vPhi = 0;
+      },
       update() {
         s.theta += vTheta + (dragging ? 0 : api.autoRotate * (reduced ? 0 : 1));
         s.phi = Math.min(Math.PI - 0.05, Math.max(0.05, s.phi + vPhi));
@@ -88,5 +93,23 @@
     return api;
   }
 
-  window.ThreeKit = { app, orbit };
+  // A soft "photo studio" environment map (bright softboxes in a grey room) so metals and glass have
+  // something to reflect, built with the core PMREMGenerator: no HDR files needed.
+  function studioEnv(renderer, opts) {
+    opts = opts || {};
+    const env = new THREE.Scene();
+    const room = new THREE.Mesh(new THREE.BoxGeometry(20, 12, 20), new THREE.MeshBasicMaterial({ color: opts.room || 0x5c6070, side: THREE.BackSide }));
+    env.add(room);
+    const box = (w, h, x, y, z, ry, c) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m); };
+    box(8, 4, 0, 5.5, 0, 0, 0xffffff);          // overhead softbox
+    box(4, 6, -9.5, 1, 2, 0, 0xfff1e6);         // warm key
+    box(4, 6, 9.5, 1, -2, 0, opts.rim || 0xdbeafe);   // cool rim
+    box(10, 2, 0, -1, -9.5, 0, 0x9ca3af);       // back strip
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const tex = pmrem.fromScene(env, 0.04).texture;
+    pmrem.dispose();
+    return tex;
+  }
+
+  window.ThreeKit = { app, orbit, studioEnv };
 })();

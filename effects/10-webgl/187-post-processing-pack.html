@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Post-processing Shader Pack</title>
+<meta name="description" content="Seven fragment-shader post effects over a live animated scene: ASCII art, Bayer dithering, halftone, CRT, a real GPU odd-even pixel sort, chromatic glitch, and none.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .fx { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 94vw; }
+  .fx button { padding: 8px 14px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); background: rgb(10 10 14 / .8); cursor: pointer; font-size: 14px; }
+  .fx button[aria-pressed="true"] { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+<canvas aria-label="Animated scene with a selectable post-processing effect"></canvas>
+<div class="fx" role="group" aria-label="Effect"></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const gl = GL.context(canvas);
+  if (!gl) return;
+  // --- Source scene: a 2D canvas we redraw each frame and upload as a texture. ---
+  const src = document.createElement("canvas"), sg = src.getContext("2d");
+  const bg = Demo.art(960, 600, 5);
+  function drawScene(t) {
+    sg.drawImage(bg, 0, 0, src.width, src.height);
+    for (let i = 0; i < 6; i++) {
+      const a = t * 0.6 + i, x = src.width * (0.5 + Math.cos(a) * 0.32), y = src.height * (0.5 + Math.sin(a * 1.3) * 0.28);
+      const g = sg.createRadialGradient(x, y, 0, x, y, 70);
+      g.addColorStop(0, `hsl(${i * 60 + t * 40}, 90%, 70%)`); g.addColorStop(1, "transparent");
+      sg.fillStyle = g; sg.beginPath(); sg.arc(x, y, 70, 0, 6.283); sg.fill();
+    }
+    sg.fillStyle = "#fff"; sg.font = `900 ${src.width / 7}px system-ui, sans-serif`; sg.textAlign = "center"; sg.textBaseline = "middle";
+    sg.fillText("SHADERS", src.width / 2, src.height / 2 + Math.sin(t) * 10);
+  }
+  const srcTex = gl.createTexture();
+  function upload() {
+    gl.bindTexture(gl.TEXTURE_2D, srcTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+  // --- ASCII glyph atlas: 10 glyphs from sparse to dense, each 16x16. ---
+  const RAMP = " .:-=+*#%@", atlas = document.createElement("canvas"); atlas.width = 16 * RAMP.length; atlas.height = 16;
+  const ag = atlas.getContext("2d"); ag.fillStyle = "#fff"; ag.font = "bold 15px monospace"; ag.textAlign = "center"; ag.textBaseline = "middle";
+  [...RAMP].forEach((ch, i) => ag.fillText(ch, i * 16 + 8, 9));
+  const atlasTex = GL.texture(gl, 0, 0, { source: atlas });
+
+  const LUMA = "float luma(vec3 c){ return dot(c, vec3(.299, .587, .114)); }";
+  const FX = {
+    None: `uniform sampler2D u_src; void main(){ o = texture(u_src, v_uv); }`,
+    ASCII: `uniform sampler2D u_src; uniform sampler2D u_atlas; uniform vec2 u_res; ${LUMA}
+      void main(){
+        float cell = 10.; vec2 px = gl_FragCoord.xy; vec2 c = floor(px / cell);
+        vec3 col = texture(u_src, (c + .5) * cell / u_res).rgb;
+        float idx = floor(clamp(luma(col) * 1.2, 0., .999) * 10.);
+        vec2 inCell = fract(px / cell);
+        float g = texture(u_atlas, vec2((idx + inCell.x) / 10., inCell.y)).r;
+        o = vec4(col * g * 1.4, 1.);
+      }`,
+    Dither: `uniform sampler2D u_src; uniform vec2 u_res; ${LUMA}
+      float bayer(vec2 p){ // 8x8 ordered-dither threshold built recursively from the 2x2 matrix
+        p = floor(mod(p, 8.)); float v = 0.;
+        for (int i = 0; i < 3; i++){ vec2 b = mod(p, 2.); v = v * .25 + (b.x == 0. ? (b.y == 0. ? 0. : 2.) : (b.y == 0. ? 3. : 1.)) / 4.; p = floor(p / 2.); }
+        return v;
+      }
+      void main(){
+        float px = 3.; vec2 c = floor(gl_FragCoord.xy / px);
+        vec3 col = texture(u_src, (c + .5) * px / u_res).rgb;
+        float t = bayer(c) - .5;
+        vec3 q = floor(col * 3. + t + .5) / 3.;                 // 4 levels per channel
+        o = vec4(mix(vec3(.06, .05, .12), vec3(1., .94, .82), q), 1.);
+      }`,
+    Halftone: `uniform sampler2D u_src; uniform vec2 u_res; ${LUMA}
+      void main(){
+        float s = 9.; float a = .785; mat2 R = mat2(cos(a), -sin(a), sin(a), cos(a));
+        vec2 p = R * gl_FragCoord.xy; vec2 c = (floor(p / s) + .5) * s;
+        vec2 uv = (transpose(R) * c) / u_res;
+        vec3 col = texture(u_src, uv).rgb; float l = luma(col);
+        float r = sqrt(1. - l) * s * .6, d = length(p - c);
+        float ink = 1. - smoothstep(r - 1., r + 1., d);
+        o = vec4(mix(vec3(.98, .96, .9), col * .4, ink), 1.);
+      }`,
+    CRT: `uniform sampler2D u_src; uniform vec2 u_res; uniform float u_time;
+      void main(){
+        vec2 uv = gl_FragCoord.xy / u_res; vec2 c = uv - .5;
+        c *= 1. + dot(c, c) * .25;                               // barrel distortion
+        uv = c + .5;
+        if (any(lessThan(uv, vec2(0.))) || any(greaterThan(uv, vec2(1.)))) { o = vec4(0, 0, 0, 1); return; }
+        float ab = .003;
+        vec3 col = vec3(texture(u_src, uv + vec2(ab, 0)).r, texture(u_src, uv).g, texture(u_src, uv - vec2(ab, 0)).b);
+        col *= .75 + .25 * sin(gl_FragCoord.y * 3.14159 * .5);    // scanlines
+        float m = mod(gl_FragCoord.x, 3.); col *= vec3(m < 1. ? 1.2 : .85, m >= 1. && m < 2. ? 1.2 : .85, m >= 2. ? 1.2 : .85);
+        col *= 1. - dot(c, c) * 1.6;                             // vignette
+        col *= .96 + .04 * sin(u_time * 60.);                    // flicker
+        o = vec4(col, 1.);
+      }`,
+    Glitch: `uniform sampler2D u_src; uniform vec2 u_res; uniform float u_time;
+      float h(float n){ return fract(sin(n) * 43758.5453); }
+      void main(){
+        vec2 uv = gl_FragCoord.xy / u_res;
+        float slice = floor(uv.y * 24.), tick = floor(u_time * 8.);
+        float on = step(.8, h(slice + tick * 13.));
+        uv.x += (h(slice * 7. + tick) - .5) * .12 * on;
+        float s = .006 + on * .02;
+        o = vec4(texture(u_src, uv + vec2(s, 0)).r, texture(u_src, uv).g, texture(u_src, uv - vec2(s, 0)).b, 1.);
+      }`,
+    "Pixel sort": `uniform sampler2D u_src; void main(){ o = texture(u_src, v_uv); }`,   // display only; sorting happens below
+  };
+  // Pixel sort: odd-even transposition sort down each column, but only between pixels above a brightness threshold.
+  const SORT = GL.program(gl, `uniform sampler2D u_state; uniform vec2 u_texel; uniform float u_parity; ${LUMA}
+    void main(){
+      vec2 px = floor(gl_FragCoord.xy);
+      bool isFirst = mod(px.y + u_parity, 2.) < 1.;                 // pair (y, y+1) when even, (y-1, y) when odd
+      vec2 other = v_uv + vec2(0., isFirst ? u_texel.y : -u_texel.y);
+      vec4 me = texture(u_state, v_uv), them = texture(u_state, other);
+      float lm = luma(me.rgb), lt = luma(them.rgb);
+      bool eligible = lm > .25 && lt > .25 && other.y > 0. && other.y < 1.;
+      // Brighter pixels sink to the lower pixel of each pair (gravity-like streaks).
+      bool swap = eligible && (isFirst ? lm > lt : lt > lm);
+      o = swap ? them : me;
+    }`);
+  const COPY = GL.program(gl, `uniform sampler2D u_src; void main(){ o = texture(u_src, v_uv); }`);
+  const progs = {}; for (const k in FX) progs[k] = GL.program(gl, FX[k]);
+  let fx = "ASCII", sortState = null, sortPasses = 0;
+  const host = document.querySelector(".fx");
+  Object.keys(FX).forEach((k) => {
+    const b = document.createElement("button"); b.textContent = k; b.setAttribute("aria-pressed", k === fx);
+    b.onclick = () => { fx = k; sortPasses = 0; host.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+    host.appendChild(b);
+  });
+  canvas.addEventListener("click", () => (sortPasses = 0));
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+    src.width = Math.round(innerWidth * 0.75); src.height = Math.round(innerHeight * 0.75);
+    sortState = GL.doubleTarget(gl, src.width, src.height, {});
+    sortPasses = 0;
+  }
+  addEventListener("resize", resize); resize();
+  const t0 = performance.now();
+  (function frame(now) {
+    const t = Demo.reduced ? 2 : (now - t0) / 1000;
+    const res = [canvas.width, canvas.height];
+    if (fx === "Pixel sort") {
+      // Freeze one frame of the scene, then sort it a little more every frame so you can watch it happen.
+      if (sortPasses === 0) { drawScene(t); upload(); COPY.use().set("u_src", srcTex); GL.draw(gl, sortState.read); }
+      for (let i = 0; i < 6 && sortPasses < src.height; i++, sortPasses++) {
+        SORT.use().set("u_state", sortState.read).set("u_texel", [1 / src.width, 1 / src.height]).set("u_parity", sortPasses % 2);
+        GL.draw(gl, sortState.write); sortState.swap();
+      }
+      progs[fx].use().set("u_src", sortState.read); GL.draw(gl, null);
+    } else {
+      drawScene(t); upload();
+      progs[fx].use().set("u_src", srcTex).set("u_atlas", atlasTex).set("u_res", res).set("u_time", t);
+      GL.draw(gl, null);
+    }
+    requestAnimationFrame(frame);
+  })(t0);
+})();
+</script>
+</body>
+</html>

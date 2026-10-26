@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Water Caustics</title>
+<meta name="description" content="A sunlit pool floor with dancing caustic light networks, computed per pixel from layered Voronoi-style ridges, plus refraction wobble, chromatic fringes and click ripples that bend the light.">
+<meta name="tech" content="WebGL2, GLSL">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #0a5a73; overflow: hidden; }
+  .copy { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; color: #fff; text-shadow: 0 2px 20px rgb(0 40 60 / .6); }
+  .copy h1 { font-size: clamp(40px, 8vw, 110px); margin: 0; letter-spacing: -.04em; }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="Caustic light patterns on a pool floor. Click to make ripples."></canvas>
+<div class="copy"><h1>Summer</h1><p>Click the water</p></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const canvas = document.querySelector("canvas");
+  const ripples = new Float32Array(4 * 6);   // x, y, startTime, unused  ×6
+  let ri = 0, now = 0;
+  addEventListener("pointerdown", (e) => { const k = canvas.width / innerWidth; ripples.set([e.clientX * k, (innerHeight - e.clientY) * k, now, 0], (ri++ % 6) * 4); });
+  for (let i = 0; i < 6; i++) ripples[i * 4 + 2] = -99;
+  const app = GL.fullscreen(canvas, `
+    uniform float u_time; uniform vec2 u_res; uniform vec4 u_rip[6];
+    // Caustics: distance to the nearest of a set of moving cells, sharpened into bright ridges at cell borders.
+    vec2 h2(vec2 p){ p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+    float caust(vec2 p, float t){
+      vec2 i = floor(p), f = fract(p); float d1 = 8., d2 = 8.;
+      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++){
+        vec2 g = vec2(x, y), o = h2(i + g); o = .5 + .45 * sin(t + 6.2831 * o);
+        float d = length(g + o - f);
+        if (d < d1){ d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+      }
+      return pow(1. - smoothstep(0., .35, d2 - d1), 3.);
+    }
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res.y, px = gl_FragCoord.xy;
+      float t = u_time * .6;
+      // ripple displacement
+      vec2 disp = vec2(0);
+      for (int i = 0; i < 6; i++){
+        vec2 d = px - u_rip[i].xy; float r = length(d), age = u_time - u_rip[i].z;
+        float w = sin(r * .06 - age * 9.) * exp(-age * 1.2) * smoothstep(age * 260. + 40., age * 260., r);
+        disp += normalize(d + 1e-3) * w * 18.;
+      }
+      vec2 q = uv * 5. + disp / u_res.y * 5. + vec2(sin(uv.y * 3. + t) , cos(uv.x * 3. + t)) * .08;
+      // two octaves of caustics, sampled per colour channel with a small offset for chromatic fringes
+      vec3 c;
+      for (int k = 0; k < 3; k++){
+        vec2 o = vec2(float(k) - 1.) * .012;
+        c[k] = caust(q + o, t) * .7 + caust(q * 1.7 + o + 3.1, t * 1.3) * .45;
+      }
+      // pool tiles under the light
+      vec2 tile = fract(uv * 6. + disp / u_res.y * 3.);
+      float grout = smoothstep(.0, .04, tile.x) * smoothstep(.0, .04, tile.y);
+      vec3 floorCol = mix(vec3(.05, .35, .45), vec3(.15, .6, .7), grout);
+      floorCol *= .75 + .25 * uv.y / (u_res.x / u_res.y);
+      vec3 col = floorCol + c * vec3(.85, .97, 1.) * 1.1;
+      col += vec3(1.) * length(disp) * .004;
+      o = vec4(col, 1.);
+    }`, { uniforms: (t) => { now = t; return { u_rip: ripples }; } });
+</script>
+</body>
+</html>

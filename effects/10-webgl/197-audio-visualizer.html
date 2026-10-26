@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audio-reactive 3D Visualizer</title>
+<meta name="description" content="A pulsing 3D orb and spectrum ring driven by a Web Audio AnalyserNode: play the built-in generative synth track or use your microphone, and the geometry deforms with bass, mids and treble.">
+<meta name="tech" content="WebGL, Three.js, Web Audio">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #04030a; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .ctrl { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+  .ctrl button { padding: 12px 20px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); background: rgb(20 18 30 / .8); cursor: pointer; font-weight: 600; }
+  .ctrl button[aria-pressed="true"] { background: #fff; color: #000; }
+  .msg { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<canvas aria-label="Audio visualizer"></canvas>
+<p class="msg" aria-live="polite">Press Play (audio needs a click to start).</p>
+<div class="ctrl"><button class="play" aria-pressed="false">▶ Play synth</button><button class="mic" aria-pressed="false">🎙 Use microphone</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/vendor/three/three.min.js"></script>
+<script src="../../assets/three-kit.js"></script>
+<script>
+  const kit = ThreeKit.app({ position: [0, 0, 7], fov: 45, background: 0x04030a, alwaysAnimate: true });
+  const { scene } = kit;
+  const msg = document.querySelector(".msg");
+  // --- Audio ---
+  let ctx, analyser, data, synth = null, micStream = null;
+  function ensureCtx() {
+    if (ctx) return;
+    ctx = new AudioContext();
+    analyser = ctx.createAnalyser(); analyser.fftSize = 512; analyser.smoothingTimeConstant = 0.82;
+    data = new Uint8Array(analyser.frequencyBinCount);
+  }
+  // A tiny generative track: kick + bass + arpeggio, scheduled ahead with the audio clock.
+  function startSynth() {
+    ensureCtx();
+    const out = ctx.createGain(); out.gain.value = 0.35; out.connect(analyser); analyser.connect(ctx.destination);
+    const notes = [0, 3, 7, 10, 12, 10, 7, 3], root = 110;
+    let step = 0, next = ctx.currentTime + 0.05, stopped = false;
+    const bpm = 112, sixteenth = 60 / bpm / 4;
+    function tone(freq, t, dur, type, vol) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur);
+    }
+    function kick(t) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + .15); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.001, t + .3); o.connect(g); g.connect(out); o.start(t); o.stop(t + .3); }
+    function schedule() {
+      if (stopped) return;
+      while (next < ctx.currentTime + 0.12) {
+        if (step % 4 === 0) kick(next);
+        if (step % 8 === 2 || step % 8 === 6) tone(root / 2 * Math.pow(2, notes[(step >> 3) % 8] / 12), next, .25, "sawtooth", .25);
+        tone(root * 2 * Math.pow(2, notes[step % 8] / 12) * (step % 32 > 15 ? 1.5 : 1), next, .18, "triangle", .12);
+        if (step % 2) tone(6000 + Math.random() * 2000, next, .03, "square", .02);   // hi-hat tick
+        next += sixteenth; step++;
+      }
+      setTimeout(schedule, 25);
+    }
+    schedule();
+    return { stop() { stopped = true; out.disconnect(); try { analyser.disconnect(); } catch {} } };
+  }
+  const playBtn = document.querySelector(".play"), micBtn = document.querySelector(".mic");
+  playBtn.onclick = async () => {
+    if (synth) { synth.stop(); synth = null; playBtn.setAttribute("aria-pressed", false); playBtn.textContent = "▶ Play synth"; return; }
+    stopMic(); synth = startSynth(); await ctx.resume();
+    playBtn.setAttribute("aria-pressed", true); playBtn.textContent = "■ Stop"; msg.textContent = "Generative synth playing";
+  };
+  function stopMic() { if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; micBtn.setAttribute("aria-pressed", false); } }
+  micBtn.onclick = async () => {
+    if (micStream) { stopMic(); msg.textContent = "Microphone off"; return; }
+    try {
+      ensureCtx(); if (synth) { synth.stop(); synth = null; playBtn.setAttribute("aria-pressed", false); playBtn.textContent = "▶ Play synth"; }
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      ctx.createMediaStreamSource(micStream).connect(analyser);   // not connected to speakers: no feedback
+      await ctx.resume(); micBtn.setAttribute("aria-pressed", true); msg.textContent = "Listening to your microphone";
+    } catch (e) { msg.textContent = "Microphone unavailable: " + e.message; }
+  };
+  // --- Visuals ---
+  const orbGeo = new THREE.IcosahedronGeometry(1.5, 48);
+  const base = orbGeo.attributes.position.array.slice();
+  const orb = new THREE.Mesh(orbGeo, new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: .25, metalness: .5, emissive: 0x220b55, flatShading: false }));
+  scene.add(orb);
+  scene.add(new THREE.AmbientLight(0x404060, 1));
+  const l1 = new THREE.PointLight(0x22d3ee, 60, 30); l1.position.set(4, 3, 4); scene.add(l1);
+  const l2 = new THREE.PointLight(0xf472b6, 60, 30); l2.position.set(-4, -2, 3); scene.add(l2);
+  const BARS = 96, bars = [];
+  const barGeo = new THREE.BoxGeometry(0.06, 1, 0.06); barGeo.translate(0, 0.5, 0);
+  for (let i = 0; i < BARS; i++) {
+    const a = (i / BARS) * Math.PI * 2, m = new THREE.Mesh(barGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(i / BARS, .9, .6) }));
+    m.position.set(Math.cos(a) * 2.6, Math.sin(a) * 2.6, 0); m.rotation.z = a - Math.PI / 2; scene.add(m); bars.push(m);
+  }
+  const v = new THREE.Vector3();
+  kit.onFrame((t) => {
+    let bass = 0, mid = 0, high = 0;
+    if (analyser && (synth || micStream)) {
+      analyser.getByteFrequencyData(data);
+      for (let i = 0; i < 8; i++) bass += data[i] / 255 / 8;
+      for (let i = 8; i < 60; i++) mid += data[i] / 255 / 52;
+      for (let i = 60; i < 180; i++) high += data[i] / 255 / 120;
+      bars.forEach((b, i) => (b.scale.y = 0.05 + (data[Math.floor(i * 140 / BARS)] / 255) * 2.2));
+    } else {
+      // Idle: gentle breathing so the scene isn't dead before audio starts.
+      bass = .25 + .15 * Math.sin(t * 2); mid = .2; high = .1;
+      bars.forEach((b, i) => (b.scale.y = 0.1 + 0.1 * Math.sin(t * 2 + i * .3)));
+    }
+    // Displace each vertex along its normal with a few travelling sine waves scaled by the bands.
+    const p = orbGeo.attributes.position.array;
+    for (let i = 0; i < p.length; i += 3) {
+      v.set(base[i], base[i + 1], base[i + 2]).normalize();
+      const w = Math.sin(v.x * 4 + t * 2) * Math.sin(v.y * 4 + t * 1.7) * Math.sin(v.z * 4 + t * 2.3);
+      const r = 1.5 + bass * 0.45 + w * (0.08 + mid * 0.5) + Math.sin(v.y * 18 + t * 6) * high * 0.08;
+      p[i] = v.x * r; p[i + 1] = v.y * r; p[i + 2] = v.z * r;
+    }
+    orbGeo.attributes.position.needsUpdate = true; orbGeo.computeVertexNormals();
+    orb.rotation.y = t * .2; orb.rotation.x = Math.sin(t * .3) * .3;
+    orb.material.emissiveIntensity = .5 + bass * 2;
+  }).start();
+</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fluid Simulation Playground</title>
+<meta name="description" content="A tweakable GPU fluid: stir a photograph like paint in water or play with coloured ink, and adjust vorticity, viscosity-like dissipation, pressure iterations and brush size live.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .panel { position: fixed; right: 14px; top: 64px; width: 240px; padding: 14px 16px; border-radius: 14px; background: rgb(12 13 18 / .85); border: 1px solid var(--line); display: grid; gap: 10px; font-size: 13px; backdrop-filter: blur(8px); }
+  .panel label { display: grid; gap: 4px; color: var(--muted); }
+  .panel label span { display: flex; justify-content: space-between; } .panel label b { color: var(--fg); font-weight: 500; font-family: var(--mono); }
+  .panel .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .panel button { flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 12px; }
+  .panel button[aria-pressed="true"] { background: #fff; color: #000; }
+  @media (max-width: 600px) { .panel { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; } }
+</style>
+</head>
+<body>
+<canvas aria-label="Fluid simulation. Drag to stir."></canvas>
+<div class="panel">
+  <div class="btns"><button data-mode="image" aria-pressed="true">Photo</button><button data-mode="ink" aria-pressed="false">Ink</button></div>
+  <label><span>Vorticity <b class="v-curl"></b></span><input type="range" data-p="curl" min="0" max="60" step="1"></label>
+  <label><span>Dye fade <b class="v-dyeDissipation"></b></span><input type="range" data-p="dyeDissipation" min="0" max="3" step="0.05"></label>
+  <label><span>Velocity fade <b class="v-velocityDissipation"></b></span><input type="range" data-p="velocityDissipation" min="0" max="3" step="0.05"></label>
+  <label><span>Pressure iterations <b class="v-pressureIterations"></b></span><input type="range" data-p="pressureIterations" min="1" max="60" step="1"></label>
+  <label><span>Brush <b class="v-splatRadius"></b></span><input type="range" data-p="splatRadius" min="0.0005" max="0.02" step="0.0005"></label>
+  <div class="btns"><button class="pause" aria-pressed="false">Pause</button><button class="burst">Burst</button><button class="reset">Reset</button></div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script src="../../assets/fluid.js"></script>
+<script>
+(function () {
+  const canvas = document.querySelector("canvas");
+  const sim = FluidSim.create(canvas, { dyeRes: 1024, params: { dyeDissipation: 0.0, curl: 20, gamma: 1 } });
+  if (!sim) return;
+  let mode = "image", paused = false;
+  const photo = Demo.art(1280, 800, 3);
+  function reset() {
+    sim.clear();
+    if (mode === "image") { sim.params.dyeDissipation = 0; sim.params.gamma = 1; sim.setDye(photo); }
+    else { sim.params.dyeDissipation = 0.9; sim.params.gamma = 0.85; }
+    burst();
+    syncUI();
+  }
+  function burst() { for (let i = 0; i < 10; i++) sim.splat(Math.random(), Math.random(), (Math.random() - .5) * 3000, (Math.random() - .5) * 3000, mode === "ink" ? FluidSim.hsv(Math.random(), 1, 0.6) : [0, 0, 0]); }
+  // In photo mode the splats add zero dye: only velocity, so you push the picture around without staining it.
+  const ptr = { x: 0, y: 0, dx: 0, dy: 0, down: false, moved: false };
+  canvas.addEventListener("pointerdown", (e) => { ptr.down = true; ptr.x = e.clientX / innerWidth; ptr.y = 1 - e.clientY / innerHeight; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", (e) => {
+    const x = e.clientX / innerWidth, y = 1 - e.clientY / innerHeight;
+    ptr.dx = (x - ptr.x) * 5000; ptr.dy = (y - ptr.y) * 5000; ptr.x = x; ptr.y = y; ptr.moved = ptr.down || mode === "ink";
+  });
+  canvas.addEventListener("pointerup", () => (ptr.down = false));
+  const inputs = document.querySelectorAll("[data-p]");
+  function syncUI() { inputs.forEach((i) => { i.value = sim.params[i.dataset.p]; document.querySelector(".v-" + i.dataset.p).textContent = (+sim.params[i.dataset.p]).toFixed(i.step < 1 ? (i.step < 0.01 ? 4 : 2) : 0); }); }
+  inputs.forEach((i) => i.addEventListener("input", () => { sim.params[i.dataset.p] = +i.value; syncUI(); }));
+  document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { mode = b.dataset.mode; document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b)); reset(); }));
+  const pauseBtn = document.querySelector(".pause");
+  pauseBtn.onclick = () => { paused = !paused; pauseBtn.setAttribute("aria-pressed", paused); pauseBtn.textContent = paused ? "Play" : "Pause"; };
+  document.querySelector(".burst").onclick = burst;
+  document.querySelector(".reset").onclick = reset;
+  addEventListener("resize", () => { sim.resize(); reset(); });
+  reset();
+  let last = performance.now(), hue = 0;
+  (function frame(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    if (ptr.moved) { hue = (hue + 0.003) % 1; sim.splat(ptr.x, ptr.y, ptr.dx, ptr.dy, mode === "ink" ? FluidSim.hsv(hue, 1, 0.2) : [0, 0, 0]); ptr.moved = false; }
+    if (!paused) sim.step(dt);
+    sim.render();
+    requestAnimationFrame(frame);
+  })(last);
+})();
+</script>
+</body>
+</html>

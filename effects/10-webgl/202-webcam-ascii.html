@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Webcam ASCII Mirror</title>
+<meta name="description" content="Your webcam rendered live as ASCII art in a fragment shader: each cell picks a glyph from a font atlas by brightness, with green-terminal, colour and inverted modes. Falls back to an animated scene when no camera is available.">
+<meta name="tech" content="WebGL2, getUserMedia">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #000; overflow: hidden; }
+  .ui { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .ui button { padding: 9px 14px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); background: rgb(0 0 0 / .6); cursor: pointer; }
+  .ui button[aria-pressed="true"] { background: #fff; color: #000; }
+  .ui label { display: flex; gap: 6px; align-items: center; background: rgb(0 0 0 / .6); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+  .msg { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); color: #8f8; font: 13px var(--mono); }
+</style>
+</head>
+<body>
+<canvas class="full-canvas" aria-label="ASCII art rendering of the camera"></canvas>
+<p class="msg" aria-live="polite">Showing a demo scene — press “Use camera”.</p>
+<div class="ui">
+  <button class="cam">📷 Use camera</button>
+  <button data-m="0" aria-pressed="true">Terminal</button><button data-m="1" aria-pressed="false">Colour</button><button data-m="2" aria-pressed="false">Inverted</button>
+  <label>Cell <input type="range" min="6" max="22" value="10" aria-label="Cell size"></label>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  // Glyph atlas: one row of characters ordered from sparse to dense.
+  const RAMP = " .:-=+*#%@";
+  const atlas = document.createElement("canvas"); atlas.width = RAMP.length * 32; atlas.height = 32;
+  const ag = atlas.getContext("2d"); ag.fillStyle = "#000"; ag.fillRect(0, 0, atlas.width, 32);
+  ag.fillStyle = "#fff"; ag.font = "bold 28px ui-monospace, Menlo, monospace"; ag.textAlign = "center"; ag.textBaseline = "middle";
+  [...RAMP].forEach((c, i) => ag.fillText(c, i * 32 + 16, 17));
+
+  // Source: a fallback animated canvas until the camera is enabled.
+  const fb = document.createElement("canvas"); fb.width = 320; fb.height = 240; const fg = fb.getContext("2d");
+  function drawFallback(t) {
+    const g = fg.createLinearGradient(0, 0, 0, 240); g.addColorStop(0, "#123"); g.addColorStop(1, "#000"); fg.fillStyle = g; fg.fillRect(0, 0, 320, 240);
+    const x = 160 + Math.sin(t) * 70, y = 120 + Math.cos(t * 1.3) * 40;
+    const r = fg.createRadialGradient(x - 15, y - 15, 5, x, y, 60); r.addColorStop(0, "#fff"); r.addColorStop(.4, "#f6a"); r.addColorStop(1, "#203");
+    fg.fillStyle = r; fg.beginPath(); fg.arc(x, y, 60, 0, 7); fg.fill();
+    fg.fillStyle = "#6cf"; fg.font = "bold 46px system-ui"; fg.fillText("HELLO", 90 + Math.sin(t * .7) * 20, 225);
+  }
+  const video = document.createElement("video"); video.playsInline = true; video.muted = true;
+  let useCam = false, mode = 0, cell = 10;
+  const canvas = document.querySelector("canvas");
+  const gl = GL.context(canvas);
+  const prog = GL.program(gl, `
+    uniform sampler2D u_src, u_atlas; uniform vec2 u_res, u_srcRes; uniform float u_cell, u_mode, u_n, u_mirror;
+    void main(){
+      vec2 px = gl_FragCoord.xy; px.y = u_res.y - px.y;
+      vec2 cellId = floor(px / u_cell), inCell = fract(px / u_cell);
+      // cover-fit the source into the screen
+      float sa = u_srcRes.x / u_srcRes.y, va = u_res.x / u_res.y;
+      vec2 uv = (cellId + .5) * u_cell / u_res; uv = (uv - .5) * (va > sa ? vec2(1., sa / va) : vec2(va / sa, 1.)) + .5;
+      if (u_mirror > .5) uv.x = 1. - uv.x;
+      vec3 c = texture(u_src, uv).rgb;
+      float l = dot(c, vec3(.3, .59, .11));
+      l = pow(l, .8);
+      if (u_mode > 1.5) l = 1. - l;
+      float gi = min(floor(l * u_n), u_n - 1.);
+      // glyph cells are a little taller than wide: sample the atlas with the in-cell coordinates
+      float g = texture(u_atlas, vec2((gi + inCell.x) / u_n, 1. - inCell.y)).r;
+      vec3 ink = u_mode < .5 ? vec3(.3, 1., .45) : u_mode < 1.5 ? c * 1.4 + .1 : vec3(0.);
+      vec3 bg = u_mode > 1.5 ? vec3(.95) : vec3(0.);
+      if (u_mode > 1.5) g = texture(u_atlas, vec2((u_n - 1. - gi + inCell.x) / u_n, 1. - inCell.y)).r;
+      o = vec4(mix(bg, ink, g), 1.);
+    }`);
+  const srcTex = GL.texture(gl, 2, 2, {}), atlasTex = GL.texture(gl, atlas.width, atlas.height, { source: atlas });
+  function resize() { canvas.width = innerWidth * Math.min(devicePixelRatio, 2); canvas.height = innerHeight * Math.min(devicePixelRatio, 2); }
+  addEventListener("resize", resize); resize();
+  function frame(ms) {
+    const t = ms / 1000;
+    let source = fb, sw = 320, sh = 240;
+    if (useCam && video.readyState >= 2) { source = video; sw = video.videoWidth; sh = video.videoHeight; } else drawFallback(t);
+    gl.bindTexture(gl.TEXTURE_2D, srcTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    prog.use().set("u_src", srcTex).set("u_atlas", atlasTex)
+      .set("u_res", [canvas.width, canvas.height]).set("u_srcRes", [sw, sh])
+      .set("u_cell", cell * Math.min(devicePixelRatio, 2)).set("u_mode", mode).set("u_n", RAMP.length).set("u_mirror", useCam ? 1 : 0);
+    GL.draw(gl, null);
+    if (!Demo.reduced || useCam) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  const msg = document.querySelector(".msg");
+  document.querySelector(".cam").onclick = async (e) => {
+    try {
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      await video.play(); useCam = true; e.target.setAttribute("aria-pressed", true); msg.textContent = "Live camera";
+      if (Demo.reduced) requestAnimationFrame(frame);
+    } catch (err) { msg.textContent = "Camera unavailable (" + err.name + ") — showing the demo scene."; }
+  };
+  document.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { mode = +b.dataset.m; document.querySelectorAll("[data-m]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+  document.querySelector("input").oninput = (e) => (cell = +e.target.value);
+</script>
+</body>
+</html>
