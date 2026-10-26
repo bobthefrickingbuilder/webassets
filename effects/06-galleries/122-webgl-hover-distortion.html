@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGL Image Hover Transition</title>
+<meta name="description" content="Hovering a card blends to a second image through a noise displacement map, so pixels smear and flow during the transition. Three distortion styles.">
+<meta name="tech" content="WebGL">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .dist-row { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .dist { width: 300px; aspect-ratio: 3/4; border-radius: 18px; overflow: hidden; position: relative; }
+  .dist canvas { width: 100%; height: 100%; display: block; }
+  .dist span { position: absolute; left: 16px; bottom: 14px; font: 600 13px var(--mono); background: rgb(0 0 0 / .5); padding: 4px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="dist-row">
+    <div class="dist" data-mode="0"><canvas></canvas><span>noise smear</span></div>
+    <div class="dist" data-mode="1"><canvas></canvas><span>wave slide</span></div>
+    <div class="dist" data-mode="2"><canvas></canvas><span>radial ripple</span></div>
+  </div>
+  <p class="hint">Hover (or focus and press Enter on) each card.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script src="../../assets/gl.js"></script>
+<script>
+  const FRAG = `
+    uniform sampler2D u_a; uniform sampler2D u_b; uniform float u_p; uniform float u_time; uniform int u_mode; uniform vec2 u_res;
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res;
+      float p = u_p;
+      vec2 da, db;
+      if (u_mode == 0) {
+        // Displacement by a noise map, strongest mid-transition.
+        float n = noise(uv * 6. + u_time * .2) - .5;
+        da = vec2(n, n * .5) * p * .6; db = -vec2(n, n * .5) * (1. - p) * .6;
+      } else if (u_mode == 1) {
+        float w = sin(uv.y * 20. + u_time * 3.) * .04;
+        da = vec2(p * .8 + w * p, 0.); db = vec2(-(1. - p) * .8 + w * (1. - p), 0.);
+      } else {
+        vec2 d = uv - .5; float r = length(d);
+        float k = sin(r * 40. - p * 20.) * .05;
+        da = d * k * p * 2.; db = d * k * (1. - p) * 2.;
+      }
+      vec4 a = texture(u_a, uv + da), b = texture(u_b, uv + db);
+      float mixv = u_mode == 1 ? smoothstep(p - .1, p + .1, 1. - uv.x + noise(uv * 8.) * .1) : p;
+      o = mix(a, b, u_mode == 1 ? 1. - mixv : mixv);
+    }`;
+  document.querySelectorAll(".dist").forEach((card, i) => {
+    const canvas = card.querySelector("canvas");
+    let p = 0, target = 0;
+    const state = GL.fullscreen(canvas, FRAG, { dpr: 1.5 });
+    if (!state) return;
+    const ta = GL.texture(state.gl, 0, 0, { source: Demo.art(600, 800, i * 2 + 1) });
+    const tb = GL.texture(state.gl, 0, 0, { source: Demo.art(600, 800, i * 2 + 2) });
+    state.uniforms = () => {
+      p += (target - p) * 0.06;
+      return { u_a: ta, u_b: tb, u_p: p, u_mode: +card.dataset.mode };
+    };
+    card.tabIndex = 0;
+    card.setAttribute("role", "img"); card.setAttribute("aria-label", "Image that transitions on hover");
+    card.addEventListener("mouseenter", () => (target = 1));
+    card.addEventListener("mouseleave", () => (target = 0));
+    card.addEventListener("keydown", (e) => { if (e.key === "Enter") target = target ? 0 : 1; });
+  });
+</script>
+</body>
+</html>

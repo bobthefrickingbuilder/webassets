@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Flip Cards</title>
+<meta name="description" content="Cards that flip in 3D to show a back face: horizontal, vertical and diagonal variants, triggered by hover on desktop and by tap or keyboard everywhere.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .flip-row { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+  .flip { width: 260px; aspect-ratio: 3/4; perspective: 1000px; border: 0; padding: 0; background: none; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+  .flip .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.3,1.3,.5,1); }
+  .flip .face { position: absolute; inset: 0; border-radius: 20px; backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 24px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+  .flip .front { background-size: cover; background-position: center; }
+  .flip .front h3 { margin: 0; font-size: 26px; text-shadow: 0 4px 20px rgb(0 0 0 / .5); }
+  .flip .back { background: #15171d; border: 1px solid var(--line); justify-content: center; }
+  .flip .back p { color: var(--muted); }
+  .flip.h .back { transform: rotateY(180deg); }
+  .flip.v .back { transform: rotateX(180deg); }
+  .flip.d .back { transform: rotate3d(1, 1, 0, 180deg); }
+  @media (hover: hover) {
+    .flip.h:hover .inner { transform: rotateY(180deg); }
+    .flip.v:hover .inner { transform: rotateX(180deg); }
+    .flip.d:hover .inner { transform: rotate3d(1, 1, 0, 180deg); }
+  }
+  .flip.h[aria-pressed="true"] .inner { transform: rotateY(180deg); }
+  .flip.v[aria-pressed="true"] .inner { transform: rotateX(180deg); }
+  .flip.d[aria-pressed="true"] .inner { transform: rotate3d(1, 1, 0, 180deg); }
+  .flip:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 6px; border-radius: 20px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="flip-row">
+    <button class="flip h" aria-pressed="false"><div class="inner"><div class="face front"><h3>Horizontal</h3></div><div class="face back"><h3>Back side</h3><p>rotateY(180deg)</p></div></div></button>
+    <button class="flip v" aria-pressed="false"><div class="inner"><div class="face front"><h3>Vertical</h3></div><div class="face back"><h3>Back side</h3><p>rotateX(180deg)</p></div></div></button>
+    <button class="flip d" aria-pressed="false"><div class="inner"><div class="face front"><h3>Diagonal</h3></div><div class="face back"><h3>Back side</h3><p>rotate3d(1, 1, 0, 180deg)</p></div></div></button>
+  </div>
+  <p class="hint">Hover on desktop · tap, Enter or Space to flip</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelectorAll(".flip").forEach((card, i) => {
+    card.querySelector(".front").style.backgroundImage = `linear-gradient(transparent 50%, rgb(0 0 0 / .5)), url(${Demo.artURL(520, 700, i + 1)})`;
+    card.addEventListener("click", () => card.setAttribute("aria-pressed", card.getAttribute("aria-pressed") !== "true"));
+  });
+</script>
+</body>
+</html>

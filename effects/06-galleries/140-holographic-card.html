@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Holographic Foil Card</title>
+<meta name="description" content="A collectible trading card with a rainbow holographic foil, sparkle layer and glare that shift with pointer angle (or device tilt), built from blended CSS gradients.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: radial-gradient(circle at 50% 30%, #1f1a33, #08070d 70%); }
+  .holo-wrap { perspective: 900px; }
+  .holo { --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; --o: 0;
+          position: relative; width: min(320px, 80vw); aspect-ratio: 63/88; border-radius: 18px; overflow: hidden; transform: rotateX(var(--rx)) rotateY(var(--ry));
+          transition: transform .6s cubic-bezier(.2,.8,.2,1); box-shadow: 0 30px 60px -20px rgb(0 0 0 / .8), 0 0 0 6px #e9d8a6 inset; background: #1a1625; }
+  .holo.active { transition: transform .08s linear; }
+  .holo .art { position: absolute; left: 6%; right: 6%; top: 12%; height: 48%; border-radius: 6px; background-size: cover; background-position: center; }
+  .holo .name { position: absolute; left: 7%; top: 3.5%; font: 800 20px var(--font); color: #fef3c7; }
+  .holo .hp { position: absolute; right: 7%; top: 3.5%; font: 800 18px var(--font); color: #fca5a5; }
+  .holo .text { position: absolute; left: 7%; right: 7%; top: 64%; color: #e5e7eb; font-size: 13px; line-height: 1.5; }
+  .holo .text b { color: #fde68a; }
+  /* Rainbow foil: repeating hue bands slide with the pointer; color-dodge makes them glow on dark areas. */
+  .holo .foil { position: absolute; inset: 0; mix-blend-mode: color-dodge; opacity: calc(.35 + var(--o) * .45);
+    background: repeating-linear-gradient(110deg, #ff7773 0%, #ffed5f 6%, #a8ff5f 12%, #83fff7 18%, #7894ff 24%, #d875ff 30%, #ff7773 36%) var(--mx) var(--my) / 300% 300%; filter: brightness(.6) contrast(1.4) saturate(1.2); }
+  .holo .sparkle { position: absolute; inset: 0; mix-blend-mode: color-dodge; opacity: calc(var(--o) * .9);
+    background-image: radial-gradient(circle, #fff 0 1px, transparent 1.5px), radial-gradient(circle, #fff 0 .8px, transparent 1.2px);
+    background-size: 23px 31px, 37px 19px; background-position: calc(var(--mx) * .6) calc(var(--my) * .4), calc(var(--mx) * -.4) var(--my); }
+  .holo .glare { position: absolute; inset: 0; mix-blend-mode: overlay; background: radial-gradient(circle at var(--mx) var(--my), rgb(255 255 255 / .8), transparent 45%); opacity: var(--o); }
+  .tilt-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="holo-wrap">
+    <div class="holo" role="img" aria-label="Holographic trading card: Prismadon">
+      <div class="art"></div><span class="name">Prismadon</span><span class="hp">120 HP</span>
+      <div class="text"><b>Refract</b> · Split the incoming light into every colour at once.<br><b>Spectrum Beam</b> · 90 damage. Shines brighter the more you tilt it.</div>
+      <div class="foil"></div><div class="sparkle"></div><div class="glare"></div>
+    </div>
+  </div>
+  <button class="tilt-btn" hidden>Enable motion tilt</button>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const card = document.querySelector(".holo");
+  card.querySelector(".art").style.backgroundImage = `url(${Demo.artURL(500, 400, 5)})`;
+  function apply(px, py) {      // px, py in 0..1
+    card.style.setProperty("--mx", px * 100 + "%"); card.style.setProperty("--my", py * 100 + "%");
+    card.style.setProperty("--ry", (px - .5) * 30 + "deg"); card.style.setProperty("--rx", (.5 - py) * 30 + "deg");
+    card.style.setProperty("--o", Math.min(1, Math.hypot(px - .5, py - .5) * 2.5));
+  }
+  card.addEventListener("pointermove", (e) => { const r = card.getBoundingClientRect(); card.classList.add("active"); apply((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
+  card.addEventListener("pointerleave", () => { card.classList.remove("active"); card.style.setProperty("--rx", "0deg"); card.style.setProperty("--ry", "0deg"); card.style.setProperty("--o", 0); });
+  // Phones: tilt the device instead. iOS needs a user gesture to grant permission.
+  function onTilt(e) { if (e.gamma == null) return; card.classList.add("active"); apply(Math.min(1, Math.max(0, .5 + e.gamma / 60)), Math.min(1, Math.max(0, .5 + (e.beta - 45) / 60))); }
+  if (window.DeviceOrientationEvent && matchMedia("(pointer: coarse)").matches) {
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      const b = document.querySelector(".tilt-btn"); b.hidden = false;
+      b.onclick = () => DeviceOrientationEvent.requestPermission().then((s) => { if (s === "granted") { addEventListener("deviceorientation", onTilt); b.hidden = true; } });
+    } else addEventListener("deviceorientation", onTilt);
+  }
+</script>
+</body>
+</html>

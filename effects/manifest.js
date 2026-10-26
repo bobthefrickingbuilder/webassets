@@ -1422,5 +1422,241 @@ window.EFFECTS = [
   "complexity": 3,
   "category": "05-backgrounds",
   "path": "effects/05-backgrounds/120-galaxy.html"
+ },
+ {
+  "num": 121,
+  "title": "3D Flip Cards",
+  "description": "Cards that flip in 3D to show a back face: horizontal, vertical and diagonal variants, triggered by hover on desktop and by tap or keyboard everywhere.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/121-flip-cards.html"
+ },
+ {
+  "num": 122,
+  "title": "WebGL Image Hover Transition",
+  "description": "Hovering a card blends to a second image through a noise displacement map, so pixels smear and flow during the transition. Three distortion styles.",
+  "tech": [
+   "WebGL"
+  ],
+  "complexity": 3,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/122-webgl-hover-distortion.html"
+ },
+ {
+  "num": 123,
+  "title": "RGB Split Image Hover",
+  "description": "Images separate into red, green and blue channel layers that drift apart with pointer velocity, recombining when still. SVG colour-matrix filters plus screen blending.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/123-rgb-split-hover.html"
+ },
+ {
+  "num": 124,
+  "title": "Before / After Comparison Slider",
+  "description": "Drag the handle to compare two images. A native range input drives the clip-path, so it works with keyboard, touch and screen readers for free.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/124-before-after-slider.html"
+ },
+ {
+  "num": 125,
+  "title": "Expanding Panel Gallery",
+  "description": "A row of slim image panels; the hovered or selected one expands with a flex-grow transition and reveals its caption. Stacks vertically on mobile.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/125-accordion-gallery.html"
+ },
+ {
+  "num": 126,
+  "title": "Filterable Masonry with FLIP",
+  "description": "A masonry grid whose items glide to their new positions when filtered or shuffled, using the FLIP technique (First, Last, Invert, Play) with the Web Animations API.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/126-masonry-filter.html"
+ },
+ {
+  "num": 127,
+  "title": "Infinite Draggable Canvas Gallery",
+  "description": "Pan an endless wall of images in any direction with drag inertia or the wheel. Tiles wrap around so the canvas never ends, and only a fixed pool of DOM nodes is used.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/127-infinite-canvas-gallery.html"
+ },
+ {
+  "num": 128,
+  "title": "3D Cylinder Carousel",
+  "description": "Cards arranged around a CSS 3D cylinder. Drag to spin with momentum, it snaps to the nearest card, and arrow buttons or keys step through. Faces behind dim out.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/128-3d-carousel.html"
+ },
+ {
+  "num": 129,
+  "title": "Coverflow Slider",
+  "description": "Classic album coverflow: the centred cover faces you while neighbours angle away in 3D with reflections. Scroll, drag, click a cover, or use arrow keys.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/129-coverflow.html"
+ },
+ {
+  "num": 130,
+  "title": "Shared-element Lightbox",
+  "description": "Clicking a thumbnail morphs it into a full-screen lightbox using the View Transitions API (with a FLIP fallback), plus caption fade, arrow-key navigation and Escape to close.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/130-view-transition-lightbox.html"
+ },
+ {
+  "num": 131,
+  "title": "Ken Burns Slideshow",
+  "description": "A documentary-style hero slideshow: each photo slowly pans and zooms toward a random focal point while cross-fading to the next, with a progress indicator and pause on hover.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/131-ken-burns.html"
+ },
+ {
+  "num": 132,
+  "title": "Pixelate and Dissolve Transitions",
+  "description": "Two retro image transitions on canvas: the image melts into ever-larger pixels and resolves into the next one, or dissolves block by block in random order.",
+  "tech": [
+   "Canvas",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/132-pixelate-transition.html"
+ },
+ {
+  "num": 133,
+  "title": "Bento Grid with Hover Reveals",
+  "description": "An Apple-style bento feature grid with mixed tile sizes. Each tile has its own micro-animation on hover: a sliding chart, a spinning badge, a typing line, a growing image.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/133-bento-grid.html"
+ },
+ {
+  "num": 134,
+  "title": "Swipeable Card Stack",
+  "description": "A Tinder-style deck: drag the top card, it tilts with the drag and shows LIKE / NOPE stamps; fling past the threshold to throw it away, otherwise it springs back.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/134-swipe-cards.html"
+ },
+ {
+  "num": 135,
+  "title": "Draggable Polaroid Table",
+  "description": "Polaroid photos scattered on a table: drag any of them around with throw inertia, the picked one lifts to the top, and double-click tidies the pile.",
+  "tech": [
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/135-polaroid-scatter.html"
+ },
+ {
+  "num": 136,
+  "title": "Curtain Block Reveal",
+  "description": "Images and headings revealed by a coloured block that wipes across, then retreats to uncover the content, triggered as each element scrolls into view.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/136-block-reveal.html"
+ },
+ {
+  "num": 137,
+  "title": "Hover-reveal Project List",
+  "description": "A typographic portfolio index: hovering a project name reveals a floating preview image that trails the cursor, tilts with velocity, and swaps with a clip transition.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/137-hover-image-list.html"
+ },
+ {
+  "num": 138,
+  "title": "Waving Cloth Image",
+  "description": "An image mapped onto a subdivided Three.js plane whose vertices ripple like a flag in the wind, with shading from the wave slope. Hover to gust; drag to orbit.",
+  "tech": [
+   "WebGL",
+   "Three.js"
+  ],
+  "complexity": 3,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/138-cloth-flag-wave.html"
+ },
+ {
+  "num": 139,
+  "title": "Glassmorphism Cards",
+  "description": "Frosted-glass UI cards over moving colour blobs: backdrop blur, saturation boost, a light border sheen and noise, with a credit card, profile and stats widget.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/139-glassmorphism-cards.html"
+ },
+ {
+  "num": 140,
+  "title": "Holographic Foil Card",
+  "description": "A collectible trading card with a rainbow holographic foil, sparkle layer and glare that shift with pointer angle (or device tilt), built from blended CSS gradients.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "06-galleries",
+  "path": "effects/06-galleries/140-holographic-card.html"
  }
 ];

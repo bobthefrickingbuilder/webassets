@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hover-reveal Project List</title>
+<meta name="description" content="A typographic portfolio index: hovering a project name reveals a floating preview image that trails the cursor, tilts with velocity, and swaps with a clip transition.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .index { list-style: none; margin: 0; padding: 100px 6vw; }
+  .index li { border-top: 1px solid var(--line); }
+  .index li:last-child { border-bottom: 1px solid var(--line); }
+  .index a { display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0; text-decoration: none; transition: padding .4s cubic-bezier(.2,.8,.2,1), color .3s; }
+  .index a h2 { margin: 0; font-size: clamp(32px, 6vw, 80px); letter-spacing: -.04em; font-weight: 600; }
+  .index a span { color: var(--muted); font: 14px var(--mono); }
+  .index:hover a { color: #4b5068; }
+  .index a:hover, .index a:focus-visible { color: var(--fg); padding-left: 24px; }
+  .preview { position: fixed; left: 0; top: 0; width: 320px; height: 220px; pointer-events: none; z-index: 50; border-radius: 10px; overflow: hidden;
+             opacity: 0; transform: scale(.8); transition: opacity .3s, transform .3s; }
+  .preview.on { opacity: 1; }
+  .preview .img { position: absolute; inset: 0; background-size: cover; background-position: center; clip-path: inset(100% 0 0 0); transition: clip-path .5s cubic-bezier(.7,0,.2,1); }
+  .preview .img.show { clip-path: inset(0 0 0 0); }
+  @media (hover: none) { .preview { display: none; } }
+</style>
+</head>
+<body>
+<ul class="index"></ul>
+<div class="preview" aria-hidden="true"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const projects = [["Aurora", "Brand · 2025"], ["Halcyon", "Web · 2024"], ["Meridian", "App · 2024"], ["Saltwater", "Film · 2023"], ["Orchard", "Identity · 2022"]];
+  const list = document.querySelector(".index"), prev = document.querySelector(".preview");
+  projects.forEach(([n, m], i) => list.insertAdjacentHTML("beforeend", `<li><a href="#" data-i="${i}"><h2>${n}</h2><span>${m}</span></a></li>`));
+  const imgs = projects.map((_, i) => { const d = document.createElement("div"); d.className = "img"; d.style.backgroundImage = `url(${Demo.artURL(640, 440, i + 2)})`; prev.appendChild(d); return d; });
+  let x = 0, y = 0, tx = 0, ty = 0, rot = 0, cur = -1;
+  addEventListener("pointermove", (e) => { tx = e.clientX; ty = e.clientY; });
+  list.querySelectorAll("a").forEach((a) => {
+    a.addEventListener("mouseenter", () => {
+      const i = +a.dataset.i;
+      prev.classList.add("on");
+      // The new image wipes up over the old one; lower images stay put underneath.
+      imgs.forEach((im, k) => { im.style.zIndex = k === i ? 2 : 1; if (k !== i && k !== cur) im.classList.remove("show"); });
+      imgs[i].classList.add("show"); cur = i;
+    });
+    a.addEventListener("click", (e) => e.preventDefault());
+  });
+  list.addEventListener("mouseleave", () => { prev.classList.remove("on"); imgs.forEach((im) => im.classList.remove("show")); cur = -1; });
+  (function loop() {
+    const dx = tx - x; x += dx * 0.12; y += (ty - y) * 0.12;
+    rot += (Math.max(-12, Math.min(12, dx * 0.08)) - rot) * 0.15;   // tilt with horizontal velocity
+    prev.style.transform = `translate(${x - 160}px, ${y - 110}px) rotate(${rot}deg) scale(${prev.classList.contains("on") ? 1 : 0.8})`;
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

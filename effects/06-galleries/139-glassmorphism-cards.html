@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glassmorphism Cards</title>
+<meta name="description" content="Frosted-glass UI cards over moving colour blobs: backdrop blur, saturation boost, a light border sheen and noise, with a credit card, profile and stats widget.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #0b1020; overflow-x: hidden; }
+  .orbs { position: fixed; inset: 0; z-index: -1; }
+  .orbs i { position: absolute; border-radius: 50%; filter: blur(10px); }
+  .orbs i:nth-child(1) { width: 380px; height: 380px; background: linear-gradient(#f472b6, #db2777); left: 12%; top: 10%; animation: f1 14s ease-in-out infinite alternate; }
+  .orbs i:nth-child(2) { width: 300px; height: 300px; background: linear-gradient(#22d3ee, #2563eb); right: 10%; top: 40%; animation: f2 12s ease-in-out infinite alternate; }
+  .orbs i:nth-child(3) { width: 240px; height: 240px; background: linear-gradient(#facc15, #f97316); left: 40%; bottom: 5%; animation: f1 16s ease-in-out infinite alternate-reverse; }
+  @keyframes f1 { to { transform: translate(80px, 60px) scale(1.1); } }
+  @keyframes f2 { to { transform: translate(-90px, -40px) scale(.9); } }
+  .glass { position: relative; border-radius: 22px; padding: 26px; background: linear-gradient(135deg, rgb(255 255 255 / .14), rgb(255 255 255 / .04));
+           backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+           border: 1px solid rgb(255 255 255 / .18); box-shadow: 0 20px 50px rgb(0 0 0 / .25), inset 0 1px 0 rgb(255 255 255 / .25); }
+  .cards { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .cc { width: 340px; height: 210px; display: flex; flex-direction: column; justify-content: space-between; font-family: var(--mono); }
+  .cc .chip { width: 44px; height: 32px; border-radius: 6px; background: linear-gradient(135deg, #fde68a, #d97706); }
+  .cc .num { font-size: 20px; letter-spacing: .12em; }
+  .cc .row2 { display: flex; justify-content: space-between; font-size: 12px; opacity: .8; }
+  .profile { width: 260px; text-align: center; }
+  .profile .av { width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 50%; background: linear-gradient(135deg, #a78bfa, #22d3ee); border: 3px solid rgb(255 255 255 / .4); }
+  .profile h3 { margin: 0; } .profile p { margin: 4px 0 16px; opacity: .7; font-size: 14px; }
+  .profile button { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid rgb(255 255 255 / .3); background: rgb(255 255 255 / .15); cursor: pointer; }
+  .stats { width: 240px; }
+  .stats b { font-size: 40px; letter-spacing: -.03em; display: block; }
+  .stats svg { width: 100%; height: 60px; margin-top: 10px; }
+  @media (prefers-reduced-motion: reduce) { .orbs i { animation: none; } }
+</style>
+</head>
+<body>
+<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+<main class="center">
+  <div class="cards">
+    <div class="glass cc"><div style="display:flex;justify-content:space-between"><span class="chip"></span><b>VISA</b></div><div class="num">4821 •••• •••• 0427</div><div class="row2"><span>ALEX MORGAN</span><span>09/29</span></div></div>
+    <div class="glass profile"><div class="av"></div><h3>Alex Morgan</h3><p>Product designer · Lisbon</p><button>Follow</button></div>
+    <div class="glass stats"><span style="opacity:.7">Revenue</span><b>$48.2k</b><span style="color:#86efac;font-size:14px">▲ 12.4%</span>
+      <svg viewBox="0 0 200 60" aria-hidden="true"><path d="M0 50 C20 45 30 30 50 34 S80 50 100 30 S140 8 160 18 S190 10 200 4" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+  </div>
+</main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

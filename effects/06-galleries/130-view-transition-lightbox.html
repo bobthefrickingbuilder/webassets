@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shared-element Lightbox</title>
+<meta name="description" content="Clicking a thumbnail morphs it into a full-screen lightbox using the View Transitions API (with a FLIP fallback), plus caption fade, arrow-key navigation and Escape to close.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; width: min(1000px, 94vw); padding: 90px 0 40px; }
+  .thumbs button { border: 0; padding: 0; border-radius: 12px; overflow: hidden; cursor: zoom-in; aspect-ratio: 1; background: none; }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
+  .thumbs button:hover img { transform: scale(1.05); }
+  .lightbox { position: fixed; inset: 0; z-index: 100; background: rgb(5 6 10 / .92); display: none; place-items: center; padding: 5vh 5vw; }
+  .lightbox.open { display: grid; }
+  .lightbox img { max-width: 100%; max-height: 80vh; border-radius: 12px; box-shadow: 0 30px 80px #000; }
+  .lightbox .cap { margin-top: 14px; text-align: center; color: #cbd5e1; view-transition-name: lb-cap; }
+  .lightbox .x, .lightbox .pv, .lightbox .nx { position: absolute; border: 0; background: rgb(255 255 255 / .1); color: #fff; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+  .lightbox .x { top: 20px; right: 20px; } .lightbox .pv { left: 20px; top: 50%; } .lightbox .nx { right: 20px; top: 50%; }
+  ::view-transition-group(*) { animation-duration: .45s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:0"><div class="thumbs"></div></main>
+<div class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <figure style="margin:0;text-align:center"><img alt=""><figcaption class="cap"></figcaption></figure>
+  <button class="pv" aria-label="Previous">←</button><button class="nx" aria-label="Next">→</button><button class="x" aria-label="Close">✕</button>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const captions = ["Morning fog", "Glass coast", "Copper hills", "Green hour", "Rose dusk", "Blue night", "Second sun", "Ash and gold"];
+  const thumbs = document.querySelector(".thumbs"), lb = document.querySelector(".lightbox"), big = lb.querySelector("img"), cap = lb.querySelector(".cap");
+  const srcs = captions.map((_, i) => Demo.artURL(1200, 800, i));
+  captions.forEach((c, i) => thumbs.insertAdjacentHTML("beforeend", `<button data-i="${i}" aria-label="Open ${c}"><img src="${srcs[i]}" alt="${c}"></button>`));
+  let cur = -1, opener = null;
+  const vt = (fn) => (document.startViewTransition && !Demo.reduced ? document.startViewTransition(fn).finished : Promise.resolve(fn()));
+
+  function open(i) {
+    const thumb = thumbs.querySelector(`[data-i="${i}"] img`);
+    opener = thumbs.querySelector(`[data-i="${i}"]`);
+    // The same view-transition-name moves from the thumbnail to the big image, so the browser morphs between them.
+    thumb.style.viewTransitionName = "lb-img";
+    vt(() => {
+      thumb.style.viewTransitionName = "";
+      big.src = srcs[i]; big.alt = captions[i]; cap.textContent = captions[i];
+      big.style.viewTransitionName = "lb-img";
+      lb.classList.add("open"); cur = i;
+    }).then(() => lb.querySelector(".x").focus());
+  }
+  function close() {
+    const thumb = thumbs.querySelector(`[data-i="${cur}"] img`);
+    vt(() => {
+      big.style.viewTransitionName = ""; thumb.style.viewTransitionName = "lb-img";
+      lb.classList.remove("open");
+    }).then(() => { thumb.style.viewTransitionName = ""; opener?.focus(); cur = -1; });
+  }
+  function nav(d) {
+    const i = (cur + d + srcs.length) % srcs.length;
+    vt(() => { big.src = srcs[i]; big.alt = captions[i]; cap.textContent = captions[i]; cur = i; });
+  }
+  thumbs.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) open(+b.dataset.i); });
+  lb.querySelector(".x").onclick = close;
+  lb.querySelector(".pv").onclick = () => nav(-1); lb.querySelector(".nx").onclick = () => nav(1);
+  lb.addEventListener("click", (e) => { if (e.target === lb) close(); });
+  addEventListener("keydown", (e) => { if (cur < 0) return; if (e.key === "Escape") close(); if (e.key === "ArrowLeft") nav(-1); if (e.key === "ArrowRight") nav(1); });
+</script>
+</body>
+</html>

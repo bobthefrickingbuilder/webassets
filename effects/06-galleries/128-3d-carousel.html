@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Cylinder Carousel</title>
+<meta name="description" content="Cards arranged around a CSS 3D cylinder. Drag to spin with momentum, it snaps to the nearest card, and arrow buttons or keys step through. Faces behind dim out.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .stage { perspective: 1400px; width: 100%; height: 60vh; display: grid; place-items: center; touch-action: pan-y; cursor: grab; user-select: none; }
+  .ring { position: relative; width: 240px; height: 320px; transform-style: preserve-3d; }
+  .ring .card { position: absolute; inset: 0; border-radius: 18px; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 16px; font-weight: 700; font-size: 20px;
+                box-shadow: 0 20px 40px rgb(0 0 0 / .5); transition: filter .3s; backface-visibility: hidden; }
+  .nav { display: flex; gap: 12px; }
+  .nav button { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; font-size: 18px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack" style="width:100%">
+  <div class="stage" tabindex="0" aria-roledescription="carousel" aria-label="Destinations"><div class="ring"></div></div>
+  <div class="nav"><button aria-label="Previous">←</button><button aria-label="Next">→</button></div>
+  <p class="hint" aria-live="polite"></p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const names = ["Lisbon", "Kyoto", "Reykjavík", "Cusco", "Marrakesh", "Hobart", "Tbilisi", "Oaxaca", "Bergen", "Hanoi"];
+  const N = names.length, ring = document.querySelector(".ring"), stage = document.querySelector(".stage"), status = document.querySelector("[aria-live]");
+  const step = 360 / N;
+  const radius = Math.round(240 / 2 / Math.tan(Math.PI / N)) + 30;   // spacing so neighbours don't overlap
+  const cards = names.map((n, i) => {
+    const c = document.createElement("div"); c.className = "card";
+    c.style.backgroundImage = `linear-gradient(transparent 55%, rgb(0 0 0 / .6)), url(${Demo.artURL(480, 640, i)})`;
+    c.style.transform = `rotateY(${i * step}deg) translateZ(${radius}px)`;
+    c.textContent = n; ring.appendChild(c); return c;
+  });
+  let angle = 0, target = 0, vel = 0, dragging = false, lx = 0;
+  const current = () => ((Math.round(-target / step) % N) + N) % N;
+  function snap() { target = Math.round(target / step) * step; status.textContent = `${current() + 1} of ${N}: ${names[current()]}`; }
+  stage.addEventListener("pointerdown", (e) => { dragging = true; lx = e.clientX; vel = 0; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", (e) => { if (!dragging) return; const d = (e.clientX - lx) * 0.25; target += d; vel = d; lx = e.clientX; });
+  stage.addEventListener("pointerup", () => { dragging = false; target += vel * 8; snap(); });
+  const [prev, next] = document.querySelectorAll(".nav button");
+  prev.onclick = () => { target += step; snap(); }; next.onclick = () => { target -= step; snap(); };
+  stage.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") prev.onclick(); if (e.key === "ArrowRight") next.onclick(); });
+  (function loop() {
+    angle += (target - angle) * (dragging ? 0.5 : 0.08);
+    ring.style.transform = `translateZ(${-radius}px) rotateY(${angle}deg)`;
+    cards.forEach((c, i) => {
+      // Dim cards by how far they face away from the viewer.
+      const a = ((i * step + angle) % 360 + 360) % 360, facing = Math.cos(a * Math.PI / 180);
+      c.style.filter = `brightness(${0.35 + Math.max(0, facing) * 0.65})`;
+    });
+    requestAnimationFrame(loop);
+  })();
+  snap();
+</script>
+</body>
+</html>

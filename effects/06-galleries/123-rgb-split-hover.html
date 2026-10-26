@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RGB Split Image Hover</title>
+<meta name="description" content="Images separate into red, green and blue channel layers that drift apart with pointer velocity, recombining when still. SVG colour-matrix filters plus screen blending.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .rgb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; width: min(1000px, 92vw); }
+  .rgb { position: relative; aspect-ratio: 4/5; border-radius: 16px; overflow: hidden; background: #000; isolation: isolate; }
+  .rgb .ch { position: absolute; inset: -4%; background-size: cover; background-position: center; mix-blend-mode: screen; will-change: transform; }
+  .rgb .r { filter: url(#only-r); } .rgb .g { filter: url(#only-g); } .rgb .b { filter: url(#only-b); }
+  .rgb figcaption { position: absolute; left: 16px; bottom: 14px; z-index: 2; font-weight: 600; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="only-r"><feColorMatrix values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter>
+  <filter id="only-g"><feColorMatrix values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter>
+  <filter id="only-b"><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/></filter>
+</svg>
+<main class="center"><div class="rgb-grid"></div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const grid = document.querySelector(".rgb-grid");
+  ["Signal", "Channel", "Spectrum"].forEach((name, i) => {
+    const url = Demo.artURL(520, 650, i + 3);
+    grid.insertAdjacentHTML("beforeend", `<figure class="rgb" style="margin:0"><div class="ch r" style="background-image:url(${url})"></div><div class="ch g" style="background-image:url(${url})"></div><div class="ch b" style="background-image:url(${url})"></div><figcaption>${name}</figcaption></figure>`);
+  });
+  // Each card tracks pointer velocity; red leads, blue trails, so fast moves split the channels further.
+  document.querySelectorAll(".rgb").forEach((card) => {
+    const [r, g, b] = card.querySelectorAll(".ch");
+    let vx = 0, vy = 0, lx = null, ly = null, ox = 0, oy = 0, raf = null;
+    card.addEventListener("pointermove", (e) => {
+      if (lx !== null) { vx += (e.clientX - lx) * 0.6; vy += (e.clientY - ly) * 0.6; }
+      lx = e.clientX; ly = e.clientY;
+      if (!raf) raf = requestAnimationFrame(tick);
+    });
+    card.addEventListener("pointerleave", () => { lx = ly = null; });
+    function tick() {
+      ox += (vx - ox) * 0.2; oy += (vy - oy) * 0.2;
+      vx *= 0.85; vy *= 0.85;
+      const cx = Math.max(-30, Math.min(30, ox)), cy = Math.max(-30, Math.min(30, oy));
+      r.style.transform = `translate(${cx}px, ${cy}px)`;
+      b.style.transform = `translate(${-cx}px, ${-cy}px)`;
+      g.style.transform = `translate(${cx * 0.2}px, ${cy * 0.2}px) scale(${1 + Math.hypot(cx, cy) * 0.002})`;
+      raf = Math.abs(ox) + Math.abs(oy) + Math.abs(vx) + Math.abs(vy) > 0.05 ? requestAnimationFrame(tick) : null;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infinite Draggable Canvas Gallery</title>
+<meta name="description" content="Pan an endless wall of images in any direction with drag inertia or the wheel. Tiles wrap around so the canvas never ends, and only a fixed pool of DOM nodes is used.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  html, body { overflow: hidden; height: 100%; }
+  .wall { position: fixed; inset: 0; cursor: grab; touch-action: none; user-select: none; }
+  .wall.drag { cursor: grabbing; }
+  .cell { position: absolute; left: 0; top: 0; padding: 12px; will-change: transform; }
+  .cell div { width: 100%; height: 100%; border-radius: 14px; background-size: cover; background-position: center; transition: transform .4s; box-shadow: 0 10px 30px rgb(0 0 0 / .35); }
+  .wall:not(.drag) .cell div:hover { transform: scale(1.04); }
+  .help { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgb(0 0 0 / .6); font-size: 13px; color: #cbd5e1; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wall" aria-label="Infinite image wall. Drag or scroll to explore."></div>
+<div class="help">Drag · throw · scroll in any direction</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const wall = document.querySelector(".wall");
+  const CW = 260, CH = 320;                       // cell size
+  const IMAGES = Array.from({ length: 12 }, (_, i) => Demo.artURL(260, 320, i));
+  let cols, rows, cells = [];
+  let x = 0, y = 0, vx = 0, vy = 0, dragging = false, lx = 0, ly = 0;
+  function build() {
+    // Enough cells to cover the viewport plus one spare row/column on each side.
+    cols = Math.ceil(innerWidth / CW) + 2; rows = Math.ceil(innerHeight / CH) + 2;
+    wall.replaceChildren(); cells = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const el = document.createElement("div"); el.className = "cell";
+      el.style.width = CW + "px"; el.style.height = CH + "px";
+      el.innerHTML = "<div></div>";
+      wall.appendChild(el); cells.push({ el, img: el.firstChild, c, r, key: "" });
+    }
+  }
+  function render() {
+    const W = cols * CW, H = rows * CH;
+    for (const cell of cells) {
+      // Position wraps with modulo; the world tile index picks the image so content is consistent.
+      const px = ((cell.c * CW + x) % W + W) % W - CW, py = ((cell.r * CH + y) % H + H) % H - CH;
+      const wx = Math.round((px - x) / CW), wy = Math.round((py - y) / CH);
+      const key = wx + "," + wy;
+      if (key !== cell.key) {
+        cell.key = key;
+        const idx = ((wx * 7 + wy * 13) % IMAGES.length + IMAGES.length) % IMAGES.length;
+        cell.img.style.backgroundImage = `url(${IMAGES[idx]})`;
+      }
+      // Offset odd columns for a staggered, less grid-like wall.
+      const stagger = (((wx % 2) + 2) % 2) * CH * 0.35;
+      cell.el.style.transform = `translate3d(${px}px, ${py + stagger}px, 0)`;
+    }
+  }
+  wall.addEventListener("pointerdown", (e) => { dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0; wall.classList.add("drag"); wall.setPointerCapture(e.pointerId); });
+  wall.addEventListener("pointermove", (e) => { if (!dragging) return; vx = e.clientX - lx; vy = e.clientY - ly; x += vx; y += vy; lx = e.clientX; ly = e.clientY; });
+  wall.addEventListener("pointerup", () => { dragging = false; wall.classList.remove("drag"); });
+  wall.addEventListener("wheel", (e) => { e.preventDefault(); vx -= e.deltaX * 0.15; vy -= e.deltaY * 0.15; }, { passive: false });
+  addEventListener("keydown", (e) => { const k = { ArrowLeft: [40, 0], ArrowRight: [-40, 0], ArrowUp: [0, 40], ArrowDown: [0, -40] }[e.key]; if (k) { vx += k[0] * 0.4; vy += k[1] * 0.4; } });
+  (function loop() {
+    if (!dragging) { x += vx; y += vy; vx *= 0.94; vy *= 0.94; }    // inertia after a throw
+    render();
+    requestAnimationFrame(loop);
+  })();
+  addEventListener("resize", () => { build(); render(); });
+  build();
+</script>
+</body>
+</html>

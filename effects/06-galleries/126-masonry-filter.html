@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Filterable Masonry with FLIP</title>
+<meta name="description" content="A masonry grid whose items glide to their new positions when filtered or shuffled, using the FLIP technique (First, Last, Invert, Play) with the Web Animations API.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .wrap { width: min(1100px, 94vw); padding: 90px 0 60px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filters button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+  /* Masonry via CSS grid with dense packing and row spans computed from aspect ratio. */
+  .masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-auto-rows: 10px; grid-auto-flow: dense; gap: 0 14px; }
+  .tile { border-radius: 14px; background-size: cover; background-position: center; margin-bottom: 14px; position: relative; overflow: hidden; }
+  .tile span { position: absolute; left: 10px; bottom: 8px; font: 600 11px var(--mono); background: rgb(0 0 0 / .5); padding: 3px 7px; border-radius: 5px; }
+  .tile[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="filters" role="group" aria-label="Filter"></div>
+  <div class="masonry" aria-live="polite"></div>
+</div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cats = ["landscape", "abstract", "night"];
+  const grid = document.querySelector(".masonry"), filters = document.querySelector(".filters");
+  const r = Demo.rng(9);
+  for (let i = 0; i < 24; i++) {
+    const h = 160 + Math.floor(r() * 220), cat = cats[i % 3];
+    const el = document.createElement("div");
+    el.className = "tile"; el.dataset.cat = cat;
+    el.style.gridRowEnd = `span ${Math.round((h + 14) / 10)}`;
+    el.style.backgroundImage = `url(${Demo.artURL(300, h, i)})`;
+    el.innerHTML = `<span>${cat}</span>`;
+    grid.appendChild(el);
+  }
+  // FLIP: record positions, change layout, then animate each tile from its old spot to the new one.
+  function flip(change) {
+    const tiles = [...grid.children];
+    const first = new Map(tiles.map((t) => [t, t.hidden ? null : t.getBoundingClientRect()]));
+    change();
+    for (const t of tiles) {
+      const a = first.get(t);
+      if (t.hidden) continue;
+      const b = t.getBoundingClientRect();
+      if (!a) { t.animate([{ opacity: 0, transform: "scale(.8)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "cubic-bezier(.2,.8,.2,1)" }); continue; }
+      const dx = a.left - b.left, dy = a.top - b.top;
+      if (dx || dy) t.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: Demo.reduced ? 1 : 550, easing: "cubic-bezier(.2,.8,.2,1)" });
+    }
+  }
+  ["all", ...cats, "shuffle ↻"].forEach((c, i) => {
+    const b = document.createElement("button"); b.textContent = c; b.setAttribute("aria-pressed", i === 0);
+    b.onclick = () => {
+      if (c.startsWith("shuffle")) { flip(() => [...grid.children].sort(() => Math.random() - .5).forEach((t) => grid.appendChild(t))); return; }
+      filters.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      flip(() => [...grid.children].forEach((t) => (t.hidden = c !== "all" && t.dataset.cat !== c)));
+    };
+    filters.appendChild(b);
+  });
+</script>
+</body>
+</html>

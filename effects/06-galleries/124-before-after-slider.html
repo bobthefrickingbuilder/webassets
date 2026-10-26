@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Before / After Comparison Slider</title>
+<meta name="description" content="Drag the handle to compare two images. A native range input drives the clip-path, so it works with keyboard, touch and screen readers for free.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .compare { --pos: 50%; position: relative; width: min(900px, 92vw); aspect-ratio: 16/10; border-radius: 18px; overflow: hidden; user-select: none; }
+  .compare .img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .compare .after { clip-path: inset(0 0 0 var(--pos)); }
+  .compare .before { filter: grayscale(1) contrast(1.1) brightness(.8); }
+  .compare .line { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; margin-left: -1.5px; background: #fff; pointer-events: none; box-shadow: 0 0 12px rgb(0 0 0 / .5); }
+  .compare .knob { position: absolute; top: 50%; left: var(--pos); width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-weight: 700; pointer-events: none; box-shadow: 0 6px 20px rgb(0 0 0 / .4); transition: transform .2s; }
+  .compare:active .knob { transform: scale(.9); }
+  .compare .tag { position: absolute; top: 14px; padding: 4px 10px; border-radius: 6px; background: rgb(0 0 0 / .55); font: 600 12px var(--mono); }
+  .compare .tag.l { left: 14px; } .compare .tag.r { right: 14px; }
+  /* The real control: an invisible full-size range input on top. */
+  .compare input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .compare input:focus-visible ~ .knob { outline: 3px solid var(--accent-2); outline-offset: 3px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="compare">
+    <div class="img before"></div><div class="img after"></div>
+    <span class="tag l">BEFORE</span><span class="tag r">AFTER</span>
+    <input type="range" min="0" max="100" value="50" step="0.1" aria-label="Comparison position">
+    <div class="line"></div><div class="knob" aria-hidden="true">⇔</div>
+  </div>
+  <p class="hint">Drag, click anywhere, or use arrow keys.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const box = document.querySelector(".compare"), input = box.querySelector("input");
+  const url = `url(${Demo.artURL(1400, 875, 2)})`;
+  box.querySelectorAll(".img").forEach((el) => (el.style.backgroundImage = url));
+  input.addEventListener("input", () => box.style.setProperty("--pos", input.value + "%"));
+</script>
+</body>
+</html>

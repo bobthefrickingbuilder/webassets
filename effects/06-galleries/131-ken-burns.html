@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ken Burns Slideshow</title>
+<meta name="description" content="A documentary-style hero slideshow: each photo slowly pans and zooms toward a random focal point while cross-fading to the next, with a progress indicator and pause on hover.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .kb { position: fixed; inset: 0; overflow: hidden; background: #000; }
+  .kb .slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.6s ease; will-change: transform, opacity; }
+  .kb .slide.on { opacity: 1; }
+  .kb .caption { position: absolute; left: 6vw; bottom: 12vh; max-width: 600px; }
+  .kb .caption h1 { font-size: clamp(40px, 7vw, 96px); letter-spacing: -.04em; margin: 0; text-shadow: 0 4px 30px rgb(0 0 0 / .5); }
+  .kb .bars { position: absolute; left: 6vw; bottom: 6vh; display: flex; gap: 6px; }
+  .kb .bars i { width: 40px; height: 3px; background: rgb(255 255 255 / .25); border-radius: 2px; overflow: hidden; }
+  .kb .bars b { display: block; height: 100%; width: 0; background: #fff; }
+</style>
+</head>
+<body>
+<div class="kb" aria-roledescription="slideshow"><div class="caption"><h1 aria-live="polite"></h1></div><div class="bars"></div></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const titles = ["The long way north", "Where rivers end", "Fire season", "Green quiet", "Last light"];
+  const kb = document.querySelector(".kb"), h1 = kb.querySelector("h1"), bars = kb.querySelector(".bars");
+  const DUR = 6000;
+  const slides = titles.map((_, i) => {
+    const s = document.createElement("div"); s.className = "slide"; s.style.backgroundImage = `url(${Demo.artURL(1600, 1000, i)})`;
+    kb.insertBefore(s, kb.firstChild); bars.insertAdjacentHTML("beforeend", "<i><b></b></i>"); return s;
+  });
+  let i = -1, start = 0, paused = false, pausedAt = 0;
+  function show(n) {
+    const prev = slides[i];
+    i = (n + slides.length) % slides.length;
+    const s = slides[i];
+    // Random start/end framing; the animation runs longer than the slide so motion never stops mid-fade.
+    const fx = (Math.random() - .5) * 8, fy = (Math.random() - .5) * 8, z = Math.random() < .5;
+    s.getAnimations().forEach((a) => a.cancel());
+    if (!Demo.reduced) s.animate([{ transform: `scale(${z ? 1 : 1.18}) translate(${-fx}%, ${-fy}%)` }, { transform: `scale(${z ? 1.18 : 1}) translate(${fx}%, ${fy}%)` }], { duration: DUR + 1600, easing: "linear", fill: "forwards" });
+    s.classList.add("on"); if (prev && prev !== s) prev.classList.remove("on");
+    h1.textContent = titles[i];
+    bars.querySelectorAll("b").forEach((b, k) => (b.style.width = k < i ? "100%" : "0"));
+    start = performance.now();
+  }
+  kb.addEventListener("mouseenter", () => { paused = true; pausedAt = performance.now(); slides[i].getAnimations().forEach((a) => a.pause()); });
+  kb.addEventListener("mouseleave", () => { paused = false; start += performance.now() - pausedAt; slides[i].getAnimations().forEach((a) => a.play()); });
+  show(0);
+  (function loop(now) {
+    if (!paused) {
+      const p = Math.min(1, (now - start) / DUR);
+      bars.children[i].firstChild.style.width = p * 100 + "%";
+      if (p >= 1) show(i + 1);
+    }
+    requestAnimationFrame(loop);
+  })(performance.now());
+</script>
+</body>
+</html>

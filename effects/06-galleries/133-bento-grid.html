@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bento Grid with Hover Reveals</title>
+<meta name="description" content="An Apple-style bento feature grid with mixed tile sizes. Each tile has its own micro-animation on hover: a sliding chart, a spinning badge, a typing line, a growing image.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px; gap: 14px; width: min(1100px, 94vw); padding: 90px 0 40px; }
+  .b { position: relative; overflow: hidden; border-radius: 22px; background: #111319; border: 1px solid var(--line); padding: 22px; transition: border-color .3s, transform .4s cubic-bezier(.2,.8,.2,1); }
+  .b:hover { border-color: #3d4356; transform: translateY(-3px); }
+  .b h3 { margin: 0 0 6px; font-size: 20px; position: relative; z-index: 1; }
+  .b p { margin: 0; color: var(--muted); font-size: 14px; max-width: 30ch; position: relative; z-index: 1; }
+  .w2 { grid-column: span 2; } .h2 { grid-row: span 2; }
+  /* Tile 1: image grows */
+  .t-img .pic { position: absolute; inset: 40% -10% -10% 30%; border-radius: 14px; background-size: cover; transition: inset .6s cubic-bezier(.2,.8,.2,1); }
+  .t-img:hover .pic { inset: 30% -5% -5% 20%; }
+  /* Tile 2: bar chart rises */
+  .t-chart .bars { position: absolute; left: 22px; right: 22px; bottom: 18px; height: 90px; display: flex; gap: 8px; align-items: flex-end; }
+  .t-chart .bars i { flex: 1; border-radius: 6px 6px 2px 2px; background: linear-gradient(var(--accent-2), #0e7490); height: 20%; transition: height .6s cubic-bezier(.2,1.4,.4,1); }
+  .t-chart:hover .bars i { height: var(--h); }
+  .t-chart .bars i:nth-child(2) { transition-delay: .05s; } .t-chart .bars i:nth-child(3) { transition-delay: .1s; } .t-chart .bars i:nth-child(4) { transition-delay: .15s; } .t-chart .bars i:nth-child(5) { transition-delay: .2s; }
+  /* Tile 3: badge spins */
+  .t-badge .disc { position: absolute; right: -30px; bottom: -30px; width: 140px; height: 140px; border-radius: 50%; background: conic-gradient(var(--accent), var(--accent-3), var(--accent-2), var(--accent)); transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
+  .t-badge:hover .disc { transform: rotate(360deg) scale(1.1); }
+  /* Tile 4: code types */
+  .t-code code { position: absolute; left: 22px; bottom: 22px; font: 13px var(--mono); color: #86efac; white-space: nowrap; overflow: hidden; width: 0; border-right: 2px solid #86efac; transition: width 1.2s steps(26); }
+  .t-code:hover code { width: 26ch; }
+  /* Tile 5: glow follows hover */
+  .t-glow::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 80% 120%, rgb(124 92 255 / .5), transparent 60%); opacity: .3; transition: opacity .5s; }
+  .t-glow:hover::before { opacity: 1; }
+  .t-glow .big { position: absolute; right: 22px; bottom: 10px; font: 800 72px var(--font); letter-spacing: -.05em; transition: transform .5s; }
+  .t-glow:hover .big { transform: translateY(-8px); }
+  /* Tile 6: toggling dots */
+  .t-dots .grid { position: absolute; right: 22px; bottom: 22px; display: grid; grid-template-columns: repeat(6, 10px); gap: 6px; }
+  .t-dots .grid i { width: 10px; height: 10px; border-radius: 50%; background: #2a2e3b; transition: background .3s; transition-delay: calc(var(--d) * 30ms); }
+  .t-dots:hover .grid i { background: var(--accent-3); }
+  @media (max-width: 800px) { .bento { grid-template-columns: 1fr 1fr; } .w2 { grid-column: span 2; } }
+  @media (prefers-reduced-motion: reduce) { .b, .b * { transition-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:0">
+  <div class="bento">
+    <div class="b w2 h2 t-img"><h3>Gorgeous by default</h3><p>Hover the tiles: each has its own small animation.</p><div class="pic"></div></div>
+    <div class="b t-chart"><h3>Analytics</h3><p>Real-time</p><div class="bars"><i style="--h:40%"></i><i style="--h:70%"></i><i style="--h:55%"></i><i style="--h:90%"></i><i style="--h:65%"></i></div></div>
+    <div class="b t-badge"><h3>Certified</h3><p>SOC 2 Type II</p><div class="disc"></div></div>
+    <div class="b w2 t-code"><h3>Developer first</h3><p>One line to install.</p><code>$ npm i @web-assets/fx --save</code></div>
+    <div class="b t-glow"><h3>Uptime</h3><p>Last 90 days</p><span class="big">99.9</span></div>
+    <div class="b t-dots"><h3>Integrations</h3><p>36 and counting</p><div class="grid"></div></div>
+  </div>
+</main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector(".pic").style.backgroundImage = `url(${Demo.artURL(700, 500, 5)})`;
+  document.querySelector(".t-dots .grid").innerHTML = Array.from({ length: 24 }, (_, i) => `<i style="--d:${(i % 6) + Math.floor(i / 6)}"></i>`).join("");
+</script>
+</body>
+</html>

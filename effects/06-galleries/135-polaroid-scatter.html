@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Draggable Polaroid Table</title>
+<meta name="description" content="Polaroid photos scattered on a table: drag any of them around with throw inertia, the picked one lifts to the top, and double-click tidies the pile.">
+<meta name="tech" content="JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #5b3a29 radial-gradient(circle at 50% 40%, #7a4f37, #3b2418 80%); overflow: hidden; }
+  .table { position: fixed; inset: 0; }
+  .pol { position: absolute; left: 0; top: 0; width: 200px; padding: 12px 12px 44px; background: #fbfaf6; border-radius: 3px; cursor: grab; touch-action: none; user-select: none;
+         box-shadow: 0 4px 10px rgb(0 0 0 / .3); transition: box-shadow .2s; will-change: transform; }
+  .pol.lift { cursor: grabbing; box-shadow: 0 30px 50px rgb(0 0 0 / .45); }
+  .pol .photo { aspect-ratio: 1; background-size: cover; background-position: center; filter: saturate(.85) contrast(1.05) sepia(.1); }
+  .pol .label { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font: 22px "Segoe Script", "Bradley Hand", cursive; color: #333; }
+  .help { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; color: #f3d9c6; font-size: 14px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="table" aria-label="Photos on a table"></div>
+<p class="help">Drag and throw the photos · double-click to tidy up</p>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const table = document.querySelector(".table");
+  const labels = ["summer '19", "road trip", "the lake", "mom's garden", "first snow", "tokyo", "best day", "us ♥"];
+  let z = 1;
+  const pols = labels.map((l, i) => {
+    const el = document.createElement("div"); el.className = "pol";
+    el.innerHTML = `<div class="photo" style="background-image:url(${Demo.artURL(300, 300, i)})"></div><div class="label">${l}</div>`;
+    table.appendChild(el);
+    const p = { el, x: innerWidth / 2 - 112 + (Math.random() - .5) * innerWidth * 0.6, y: innerHeight / 2 - 140 + (Math.random() - .5) * innerHeight * 0.5, r: (Math.random() - .5) * 40, vx: 0, vy: 0, vr: 0, drag: false };
+    el.style.zIndex = z++;
+    return p;
+  });
+  const draw = (p) => (p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg) scale(${p.drag ? 1.06 : 1})`);
+  pols.forEach((p) => {
+    let ox = 0, oy = 0, lx = 0, ly = 0;
+    p.el.addEventListener("pointerdown", (e) => {
+      p.drag = true; p.el.classList.add("lift"); p.el.style.zIndex = z++;
+      ox = e.clientX - p.x; oy = e.clientY - p.y; lx = e.clientX; ly = e.clientY; p.vx = p.vy = 0;
+      p.el.setPointerCapture(e.pointerId);
+    });
+    p.el.addEventListener("pointermove", (e) => {
+      if (!p.drag) return;
+      p.vx = e.clientX - lx; p.vy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+      p.x = e.clientX - ox; p.y = e.clientY - oy;
+      p.vr = p.vx * 0.15;             // photos swing slightly in the direction of travel
+    });
+    p.el.addEventListener("pointerup", () => { p.drag = false; p.el.classList.remove("lift"); });
+  });
+  table.addEventListener("dblclick", () => pols.forEach((p, i) => { p.x = innerWidth / 2 - 112 + (i - pols.length / 2) * 14; p.y = innerHeight / 2 - 150 + (i % 2) * 6; p.r = (i - pols.length / 2) * 3; p.vx = p.vy = 0; }));
+  (function loop() {
+    for (const p of pols) {
+      if (!p.drag) {
+        p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92;     // slide to a stop on the table
+        p.x = Math.max(-100, Math.min(innerWidth - 120, p.x)); p.y = Math.max(-100, Math.min(innerHeight - 160, p.y));
+      }
+      p.r += p.vr; p.vr *= 0.85;
+      draw(p);
+    }
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

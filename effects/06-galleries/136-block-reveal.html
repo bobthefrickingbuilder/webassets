@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Curtain Block Reveal</title>
+<meta name="description" content="Images and headings revealed by a coloured block that wipes across, then retreats to uncover the content, triggered as each element scrolls into view.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .story { max-width: 1000px; margin: 0 auto; padding: 20vh 16px; display: grid; gap: 20vh; }
+  .pair { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
+  .pair:nth-child(even) { grid-template-columns: 1fr 1.2fr; }
+  .pair:nth-child(even) .rv-img { order: 2; }
+  .rv { position: relative; overflow: hidden; display: block; }
+  .rv > .content { opacity: 0; }
+  .rv::after { content: ""; position: absolute; inset: 0; background: var(--c, var(--accent)); transform: scaleX(0); transform-origin: left; }
+  .rv.in::after { animation: wipe 1.1s cubic-bezier(.77,0,.18,1) forwards; animation-delay: var(--delay, 0s); }
+  .rv.in > .content { animation: show 0s forwards; animation-delay: calc(var(--delay, 0s) + .55s); }
+  @keyframes wipe { 0% { transform: scaleX(0); transform-origin: left; } 50% { transform: scaleX(1); transform-origin: left; } 50.1% { transform-origin: right; } 100% { transform: scaleX(0); transform-origin: right; } }
+  @keyframes show { to { opacity: 1; } }
+  .rv-img .content { aspect-ratio: 4/3; border-radius: 6px; background-size: cover; background-position: center; }
+  .rv-img { border-radius: 6px; }
+  .txt h2 { font-size: clamp(32px, 5vw, 60px); letter-spacing: -.04em; margin: 0 0 12px; line-height: 1; }
+  .txt .rv { width: fit-content; }
+  .txt p { color: var(--muted); }
+  @media (max-width: 700px) { .pair, .pair:nth-child(even) { grid-template-columns: 1fr; } .pair:nth-child(even) .rv-img { order: 0; } }
+  @media (prefers-reduced-motion: reduce) { .rv > .content { opacity: 1; } .rv::after { display: none; } }
+</style>
+</head>
+<body>
+<div class="spacer">Scroll ↓</div>
+<div class="story"></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const story = document.querySelector(".story");
+  const items = [["Chapter one", "#7c5cff"], ["The crossing", "#22d3ee"], ["New ground", "#f472b6"], ["Home again", "#facc15"]];
+  items.forEach(([t, c], i) => story.insertAdjacentHTML("beforeend", `
+    <section class="pair">
+      <div class="rv rv-img" style="--c:${c}"><div class="content" style="background-image:url(${Demo.artURL(800, 600, i + 1)})"></div></div>
+      <div class="txt">
+        <span class="rv" style="--c:${c};--delay:.15s"><h2 class="content">${t}</h2></span>
+        <span class="rv" style="--c:#2a2e3b;--delay:.3s"><p class="content">${Demo.lorem(28, i)}</p></span>
+      </div>
+    </section>`));
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.35 });
+  document.querySelectorAll(".rv").forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pixelate and Dissolve Transitions</title>
+<meta name="description" content="Two retro image transitions on canvas: the image melts into ever-larger pixels and resolves into the next one, or dissolves block by block in random order.">
+<meta name="tech" content="Canvas, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  canvas { width: min(900px, 92vw); aspect-ratio: 16/10; border-radius: 14px; image-rendering: pixelated; background: #000; }
+  .ctrl { display: flex; gap: 8px; }
+  .ctrl button { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <canvas width="960" height="600" aria-label="Slideshow"></canvas>
+  <div class="ctrl"><button data-fx="pixelate">Pixelate →</button><button data-fx="dissolve">Dissolve →</button></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const imgs = [0, 1, 2, 3, 4].map((s) => Demo.art(W, H, s));
+  let cur = 0, busy = false;
+  ctx.drawImage(imgs[0], 0, 0);
+  const small = document.createElement("canvas"), sctx = small.getContext("2d");
+  // Pixelate: draw tiny then scale up without smoothing. Block size peaks mid-transition where the swap happens.
+  function pixelated(img, block) {
+    small.width = Math.max(1, Math.ceil(W / block)); small.height = Math.max(1, Math.ceil(H / block));
+    sctx.drawImage(img, 0, 0, small.width, small.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(small, 0, 0, small.width, small.height, 0, 0, small.width * block, small.height * block);
+    ctx.imageSmoothingEnabled = true;
+  }
+  function run(fx) {
+    if (busy) return; busy = true;
+    const from = imgs[cur], to = imgs[(cur + 1) % imgs.length];
+    const start = performance.now(), DUR = Demo.reduced ? 1 : 1400;
+    const B = 24, cols = Math.ceil(W / B), rows = Math.ceil(H / B);
+    const order = Array.from({ length: cols * rows }, (_, i) => i).sort(() => Math.random() - .5);
+    let drawn = 0;
+    if (fx === "dissolve") ctx.drawImage(from, 0, 0);
+    (function tick(now) {
+      const t = Math.min(1, (now - start) / DUR);
+      if (fx === "pixelate") {
+        const k = t < .5 ? t * 2 : (1 - t) * 2;                 // 0 → 1 → 0
+        const block = Math.max(1, Math.round(Math.pow(k, 2) * 80));
+        pixelated(t < .5 ? from : to, block);
+      } else {
+        const target = Math.floor(order.length * t);
+        for (; drawn < target; drawn++) {
+          const id = order[drawn], x = (id % cols) * B, y = Math.floor(id / cols) * B;
+          ctx.drawImage(to, x, y, B, B, x, y, B, B);
+        }
+      }
+      if (t < 1) requestAnimationFrame(tick);
+      else { ctx.drawImage(to, 0, 0); cur = (cur + 1) % imgs.length; busy = false; }
+    })(start);
+  }
+  document.querySelectorAll("[data-fx]").forEach((b) => (b.onclick = () => run(b.dataset.fx)));
+</script>
+</body>
+</html>
