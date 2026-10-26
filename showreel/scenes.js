@@ -160,7 +160,16 @@ window.SHOWREEL_SCENES = {
   "139": [["wait", 1400], ["click", "button", null, 1200], ["wait", 600]],
   "140": [["move", ".holo@0.2,0.2"], ["move", ".holo@0.8,0.8", 1300], ["move", ".holo@0.8,0.2", 900], ["move", ".holo@0.2,0.8", 1100], ["move", "@0.85,0.5"], ["wait", 500]],
   // --- 07 Transitions & Navigation ---------------------------------------------------------------
-  "141": [["wait", 600], ["click", "a.item.feature", null, 2400], ["js", "history.back()"], ["wait", 1600]],
+  // Headless Chromium deadlocks drawing a cross-document view transition under frame control, so when
+  // recording, replay the same navigation as a same-document transition (same view-transition-names).
+  "141": [["wait", 600], ["js", `if (top.document.body.classList.contains("record")) document.addEventListener("click", async (e) => {
+    const a = e.target.closest("a[href]"); if (!a) return; e.preventDefault();
+    const url = new URL(a.getAttribute("href"), document.baseURI).href;
+    const doc = new DOMParser().parseFromString(await (await fetch(url)).text(), "text/html");
+    const base = doc.createElement("base"); base.href = url; doc.head.prepend(base);
+    await Promise.all([...doc.querySelectorAll("link[rel=stylesheet]")].map((l) => fetch(l.href).catch(() => {})));
+    document.startViewTransition(() => { document.head.replaceChildren(...doc.head.childNodes); document.body.replaceChildren(...doc.body.childNodes); });
+  }, true);`], ["click", "a.item.feature", null, 1800], ["scroll", "end", 700], ["click", "a.back", null, 1600]],
   "142": [["click", "nav a:nth-of-type(2)", null, 1300], ["click", "button:nth-of-type(2)", null, 200], ["click", "nav a:nth-of-type(3)", null, 1300], ["click", "button:nth-of-type(3)", null, 200], ["click", "nav a:nth-of-type(4)", null, 1300], ["click", "button:nth-of-type(4)", null, 200], ["click", "nav a:nth-of-type(1)", null, 1400]],
   "143": [["click", ".prod:nth-of-type(2)", null, 2000], ["click", ".close", null, 1300], ["click", ".prod:nth-of-type(5)", null, 1800]],
   "144": [["click", ".menu-btn", null, 1300], ["hover", "nav a:nth-of-type(2), a:nth-of-type(2)", 600], ["hover", "a:nth-of-type(4)", 600], ["key", "Escape", 1200]],

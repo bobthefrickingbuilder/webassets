@@ -156,7 +156,9 @@ const t0 = Date.now();
 async function frame(shot) {
   const expired = once("Emulation.virtualTimeBudgetExpired");
   await S("Emulation.setVirtualTimePolicy", { policy: "advance", budget: dt });
-  await expired;
+  // A cross-document view transition needs a drawn frame before the navigation
+  // commits, while virtual time stays paused until it does: don't wait forever.
+  await Promise.race([expired, new Promise((r) => setTimeout(r, 3000))]);
   ticks += dt;
   const r = await S("HeadlessExperimental.beginFrame", { frameTimeTicks: ticks, interval: dt, ...(shot ? { screenshot: { format: "jpeg", quality: 92 } } : {}) });
   return r.screenshotData ? Buffer.from(r.screenshotData, "base64") : null;
