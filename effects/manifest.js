@@ -1992,5 +1992,197 @@ window.EFFECTS = [
   "complexity": 1,
   "category": "08-loaders",
   "path": "effects/08-loaders/168-typing-indicator.html"
+ },
+ {
+  "num": 169,
+  "title": "Liquid Glass Refraction",
+  "description": "Apple-style Liquid Glass: draggable panels bend the content behind them at their rounded edges using a generated SVG displacement map in backdrop-filter, with specular rims. Frosted fallback outside Chromium.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/169-liquid-glass.html"
+ },
+ {
+  "num": 170,
+  "title": "Gooey Merge Effect",
+  "description": "The classic blur-plus-contrast goo: a trail of blobs follows the cursor and melts together, and a floating action button oozes out its menu items.",
+  "tech": [
+   "CSS",
+   "SVG",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/170-gooey-blobs.html"
+ },
+ {
+  "num": 171,
+  "title": "Heat Haze and Water Distortion",
+  "description": "SVG feTurbulence noise drives feDisplacementMap to make content shimmer like heat over asphalt, or wobble like it's under water; the noise is animated by shifting its seed and frequency.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/171-heat-haze.html"
+ },
+ {
+  "num": 172,
+  "title": "Self-drawing Line Art",
+  "description": "A single-weight landscape illustration (mountains, sun, river, trees, birds) that draws itself stroke by stroke with staggered timing, then fills with soft colour.",
+  "tech": [
+   "SVG",
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/172-line-art-illustration.html"
+ },
+ {
+  "num": 173,
+  "title": "CSS-only 3D Objects",
+  "description": "Real 3D built from flat divs and transforms: a shaded cube, a triangular prism and a little isometric room with a window, bed and lamp. Drag to rotate the scene.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/173-css-3d-objects.html"
+ },
+ {
+  "num": 174,
+  "title": "Houdini Paint Worklets",
+  "description": "CSS Paint API backgrounds driven by registered custom properties: a squiggly border, seeded confetti and an animated ripple, with a canvas-rendered fallback where Houdini isn't supported.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/174-houdini-paint.html"
+ },
+ {
+  "num": 175,
+  "title": "@property Conic Widgets",
+  "description": "Registered custom properties make conic-gradients animatable: a donut chart that transitions between datasets, a countdown timer ring, and a gauge, with almost no JavaScript.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/175-property-conic-widgets.html"
+ },
+ {
+  "num": 176,
+  "title": "Duotone and Gradient-map Filters",
+  "description": "Spotify-style duotone and multi-stop gradient maps applied to any image with SVG feComponentTransfer tables, generated from colour pickers and switchable presets.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/176-duotone-filters.html"
+ },
+ {
+  "num": 177,
+  "title": "Clip-path Shape Morphing",
+  "description": "An image morphs between a hexagon, star, arrow, diamond, blob-ish octagon and a rectangle by transitioning CSS polygon() clip-paths that share the same number of points.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/177-clip-path-morph.html"
+ },
+ {
+  "num": 178,
+  "title": "Animated SVG Gradients and Patterns",
+  "description": "Native SVG animation (SMIL) with no JavaScript: gradient stops that shift colour and position, a scrolling striped pattern, a rotating dot pattern and a breathing radial gradient.",
+  "tech": [
+   "SVG"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/178-animated-svg-patterns.html"
+ },
+ {
+  "num": 179,
+  "title": "Paper Fold Letter",
+  "description": "A letter folded in thirds that unfolds panel by panel in 3D, with crease shading that deepens as each fold closes. Click to open and close.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/179-paper-fold.html"
+ },
+ {
+  "num": 180,
+  "title": "Shatter and Reassemble",
+  "description": "Click an image and it fractures into triangular shards (random Delaunay-style mesh via clip-path polygons) that fly outward from the impact point with spin, then fall back together.",
+  "tech": [
+   "CSS",
+   "JS"
+  ],
+  "complexity": 3,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/180-shatter.html"
+ },
+ {
+  "num": 181,
+  "title": "Ink Bleed Watercolour Reveal",
+  "description": "An image appears as if painted in watercolour: an SVG mask of growing circles is roughened by turbulence displacement so the edges bleed organically. Click to drop more ink.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/181-ink-bleed-reveal.html"
+ },
+ {
+  "num": 182,
+  "title": "Inverted Rounded Corners",
+  "description": "Cards with concave notches and tab-like cut-outs made purely with radial-gradient masks, so a badge or button can nest into a scooped corner. Includes a ticket stub with side notches.",
+  "tech": [
+   "CSS"
+  ],
+  "complexity": 1,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/182-inverted-corners.html"
+ },
+ {
+  "num": 183,
+  "title": "Scroll-driven SVG Morph",
+  "description": "A pinned shape morphs from blob to heart to star to droplet as you scroll, interpolating resampled outlines and colour in lockstep with the scroll position, with captions per stage.",
+  "tech": [
+   "SVG",
+   "JS"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/183-scroll-svg-morph.html"
+ },
+ {
+  "num": 184,
+  "title": "Halftone Dot Effect",
+  "description": "Print-style halftone two ways: a CSS-only trick (blur + dot pattern + contrast) and an accurate canvas renderer with CMYK-like rotated screens whose dot size follows brightness.",
+  "tech": [
+   "CSS",
+   "Canvas"
+  ],
+  "complexity": 2,
+  "category": "09-svg-css",
+  "path": "effects/09-svg-css/184-halftone.html"
  }
 ];

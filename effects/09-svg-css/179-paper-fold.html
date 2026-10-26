@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paper Fold Letter</title>
+<meta name="description" content="A letter folded in thirds that unfolds panel by panel in 3D, with crease shading that deepens as each fold closes. Click to open and close.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .letter-wrap { perspective: 1400px; cursor: pointer; }
+  .panel { width: min(440px, 86vw); height: 170px; background: #fbf7ef; color: #2b2116; padding: 24px 30px; position: relative; transform-style: preserve-3d; transition: transform 1s cubic-bezier(.6,0,.3,1); }
+  .panel::after { content: ""; position: absolute; inset: 0; pointer-events: none; transition: opacity 1s; opacity: 0; }
+  .p1 { transform-origin: 50% 100%; } .p3 { transform-origin: 50% 0; }
+  .p1::after { background: linear-gradient(transparent, rgb(0 0 0 / .45)); } .p3::after { background: linear-gradient(rgb(0 0 0 / .45), transparent); }
+  .p2 { box-shadow: 0 0 0 1px #e8e0cf; }
+  .folded .p1 { transform: rotateX(178deg); } .folded .p3 { transform: rotateX(-178deg); transition-delay: .5s; }
+  .folded .p1::after, .folded .p3::after { opacity: 1; }
+  .letter-wrap:not(.folded) .p1 { transition-delay: .5s; }
+  .panel h2 { margin: 0 0 8px; font-family: Georgia, serif; } .panel p { margin: 0; font-family: Georgia, serif; line-height: 1.6; font-size: 15px; }
+  .p1 .back, .p3 .back { position: absolute; inset: 0; background: #efe6d3; transform: rotateX(180deg); backface-visibility: hidden; display: grid; place-items: center; font: italic 22px Georgia, serif; color: #8a6d46; }
+  .p1 > :not(.back), .p3 > :not(.back) { backface-visibility: hidden; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="letter-wrap folded" role="button" tabindex="0" aria-expanded="false" aria-label="Folded letter. Activate to unfold.">
+    <div class="panel p1"><div class="back">To you ✉</div><h2>Dear reader,</h2><p>Every fold is just two transforms: a rotation around a hinge edge and a gradient that darkens the crease.</p></div>
+    <div class="panel p2"><p>The middle panel never moves. The top panel hinges on its bottom edge; the bottom panel hinges on its top edge and waits half a second before it folds over.</p></div>
+    <div class="panel p3"><div class="back">— with love</div><p>Click the letter again to fold it back up.</p><p style="text-align:right;margin-top:24px"><em>Yours, CSS</em></p></div>
+  </div>
+  <p class="hint">Click (or press Enter) to unfold.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const letter = document.querySelector(".letter-wrap");
+  const toggle = () => { const folded = letter.classList.toggle("folded"); letter.setAttribute("aria-expanded", !folded); };
+  letter.addEventListener("click", toggle);
+  letter.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), toggle()));
+  setTimeout(toggle, 900);
+</script>
+</body>
+</html>

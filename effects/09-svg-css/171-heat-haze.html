@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Heat Haze and Water Distortion</title>
+<meta name="description" content="SVG feTurbulence noise drives feDisplacementMap to make content shimmer like heat over asphalt, or wobble like it's under water; the noise is animated by shifting its seed and frequency.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .haze-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; width: min(1100px, 94vw); }
+  .panel { border-radius: 18px; overflow: hidden; position: relative; aspect-ratio: 4/3; }
+  .panel .inner { position: absolute; inset: -20px; background-size: cover; background-position: center; display: grid; place-items: center; }
+  .panel h2 { font-size: clamp(36px, 5vw, 64px); letter-spacing: -.04em; margin: 0; color: #fff; text-shadow: 0 4px 30px rgb(0 0 0 / .4); }
+  .heat .inner { filter: url(#heat); } .water .inner { filter: url(#water); }
+  .panel span { position: absolute; left: 14px; bottom: 12px; font: 600 12px var(--mono); background: rgb(0 0 0 / .5); padding: 4px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="heat"><feTurbulence id="t-heat" type="fractalNoise" baseFrequency="0.01 0.08" numOctaves="2" seed="1" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>
+  <filter id="water"><feTurbulence id="t-water" type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="30" xChannelSelector="R" yChannelSelector="B"/></filter>
+</svg>
+<main class="center"><div class="haze-row">
+  <div class="panel heat"><div class="inner"><h2>Mirage</h2></div><span>heat haze</span></div>
+  <div class="panel water"><div class="inner"><h2>Submerged</h2></div><span>underwater</span></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  document.querySelector(".heat .inner").style.backgroundImage = `url(${Demo.artURL(800, 600, 2)})`;
+  document.querySelector(".water .inner").style.backgroundImage = `url(${Demo.artURL(800, 600, 1)})`;
+  const heat = document.getElementById("t-heat"), water = document.getElementById("t-water");
+  // feTurbulence can't scroll, but nudging baseFrequency each frame makes the noise flow continuously.
+  (function loop(t) {
+    const s = t / 1000;
+    heat.setAttribute("baseFrequency", `${0.01 + Math.sin(s * 0.7) * 0.002} ${0.08 + Math.sin(s * 1.3) * 0.02}`);
+    water.setAttribute("baseFrequency", `${0.012 + Math.sin(s * 0.5) * 0.003} ${0.02 + Math.cos(s * 0.4) * 0.004}`);
+    if (!Demo.reduced) requestAnimationFrame(loop);
+  })(0);
+</script>
+</body>
+</html>

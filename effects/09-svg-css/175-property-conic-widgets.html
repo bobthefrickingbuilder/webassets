@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>@property Conic Widgets</title>
+<meta name="description" content="Registered custom properties make conic-gradients animatable: a donut chart that transitions between datasets, a countdown timer ring, and a gauge, with almost no JavaScript.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --a { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+  @property --b { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+  @property --c { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+  @property --t { syntax: "<number>"; inherits: true; initial-value: 1; }
+  @property --g { syntax: "<number>"; inherits: true; initial-value: 0; }
+  .widgets { display: flex; gap: 60px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .w { display: grid; gap: 14px; justify-items: center; }
+  /* Donut: three segments whose boundaries are typed percentages, so they interpolate smoothly. */
+  .donut { width: 200px; aspect-ratio: 1; border-radius: 50%; transition: --a 1s, --b 1s, --c 1s;
+           background: conic-gradient(#a78bfa 0 var(--a), #22d3ee 0 calc(var(--a) + var(--b)), #f472b6 0 calc(var(--a) + var(--b) + var(--c)), #262a36 0);
+           -webkit-mask: radial-gradient(farthest-side, transparent 58%, #000 59%); mask: radial-gradient(farthest-side, transparent 58%, #000 59%); }
+  .donut.d1 { --a: 45%; --b: 30%; --c: 25%; } .donut.d2 { --a: 20%; --b: 55%; --c: 15%; } .donut.d3 { --a: 70%; --b: 10%; --c: 20%; }
+  .w button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  /* Countdown: --t goes 1 → 0 linearly over 10s via a plain keyframe. */
+  .timer { width: 160px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; position: relative;
+           background: conic-gradient(var(--col) calc(var(--t) * 360deg), #262a36 0); --col: #4ade80; animation: count 10s linear infinite; }
+  .timer::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: var(--bg); }
+  .timer span { position: relative; font: 700 34px var(--mono); counter-reset: s calc(var(--t) * 10 + .5); }
+  .timer span::after { content: counter(s); }
+  @keyframes count { from { --t: 1; } 70% { --col: #4ade80; } 85% { --col: #facc15; } to { --t: 0; --col: #ef4444; } }
+  /* Gauge: half donut */
+  .gauge { width: 220px; height: 110px; overflow: hidden; position: relative; }
+  .gauge::before { content: ""; position: absolute; inset: 0 0 -110px; border-radius: 50%; background: conic-gradient(from -90deg, #22d3ee 0, #a3e635 calc(var(--g) * 90deg), #f43f5e calc(var(--g) * 180deg), #262a36 0 180deg, transparent 0);
+                   -webkit-mask: radial-gradient(farthest-side, transparent 66%, #000 67%); mask: radial-gradient(farthest-side, transparent 66%, #000 67%); transition: --g 1.2s cubic-bezier(.2,.8,.2,1); }
+  .gauge b { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 30px; counter-reset: g calc(var(--g) * 100 + .5); }
+  .gauge b::after { content: counter(g) "%"; }
+  .gauge { --g: .62; } .gauge:hover { --g: .93; }
+  @media (prefers-reduced-motion: reduce) { .timer { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="widgets">
+  <div class="w"><div class="donut d1" role="img" aria-label="Donut chart"></div><button onclick="const d=document.querySelector('.donut');const n=(+d.className.slice(-1))%3+1;d.className='donut d'+n">Next dataset</button></div>
+  <div class="w"><div class="timer" role="timer" aria-label="Ten second countdown"><span></span></div><small class="hint">CSS-only countdown</small></div>
+  <div class="w"><div class="gauge" role="meter" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="CPU"><b></b></div><small class="hint">Hover the gauge</small></div>
+</div></main>
+<script src="../../assets/demo.js"></script>
+</body>
+</html>

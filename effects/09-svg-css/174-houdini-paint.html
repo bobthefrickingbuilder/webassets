@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Houdini Paint Worklets</title>
+<meta name="description" content="CSS Paint API backgrounds driven by registered custom properties: a squiggly border, seeded confetti and an animated ripple, with a canvas-rendered fallback where Houdini isn't supported.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="3">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  @property --wiggle { syntax: "<number>"; inherits: false; initial-value: 0; }
+  @property --ripple { syntax: "<number>"; inherits: false; initial-value: 0; }
+  @property --seed { syntax: "<integer>"; inherits: false; initial-value: 1; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; width: min(1000px, 94vw); }
+  .tile { aspect-ratio: 4/3; border-radius: 18px; display: grid; place-items: center; font-weight: 700; font-size: 22px; position: relative; }
+  .tile small { position: absolute; bottom: 12px; font: 12px var(--mono); color: var(--muted); }
+  .squiggle { --wiggle: 0; background: paint(squiggle); animation: wig 2s linear infinite; }
+  @keyframes wig { to { --wiggle: 6.283; } }
+  .confetti { --seed: 1; background: #111319 paint(confetti); cursor: pointer; }
+  .ripple { --ripple: 0; background: #0b1220 paint(ripple); animation: rip 3s ease-out infinite; }
+  @keyframes rip { to { --ripple: 1; } }
+  .tile.fb { background-size: 100% 100%; }
+  @media (prefers-reduced-motion: reduce) { .squiggle, .ripple { animation: none; } }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="tiles">
+    <div class="tile squiggle">Squiggle border<small>paint(squiggle)</small></div>
+    <div class="tile confetti" tabindex="0" role="button" aria-label="Reseed confetti">Click to reseed<small>paint(confetti)</small></div>
+    <div class="tile ripple">Ripples<small>paint(ripple)</small></div>
+  </div>
+  <p class="hint" aria-live="polite"></p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  // Worklet source lives inline and is loaded from a Blob URL, so this page stays a single file.
+  const WORKLET = `
+    function rng(seed){ let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
+    registerPaint("squiggle", class {
+      static get inputProperties(){ return ["--wiggle"]; }
+      paint(ctx, size, props){
+        const t = parseFloat(props.get("--wiggle")) || 0, pad = 14, w = size.width - pad * 2, h = size.height - pad * 2;
+        ctx.lineWidth = 4; ctx.strokeStyle = "#f472b6"; ctx.lineJoin = "round"; ctx.beginPath();
+        const per = w * 2 + h * 2, steps = 260;
+        for (let i = 0; i <= steps; i++) {
+          let d = (i / steps) * per, x, y, nx = 0, ny = 0;
+          if (d < w) { x = pad + d; y = pad; ny = -1; } else if (d < w + h) { x = pad + w; y = pad + d - w; nx = 1; }
+          else if (d < 2 * w + h) { x = pad + w - (d - w - h); y = pad + h; ny = 1; } else { x = pad; y = pad + h - (d - 2 * w - h); nx = -1; }
+          const off = Math.sin(d * 0.12 + t * 3) * 4;
+          i ? ctx.lineTo(x + nx * off, y + ny * off) : ctx.moveTo(x + nx * off, y + ny * off);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+    });
+    registerPaint("confetti", class {
+      static get inputProperties(){ return ["--seed"]; }
+      paint(ctx, size, props){
+        const r = rng(parseInt(props.get("--seed")) * 7919), cols = ["#f472b6", "#a78bfa", "#22d3ee", "#facc15", "#4ade80"];
+        for (let i = 0; i < 90; i++) {
+          ctx.save(); ctx.translate(r() * size.width, r() * size.height); ctx.rotate(r() * 6.28);
+          ctx.fillStyle = cols[Math.floor(r() * cols.length)];
+          r() < .5 ? ctx.fillRect(-6, -2, 12, 4) : (ctx.beginPath(), ctx.arc(0, 0, 3, 0, 6.28), ctx.fill());
+          ctx.restore();
+        }
+      }
+    });
+    registerPaint("ripple", class {
+      static get inputProperties(){ return ["--ripple"]; }
+      paint(ctx, size, props){
+        const p = parseFloat(props.get("--ripple")) || 0, cx = size.width / 2, cy = size.height / 2, max = Math.hypot(cx, cy);
+        for (let k = 0; k < 4; k++) {
+          const q = (p + k / 4) % 1;
+          ctx.strokeStyle = "rgba(34,211,238," + (1 - q) + ")"; ctx.lineWidth = 3 * (1 - q) + .5;
+          ctx.beginPath(); ctx.arc(cx, cy, q * max, 0, 6.28); ctx.stroke();
+        }
+      }
+    });`;
+  const hint = document.querySelector(".hint");
+  const confetti = document.querySelector(".confetti");
+  let seed = 1;
+  if ("paintWorklet" in CSS) {
+    CSS.paintWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })));
+    hint.textContent = "Rendering with the CSS Paint API.";
+    const reseed = () => confetti.style.setProperty("--seed", ++seed);
+    confetti.addEventListener("click", reseed); confetti.addEventListener("keydown", (e) => e.key === "Enter" && reseed());
+  } else {
+    // Fallback: run the same painters against a 2D canvas and use the result as a background image.
+    hint.textContent = "This browser lacks the CSS Paint API, so a canvas fallback draws the same painters.";
+    const painters = {};
+    new Function("registerPaint", WORKLET)((name, cls) => (painters[name] = cls));
+    document.querySelectorAll(".tile").forEach((tile) => {
+      const name = [...tile.classList].find((c) => painters[c]); if (!name) return;
+      tile.classList.add("fb");
+      const c = document.createElement("canvas"), g = c.getContext("2d");
+      const props = { get: (p) => (p === "--seed" ? seed : p === "--wiggle" ? (performance.now() / 320) % 6.283 : (performance.now() / 3000) % 1) };
+      const render = () => {
+        c.width = tile.clientWidth; c.height = tile.clientHeight;
+        new painters[name]().paint(g, { width: c.width, height: c.height }, props);
+        tile.style.backgroundImage = `url(${c.toDataURL()})`;
+      };
+      render();
+      if (name !== "confetti" && !Demo.reduced) setInterval(render, 66);
+      if (name === "confetti") tile.addEventListener("click", () => { seed++; render(); });
+    });
+  }
+</script>
+</body>
+</html>

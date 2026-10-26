@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clip-path Shape Morphing</title>
+<meta name="description" content="An image morphs between a hexagon, star, arrow, diamond, blob-ish octagon and a rectangle by transitioning CSS polygon() clip-paths that share the same number of points.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .shape { width: min(360px, 80vw); aspect-ratio: 1; background-size: cover; background-position: center; transition: clip-path .8s cubic-bezier(.7,0,.2,1); }
+  .shapes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .shapes button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+  .shapes button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="shape" role="img" aria-label="Image clipped to a changing shape"></div>
+  <div class="shapes" role="group" aria-label="Shape"></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const el = document.querySelector(".shape");
+  el.style.backgroundImage = `url(${Demo.artURL(720, 720, 5)})`;
+  // Every shape uses exactly 10 points so the browser can interpolate between any two.
+  const SHAPES = {
+    Square: "0% 0%, 50% 0%, 100% 0%, 100% 50%, 100% 100%, 100% 100%, 50% 100%, 0% 100%, 0% 50%, 0% 0%",
+    Star: "50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%",
+    Hexagon: "25% 5%, 50% 5%, 75% 5%, 100% 50%, 75% 95%, 75% 95%, 50% 95%, 25% 95%, 0% 50%, 25% 5%",
+    Arrow: "0% 30%, 60% 30%, 60% 0%, 100% 50%, 60% 100%, 60% 100%, 60% 70%, 0% 70%, 0% 50%, 0% 30%",
+    Diamond: "50% 0%, 75% 25%, 100% 50%, 100% 50%, 75% 75%, 50% 100%, 25% 75%, 0% 50%, 0% 50%, 25% 25%",
+    Octagon: "30% 0%, 70% 0%, 100% 30%, 100% 50%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 50%, 0% 30%",
+  };
+  const host = document.querySelector(".shapes"), names = Object.keys(SHAPES);
+  let i = 1, timer;
+  function set(name) {
+    el.style.clipPath = `polygon(${SHAPES[name]})`;
+    host.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.textContent === name));
+  }
+  names.forEach((n) => { const b = document.createElement("button"); b.textContent = n; b.onclick = () => { clearInterval(timer); set(n); }; host.appendChild(b); });
+  set(names[i]);
+  if (!Demo.reduced) timer = setInterval(() => set(names[(i = (i + 1) % names.length)]), 1800);
+</script>
+</body>
+</html>

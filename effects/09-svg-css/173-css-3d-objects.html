@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSS-only 3D Objects</title>
+<meta name="description" content="Real 3D built from flat divs and transforms: a shaded cube, a triangular prism and a little isometric room with a window, bed and lamp. Drag to rotate the scene.">
+<meta name="tech" content="CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .world { perspective: 1200px; width: 100%; height: 70vh; display: flex; gap: 8vw; justify-content: center; align-items: center; cursor: grab; touch-action: none; user-select: none; }
+  .obj { transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateY(var(--ry)); position: relative; }
+  .obj * { position: absolute; transform-style: preserve-3d; }
+  /* Cube: 6 faces, shading by face direction */
+  .cube { width: 140px; height: 140px; } .cube i { inset: 0; border: 1px solid rgb(255 255 255 / .25); }
+  .cube i:nth-child(1) { transform: translateZ(70px); background: #7c3aed; } .cube i:nth-child(2) { transform: rotateY(180deg) translateZ(70px); background: #4c1d95; }
+  .cube i:nth-child(3) { transform: rotateY(90deg) translateZ(70px); background: #6d28d9; } .cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(70px); background: #5b21b6; }
+  .cube i:nth-child(5) { transform: rotateX(90deg) translateZ(70px); background: #a78bfa; } .cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(70px); background: #2e1065; }
+  /* Triangular prism: 3 faces at 120° steps pushed out by the inradius (side / 2√3), plus triangle caps.
+     Each cap's centroid sits 17.32px off its box centre, hence the extra translateZ. */
+  .prism { width: 120px; height: 180px; } .prism i, .prism b { left: 50%; top: 50%; }
+  .prism i { width: 120px; height: 180px; margin: -90px 0 0 -60px; }
+  .prism i:nth-child(1) { transform: rotateY(0deg) translateZ(34.64px); background: #0891b2; } .prism i:nth-child(2) { transform: rotateY(120deg) translateZ(34.64px); background: #0e7490; } .prism i:nth-child(3) { transform: rotateY(240deg) translateZ(34.64px); background: #155e75; }
+  .prism b { width: 120px; height: 103.92px; margin: -51.96px 0 0 -60px; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .prism b:nth-of-type(1) { transform: translateY(-90px) translateZ(-17.32px) rotateX(90deg); background: #67e8f9; }
+  .prism b:nth-of-type(2) { transform: translateY(90px) translateZ(-17.32px) rotateX(90deg); background: #164e63; }
+  /* Room: every piece is centred on the room's origin, then placed with a 3D transform. */
+  .room { width: 220px; height: 220px; } .room > * { left: 50%; top: 50%; }
+  .room .floor { width: 220px; height: 220px; margin: -110px; transform: translateY(110px) rotateX(90deg); background: repeating-linear-gradient(90deg, #92400e 0 20px, #78350f 20px 22px); }
+  .room .wall-b { width: 220px; height: 220px; margin: -110px; transform: translateZ(-110px); background: #fde68a; }
+  .room .wall-l { width: 220px; height: 220px; margin: -110px; transform: translateX(-110px) rotateY(90deg); background: #fcd34d; }
+  /* Dollhouse trick: walls disappear when viewed from behind, so the interior is always visible. */
+  .room .wall-b, .room .wall-l, .room .window { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .room .window { width: 70px; height: 56px; margin: -28px 0 0 -35px; transform: translate3d(-30px, -40px, -109px); background: linear-gradient(#7dd3fc, #e0f2fe); border: 5px solid #fff; }
+  .room .rug { width: 90px; height: 60px; margin: -30px 0 0 -45px; transform: translate3d(-10px, 109px, 20px) rotateX(90deg); background: radial-gradient(#f472b6, #be185d); border-radius: 50%; }
+  .room .bed { width: 110px; height: 70px; margin: -35px 0 0 -55px; transform: translate3d(45px, 85px, -60px) rotateX(90deg); background: #f87171; }
+  .room .bed-front { width: 110px; height: 25px; margin: -12.5px 0 0 -55px; transform: translate3d(45px, 97.5px, -25px); background: #dc2626; }
+  .room .pillow { width: 34px; height: 20px; margin: -10px 0 0 -17px; transform: translate3d(70px, 84px, -82px) rotateX(90deg); background: #fff; border-radius: 6px; }
+  .room .lamp { width: 6px; height: 60px; margin: -30px 0 0 -3px; transform: translate3d(-80px, 80px, -80px); background: #1f2937; }
+  .room .shade { width: 34px; height: 24px; margin: -12px 0 0 -17px; transform: translate3d(-80px, 40px, -80px); background: #fbbf24; clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); }
+  .labels { display: flex; gap: 8vw; justify-content: center; color: var(--muted); font: 13px var(--mono); }
+</style>
+</head>
+<body>
+<main class="center" style="padding-top:60px"><div class="stack" style="width:100%">
+  <div class="world" style="--rx:-24deg;--ry:35deg">
+    <div class="obj cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="obj prism"><i></i><i></i><i></i><b></b><b></b></div>
+    <div class="obj room"><div class="floor"></div><div class="wall-b"></div><div class="wall-l"></div><div class="window"></div><div class="rug"></div><div class="bed"></div><div class="bed-front"></div><div class="pillow"></div><div class="lamp"></div><div class="shade"></div></div>
+  </div>
+  <div class="labels"><span>cube</span><span>prism</span><span>room</span></div>
+  <p class="hint">Drag to rotate everything · idle spin otherwise</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const world = document.querySelector(".world");
+  let rx = -24, ry = 35, dragging = false, lx, ly, idle = true;
+  world.addEventListener("pointerdown", (e) => { dragging = true; idle = false; lx = e.clientX; ly = e.clientY; world.setPointerCapture(e.pointerId); });
+  world.addEventListener("pointermove", (e) => { if (!dragging) return; ry += (e.clientX - lx) * 0.4; rx = Math.max(-80, Math.min(80, rx - (e.clientY - ly) * 0.4)); lx = e.clientX; ly = e.clientY; });
+  world.addEventListener("pointerup", () => { dragging = false; setTimeout(() => (idle = !dragging), 2000); });
+  (function loop() {
+    if (idle && !Demo.reduced) ry += 0.25;
+    world.style.setProperty("--rx", rx + "deg"); world.style.setProperty("--ry", ry + "deg");
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated SVG Gradients and Patterns</title>
+<meta name="description" content="Native SVG animation (SMIL) with no JavaScript: gradient stops that shift colour and position, a scrolling striped pattern, a rotating dot pattern and a breathing radial gradient.">
+<meta name="tech" content="SVG">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .pat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; width: min(1000px, 94vw); }
+  .pat-grid figure { margin: 0; display: grid; gap: 8px; }
+  .pat-grid svg { width: 100%; aspect-ratio: 4/3; border-radius: 14px; display: block; }
+  .pat-grid figcaption { color: var(--muted); font: 12px var(--mono); }
+</style>
+</head>
+<body>
+<main class="center"><div class="pat-grid">
+  <figure><svg viewBox="0 0 400 300" aria-label="Shifting gradient">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"><animate attributeName="stop-color" values="#7c3aed;#ec4899;#f59e0b;#7c3aed" dur="6s" repeatCount="indefinite"/></stop>
+      <stop offset=".5"><animate attributeName="offset" values=".3;.7;.3" dur="5s" repeatCount="indefinite"/><animate attributeName="stop-color" values="#22d3ee;#7c3aed;#22d3ee" dur="6s" repeatCount="indefinite"/></stop>
+      <stop offset="1"><animate attributeName="stop-color" values="#f59e0b;#22d3ee;#ec4899;#f59e0b" dur="6s" repeatCount="indefinite"/></stop>
+    </linearGradient></defs><rect width="400" height="300" fill="url(#sg)"/></svg><figcaption>&lt;animate&gt; on stop-color and offset</figcaption></figure>
+  <figure><svg viewBox="0 0 400 300" aria-label="Scrolling stripes">
+    <defs><pattern id="stripes" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="20" height="40" fill="#facc15"/><rect x="20" width="20" height="40" fill="#111"/>
+      <animateTransform attributeName="patternTransform" type="translate" additive="sum" from="0 0" to="40 0" dur="1s" repeatCount="indefinite"/>
+    </pattern></defs><rect width="400" height="300" fill="url(#stripes)"/><text x="200" y="160" text-anchor="middle" font-size="44" font-weight="900" fill="#111" stroke="#facc15" stroke-width="8" paint-order="stroke">CAUTION</text></svg><figcaption>animateTransform on patternTransform</figcaption></figure>
+  <figure><svg viewBox="0 0 400 300" aria-label="Rotating dots">
+    <defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="5" fill="#22d3ee"><animate attributeName="r" values="2;7;2" dur="2s" repeatCount="indefinite"/></circle>
+      <animateTransform attributeName="patternTransform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite"/></pattern></defs>
+    <rect width="400" height="300" fill="#0c1a24"/><rect width="400" height="300" fill="url(#dots)"/></svg><figcaption>pulsing dots, rotating pattern</figcaption></figure>
+  <figure><svg viewBox="0 0 400 300" aria-label="Breathing radial gradient">
+    <defs><radialGradient id="rg" cx=".5" cy=".5" r=".6"><animate attributeName="r" values=".3;.8;.3" dur="4s" repeatCount="indefinite"/><animate attributeName="cx" values=".3;.7;.3" dur="7s" repeatCount="indefinite"/>
+      <stop offset="0" stop-color="#fde68a"/><stop offset=".4" stop-color="#f472b6"/><stop offset="1" stop-color="#1e1b4b"/></radialGradient></defs>
+    <rect width="400" height="300" fill="url(#rg)"/></svg><figcaption>radialGradient r and cx</figcaption></figure>
+</div></main>
+<script src="../../assets/demo.js"></script>
+<script>
+  // SMIL ignores prefers-reduced-motion, so pause it explicitly when requested.
+  if (Demo.reduced) document.querySelectorAll("svg").forEach((s) => s.pauseAnimations());
+</script>
+</body>
+</html>

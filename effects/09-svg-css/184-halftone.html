@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Halftone Dot Effect</title>
+<meta name="description" content="Print-style halftone two ways: a CSS-only trick (blur + dot pattern + contrast) and an accurate canvas renderer with CMYK-like rotated screens whose dot size follows brightness.">
+<meta name="tech" content="CSS, Canvas">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .ht-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; width: min(1000px, 94vw); }
+  .ht-row figure { margin: 0; display: grid; gap: 8px; } .ht-row figcaption { color: var(--muted); font: 12px var(--mono); }
+  /* CSS-only: the image is blurred, a dot grid is screen-blended over it, then high contrast snaps the result to black/white dots. */
+  .css-ht { position: relative; aspect-ratio: 1; overflow: hidden; background: #fff; filter: contrast(18); }
+  .css-ht .img { position: absolute; inset: -10px; background-size: cover; background-position: center; filter: grayscale(1) brightness(1.7) contrast(.9) blur(3px); }
+  .css-ht::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, #000 .5px, #fff 7px) 0 0 / 10px 10px; mix-blend-mode: screen; }
+  canvas { width: 100%; aspect-ratio: 1; background: #fffdf6; border-radius: 4px; }
+  .ctl { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <div class="ht-row">
+    <figure><div class="css-ht"><div class="img"></div></div><figcaption>CSS only: blur + dots + contrast(18)</figcaption></figure>
+    <figure><canvas width="600" height="600"></canvas><figcaption>Canvas: rotated C/M/Y/K screens</figcaption></figure>
+  </div>
+  <label class="ctl">Dot spacing <input type="range" min="5" max="20" value="9" aria-label="Dot spacing"></label>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const art = Demo.art(600, 600, 4);
+  document.querySelector(".css-ht .img").style.backgroundImage = `url(${art.toDataURL()})`;
+  const cv = document.querySelector("canvas"), ctx = cv.getContext("2d");
+  const src = art.getContext("2d").getImageData(0, 0, 600, 600).data;
+  // Classic print angles for each ink screen.
+  const SCREENS = [["cyan", 15, (r, g, b) => 1 - r / 255], ["magenta", 75, (r, g, b) => 1 - g / 255], ["yellow", 0, (r, g, b) => 1 - b / 255], ["black", 45, (r, g, b) => 1 - Math.max(r, g, b) / 255]];
+  const COL = { cyan: "rgba(0,174,239,.85)", magenta: "rgba(236,0,140,.85)", yellow: "rgba(255,221,0,.85)", black: "rgba(20,20,20,.9)" };
+  function render(spacing) {
+    ctx.fillStyle = "#fffdf6"; ctx.fillRect(0, 0, 600, 600);
+    ctx.globalCompositeOperation = "multiply";
+    for (const [name, deg, amount] of SCREENS) {
+      const a = (deg * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+      ctx.fillStyle = COL[name]; ctx.beginPath();
+      // Walk a rotated grid that covers the canvas; sample the image under each dot centre.
+      for (let gy = -600; gy < 1200; gy += spacing) for (let gx = -600; gx < 1200; gx += spacing) {
+        const x = gx * cos - gy * sin, y = gx * sin + gy * cos;
+        if (x < 0 || y < 0 || x >= 600 || y >= 600) continue;
+        const i = ((y | 0) * 600 + (x | 0)) * 4;
+        let v = amount(src[i], src[i + 1], src[i + 2]);
+        if (name !== "black") v -= SCREENS[3][2](src[i], src[i + 1], src[i + 2]) * 0.6;   // simple under-colour removal
+        const r = Math.sqrt(Math.max(0, v)) * spacing * 0.62;
+        if (r > 0.3) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.283); }
+      }
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  const range = document.querySelector("input");
+  range.addEventListener("input", () => render(+range.value));
+  render(9);
+</script>
+</body>
+</html>

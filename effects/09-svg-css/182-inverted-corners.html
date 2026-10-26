@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inverted Rounded Corners</title>
+<meta name="description" content="Cards with concave notches and tab-like cut-outs made purely with radial-gradient masks, so a badge or button can nest into a scooped corner. Includes a ticket stub with side notches.">
+<meta name="tech" content="CSS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .inv-row { display: flex; gap: 36px; flex-wrap: wrap; justify-content: center; }
+  /* 1. Scooped corner: the mask is transparent in a circle at the bottom-right, opaque elsewhere. */
+  .scoop { --r: 46px; position: relative; width: 300px; height: 360px; border-radius: 24px; background-size: cover; background-position: center;
+           -webkit-mask: radial-gradient(circle var(--r) at 100% 100%, transparent 98%, #000); mask: radial-gradient(circle var(--r) at 100% 100%, transparent 98%, #000); }
+  .scoop-wrap { position: relative; }
+  .scoop-wrap .fab { position: absolute; right: 0; bottom: 0; width: 76px; height: 76px; border-radius: 50%; border: 0; background: #facc15; font-size: 26px; cursor: pointer; transform: translate(14px, 14px); transition: transform .3s; }
+  .scoop-wrap .fab:hover { transform: translate(14px, 14px) rotate(45deg); }
+  /* 2. Ticket: semicircle notches on both sides + perforation */
+  .ticket { width: 340px; height: 160px; display: grid; grid-template-columns: 1fr 110px; border-radius: 14px; background: linear-gradient(135deg, #7c3aed, #db2777); color: #fff;
+            -webkit-mask: radial-gradient(circle 16px at 230px 0, transparent 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 16px at 230px 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+            mask: radial-gradient(circle 16px at 230px 0, transparent 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 16px at 230px 100%, transparent 98%, #000) bottom / 100% 51% no-repeat; }
+  .ticket .main { padding: 20px 22px; } .ticket .main b { font-size: 24px; display: block; } .ticket .main span { opacity: .8; font-size: 13px; }
+  .ticket .stub { border-left: 2px dashed rgb(255 255 255 / .5); display: grid; place-items: center; font: 800 28px var(--mono); writing-mode: vertical-rl; }
+  /* 3. Tab: a tab rising from the top edge with concave shoulders */
+  .tab-card { position: relative; width: 300px; padding-top: 46px; }
+  .tab-card .tab { position: absolute; top: 0; left: 24px; height: 46px; padding: 0 22px; display: grid; place-items: center; background: #0e7490; border-radius: 16px 16px 0 0; font-weight: 600; }
+  .tab-card .tab::before, .tab-card .tab::after { content: ""; position: absolute; bottom: 0; width: 16px; height: 16px; background: radial-gradient(circle at var(--x) 0, transparent 15.5px, #0e7490 16px); }
+  .tab-card .tab::before { left: -16px; --x: 0; } .tab-card .tab::after { right: -16px; --x: 100%; }
+  .tab-card .body { background: #0e7490; border-radius: 0 20px 20px 20px; padding: 22px; min-height: 200px; }
+</style>
+</head>
+<body>
+<main class="center"><div class="inv-row">
+  <div class="scoop-wrap"><div class="scoop" role="img" aria-label="Card with scooped corner"></div><button class="fab" aria-label="Add">＋</button></div>
+  <div class="ticket" role="img" aria-label="Event ticket"><div class="main"><b>Synthwave Night</b><span>Fri 13 Nov · Door 8pm<br>Hall B · Row F</span></div><div class="stub">A-42</div></div>
+  <div class="tab-card"><div class="tab">Overview</div><div class="body"><p style="margin:0">The tab's concave shoulders are two small squares with a radial-gradient that is transparent inside a quarter circle.</p></div></div>
+</div></main>
+<script src="../../assets/demo.js"></script>
+<script>document.querySelector(".scoop").style.backgroundImage = `url(${Demo.artURL(600, 720, 6)})`;</script>
+</body>
+</html>

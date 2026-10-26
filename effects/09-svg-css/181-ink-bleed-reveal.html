@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ink Bleed Watercolour Reveal</title>
+<meta name="description" content="An image appears as if painted in watercolour: an SVG mask of growing circles is roughened by turbulence displacement so the edges bleed organically. Click to drop more ink.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  body { background: #f4efe4; }
+  .ink { width: min(820px, 94vw); aspect-ratio: 16/10; border-radius: 6px; cursor: pointer; display: block; }
+  .hint { color: #8c7b60; }
+  .ink-btn { padding: 10px 18px; border-radius: 999px; border: 1px solid #d9cdb5; background: #fffaf0; color: #5c4a2e; cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <svg class="ink" viewBox="0 0 800 500" role="img" aria-label="Watercolour reveal of a landscape">
+    <defs>
+      <filter id="bleed" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="4" seed="4" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="70" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feGaussianBlur in="d" stdDeviation="2"/>
+      </filter>
+      <mask id="inkmask"><g class="drops" filter="url(#bleed)" fill="#fff"></g></mask>
+    </defs>
+    <rect width="800" height="500" fill="#f4efe4"/>
+    <image class="pic" width="800" height="500" mask="url(#inkmask)" preserveAspectRatio="xMidYMid slice"/>
+  </svg>
+  <button class="ink-btn">Wash & repaint</button>
+  <p class="hint">Click on the paper to drop ink.</p>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const svg = document.querySelector(".ink"), drops = svg.querySelector(".drops"), NS = "http://www.w3.org/2000/svg";
+  svg.querySelector(".pic").setAttribute("href", Demo.artURL(1200, 750, 2));
+  function drop(x, y, max, delay = 0) {
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 0);
+    drops.appendChild(c);
+    const start = performance.now() + delay, dur = Demo.reduced ? 1 : 2200 + Math.random() * 1200;
+    (function grow(now) {
+      const t = Math.max(0, Math.min(1, (now - start) / dur));
+      c.setAttribute("r", max * (1 - Math.pow(1 - t, 3)));      // fast spread that slows, like pigment soaking in
+      if (t < 1) requestAnimationFrame(grow);
+    })(performance.now());
+  }
+  function paint() {
+    drops.replaceChildren();
+    const seeds = [[260, 220, 220], [560, 260, 260], [400, 120, 180], [700, 400, 200], [120, 400, 200], [420, 420, 200]];
+    seeds.forEach(([x, y, r], i) => drop(x, y, r, i * 450));
+  }
+  svg.addEventListener("click", (e) => {
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(svg.getScreenCTM().inverse());
+    drop(q.x, q.y, 120 + Math.random() * 80);
+  });
+  document.querySelector(".ink-btn").onclick = paint;
+  paint();
+</script>
+</body>
+</html>

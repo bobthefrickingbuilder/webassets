@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gooey Merge Effect</title>
+<meta name="description" content="The classic blur-plus-contrast goo: a trail of blobs follows the cursor and melts together, and a floating action button oozes out its menu items.">
+<meta name="tech" content="CSS, SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .goo-layer { position: fixed; inset: 0; filter: url(#goo3); pointer-events: none; }
+  .goo-layer i { position: absolute; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: #a3e635; }
+  .fab-wrap { position: fixed; right: 40px; bottom: 40px; width: 70px; height: 70px; filter: url(#goo3); }
+  .fab-wrap button { position: absolute; inset: 0; border: 0; border-radius: 50%; background: #f472b6; color: #fff; font-size: 26px; cursor: pointer; transition: transform .5s cubic-bezier(.3,1.5,.5,1); }
+  .fab-wrap .main { z-index: 2; }
+  .fab-wrap.open button:nth-of-type(2) { transform: translateY(-90px); } .fab-wrap.open button:nth-of-type(3) { transform: translateY(-180px); } .fab-wrap.open button:nth-of-type(4) { transform: translateY(-270px); }
+  .fab-wrap.open .main { transform: rotate(45deg); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="goo3"><feGaussianBlur in="SourceGraphic" stdDeviation="10" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo"/><feComposite in="SourceGraphic" in2="goo" operator="atop"/></filter></svg>
+<div class="goo-layer" aria-hidden="true"></div>
+<main class="center"><p class="hint" style="font-size:20px">Move the cursor, then open the pink button.</p></main>
+<div class="fab-wrap"><button aria-label="Share">✉</button><button aria-label="Like">♥</button><button aria-label="Save">★</button><button class="main" aria-label="Open actions" aria-expanded="false">+</button></div>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const layer = document.querySelector(".goo-layer");
+  const N = 12, blobs = Array.from({ length: N }, (_, i) => { const el = document.createElement("i"); const s = 1 - i / N * 0.7; el.dataset.s = s; layer.appendChild(el); return { el, x: innerWidth / 2, y: innerHeight / 2, s }; });
+  let mx = innerWidth / 2, my = innerHeight / 2;
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  (function loop() {
+    // Each blob chases the one in front: a tail that stretches when moving fast and merges when still.
+    let px = mx, py = my;
+    for (const b of blobs) {
+      b.x += (px - b.x) * 0.35; b.y += (py - b.y) * 0.35;
+      b.el.style.transform = `translate(${b.x}px, ${b.y}px) scale(${b.s})`;
+      px = b.x; py = b.y;
+    }
+    requestAnimationFrame(loop);
+  })();
+  const wrap = document.querySelector(".fab-wrap"), main = wrap.querySelector(".main");
+  main.onclick = () => { const o = wrap.classList.toggle("open"); main.setAttribute("aria-expanded", o); };
+</script>
+</body>
+</html>

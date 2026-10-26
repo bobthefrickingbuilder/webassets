@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duotone and Gradient-map Filters</title>
+<meta name="description" content="Spotify-style duotone and multi-stop gradient maps applied to any image with SVG feComponentTransfer tables, generated from colour pickers and switchable presets.">
+<meta name="tech" content="SVG, JS">
+<meta name="complexity" content="1">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; width: min(1000px, 94vw); }
+  .duo figure { margin: 0; border-radius: 14px; overflow: hidden; position: relative; }
+  .duo img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; transition: filter .3s; }
+  .duo figcaption { position: absolute; left: 10px; bottom: 10px; font: 600 12px var(--mono); background: rgb(0 0 0 / .5); padding: 4px 8px; border-radius: 6px; }
+  .pickers { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center; color: var(--muted); font-size: 14px; }
+  .pickers input { width: 44px; height: 34px; border: 0; background: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs class="defs"></defs></svg>
+<main class="center"><div class="stack">
+  <div class="duo"></div>
+  <div class="pickers">Custom duotone: shadows <input type="color" value="#1e1b4b" class="c1" aria-label="Shadow colour"> highlights <input type="color" value="#f9a8d4" class="c2" aria-label="Highlight colour"></div>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const defs = document.querySelector(".defs"), host = document.querySelector(".duo");
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  /* A gradient map converts the image to luminance, then maps dark→light through the given colours.
+     feComponentTransfer "table" does the mapping per channel with linear interpolation between entries. */
+  function gradientMap(id, colors) {
+    const rgb = colors.map(hex);
+    const table = (k) => rgb.map((c) => c[k].toFixed(3)).join(" ");
+    let f = document.getElementById(id);
+    if (!f) { defs.insertAdjacentHTML("beforeend", `<filter id="${id}" color-interpolation-filters="sRGB"></filter>`); f = document.getElementById(id); }
+    f.innerHTML = `<feColorMatrix type="matrix" values=".33 .33 .33 0 0  .33 .33 .33 0 0  .33 .33 .33 0 0  0 0 0 1 0"/>
+      <feComponentTransfer><feFuncR type="table" tableValues="${table(0)}"/><feFuncG type="table" tableValues="${table(1)}"/><feFuncB type="table" tableValues="${table(2)}"/></feComponentTransfer>`;
+  }
+  const presets = [["Original", null], ["Spotify", ["#1e3264", "#1ed760"]], ["Sunset", ["#2d0b3f", "#f97316", "#fde68a"]], ["Noir", ["#000000", "#ffffff"]], ["Cyber", ["#0b0221", "#ff00c8", "#00f0ff"]], ["Custom", ["#1e1b4b", "#f9a8d4"]]];
+  const src = Demo.artURL(500, 500, 0);
+  presets.forEach(([name, cols], i) => {
+    if (cols) gradientMap("gm" + i, cols);
+    host.insertAdjacentHTML("beforeend", `<figure><img alt="${name} treatment" src="${src}" style="${cols ? `filter:url(#gm${i})` : ""}"><figcaption>${name}</figcaption></figure>`);
+  });
+  const [c1, c2] = [document.querySelector(".c1"), document.querySelector(".c2")];
+  const update = () => gradientMap("gm5", [c1.value, c2.value]);
+  c1.addEventListener("input", update); c2.addEventListener("input", update);
+</script>
+</body>
+</html>

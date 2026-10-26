@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Self-drawing Line Art</title>
+<meta name="description" content="A single-weight landscape illustration (mountains, sun, river, trees, birds) that draws itself stroke by stroke with staggered timing, then fills with soft colour.">
+<meta name="tech" content="SVG, CSS, JS">
+<meta name="complexity" content="2">
+<link rel="stylesheet" href="../../assets/demo.css">
+<style>
+  .art { width: min(900px, 94vw); }
+  .art path, .art circle, .art line { fill: none; stroke: #f5f0e6; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .art .fill { fill-opacity: 0; transition: fill-opacity 1.2s; }
+  .art.filled .fill { fill-opacity: 1; }
+  button { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="center"><div class="stack">
+  <svg class="art" viewBox="0 0 900 500" role="img" aria-label="Line drawing of mountains, a sun, a river, trees and birds">
+    <circle class="fill" cx="640" cy="150" r="60" style="fill:#f59e0b55"/>
+    <path d="M590 150 h-30 M720 150 h30 M640 70 v-25 M640 230 v25 M585 95 l-18 -18 M695 95 l18 -18" />
+    <path class="fill" style="fill:#4c1d9555" d="M0 380 L160 200 L240 290 L370 120 L520 330 L600 260 L760 380 L900 300 L900 500 L0 500 Z"/>
+    <path d="M370 120 L400 165 L380 170 L410 200 M160 200 L180 230 L165 235"/>
+    <path class="fill" style="fill:#0e749055" d="M0 430 C 150 400, 260 460, 420 430 S 700 380, 900 420 L900 500 L0 500 Z"/>
+    <path d="M300 470 C 380 455, 450 480, 540 462 M120 455 C 170 448, 210 458, 250 452"/>
+    <path d="M780 420 L780 360 M760 380 L780 330 L800 380 M765 400 L780 360 L795 400"/>
+    <path d="M840 430 L840 380 M824 395 L840 352 L856 395 M828 415 L840 380 L852 415"/>
+    <path d="M90 420 L90 370 M74 386 L90 340 L106 386 M78 404 L90 370 L102 404"/>
+    <path d="M200 120 q 12 -12 24 0 q 12 -12 24 0 M260 90 q 9 -9 18 0 q 9 -9 18 0 M310 130 q 8 -8 16 0 q 8 -8 16 0"/>
+  </svg>
+  <button>Draw again</button>
+</div></main>
+
+<script src="../../assets/demo.js"></script>
+<script>
+  const svg = document.querySelector(".art");
+  const strokes = [...svg.querySelectorAll("path, circle")];
+  function draw() {
+    svg.classList.remove("filled");
+    let delay = 0;
+    strokes.forEach((el) => {
+      const len = el.getTotalLength();
+      el.getAnimations().forEach((a) => a.cancel());
+      el.style.strokeDasharray = len;
+      // Longer strokes take longer, like a real pen; each starts as the previous is nearly done.
+      const dur = Demo.reduced ? 1 : Math.max(400, len * 2.2);
+      el.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: dur, delay, easing: "cubic-bezier(.5,0,.3,1)", fill: "both" });
+      delay += dur * 0.55;
+    });
+    setTimeout(() => svg.classList.add("filled"), Demo.reduced ? 0 : delay + 300);
+  }
+  document.querySelector("button").onclick = draw;
+  draw();
+</script>
+</body>
+</html>
