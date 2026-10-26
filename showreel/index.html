@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Web Assets Showreel</title>
+<meta name="description" content="An auto-playing showreel of every effect in the collection. A scripted cursor demonstrates each interaction before moving on.">
+<link rel="stylesheet" href="../assets/demo.css">
+<link rel="stylesheet" href="../assets/fonts/flex.css">
+<style>
+  html, body { height: 100%; overflow: hidden; background: #000; }
+  .stage { position: fixed; inset: 0; overflow: hidden; font-family: "Flex", var(--font); }
+  .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); opacity: 0; transition: opacity .45s ease; pointer-events: none; }
+  .stage iframe.on { opacity: 1; }
+  .paused .stage iframe.on { pointer-events: auto; }
+
+  /* Fake cursor, click ripple and key HUD */
+  .sr-cursor { position: absolute; left: 0; top: 0; z-index: 20; pointer-events: none; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .45)); transition: opacity .2s; will-change: transform; }
+  .sr-cursor.scrolling::after { content: ""; position: absolute; left: 24px; top: 22px; width: 12px; height: 18px; border: 2px solid #fff; border-radius: 7px; box-shadow: 0 0 0 1px #111; background: linear-gradient(#fff 0 0) center 3px / 2px 5px no-repeat; animation: wheel .6s ease-in-out infinite; }
+  @keyframes wheel { 50% { background-position: center 9px; } }
+  .sr-ripple { position: absolute; z-index: 19; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .4), inset 0 0 0 1px rgb(0 0 0 / .4); pointer-events: none; animation: ripple .6s cubic-bezier(.2, .7, .3, 1) forwards; }
+  @keyframes ripple { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.3); opacity: 0; } }
+  .sr-keys { position: absolute; z-index: 21; left: 50%; bottom: 42px; translate: -50% 0; display: flex; gap: 8px; pointer-events: none; }
+  .sr-keys kbd { font: 700 26px/1 "Flex", var(--font); color: #fff; min-width: 54px; text-align: center; padding: 12px 16px; border-radius: 12px; background: rgb(12 13 18 / .82); border: 1px solid rgb(255 255 255 / .18); box-shadow: 0 10px 30px rgb(0 0 0 / .4), inset 0 -3px 0 rgb(255 255 255 / .08); animation: key .25s cubic-bezier(.3, 1.6, .5, 1); transition: opacity .35s, translate .35s; }
+  .sr-keys kbd.out { opacity: 0; translate: 0 -12px; }
+  @keyframes key { from { scale: .6; opacity: 0; } }
+
+  /* Lower third */
+  .tag { position: absolute; z-index: 15; left: 36px; bottom: 34px; display: grid; gap: 2px; padding: 14px 22px 14px 18px; border-radius: 16px; background: rgb(10 11 16 / .78); backdrop-filter: blur(14px) saturate(1.4); border: 1px solid rgb(255 255 255 / .1); box-shadow: 0 18px 50px rgb(0 0 0 / .45); max-width: min(760px, 70vw); transform: translateX(calc(-100% - 60px)); transition: transform .55s cubic-bezier(.2, .9, .2, 1); pointer-events: none; }
+  .tag.on { transform: none; }
+  .tag::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--c, var(--accent)); }
+  .tag .meta { display: flex; gap: 10px; align-items: baseline; font: 600 13px/1.2 var(--mono); color: #aab0c0; letter-spacing: .04em; text-transform: uppercase; }
+  .tag .meta b { color: var(--c, var(--accent)); font-weight: 700; }
+  .tag .name { font-size: 30px; font-weight: 720; font-stretch: 105%; letter-spacing: -.01em; color: #fff; line-height: 1.15; }
+  .tag .tech { font-size: 14px; color: #9aa1b3; }
+
+  /* Title cards */
+  .card { position: absolute; inset: 0; z-index: 30; display: grid; place-content: center; justify-items: center; text-align: center; gap: 10px; background: radial-gradient(1200px 700px at 50% 120%, color-mix(in srgb, var(--c, #7c5cff) 26%, transparent), transparent 70%), #08090d; opacity: 0; visibility: hidden; transition: opacity .5s, visibility 0s .5s; }
+  .card.on { opacity: 1; visibility: visible; transition: opacity .5s; }
+  .card .num { font: 800 180px/0.9 "Flex", var(--font); font-stretch: 140%; color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--c, #7c5cff) 80%, #fff); opacity: .9; }
+  .card h2 { margin: 0; font-size: 92px; line-height: 1; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+  .card p { margin: 6px 0 0; font-size: 24px; color: #a0a7b8; }
+  .card .bar { width: 0; height: 4px; border-radius: 4px; margin-top: 18px; background: linear-gradient(90deg, var(--c, #7c5cff), #fff); }
+  .card.on .bar { animation: bar 1.8s .2s cubic-bezier(.3, .8, .2, 1) forwards; }
+  @keyframes bar { to { width: 420px; } }
+  .card.on > * { animation: rise .8s cubic-bezier(.2, .9, .2, 1) both; }
+  .card.on > :nth-child(2) { animation-delay: .08s; } .card.on > :nth-child(3) { animation-delay: .16s; }
+  .card.on > .bar { animation: rise .8s .2s both, bar 1.8s .3s cubic-bezier(.3, .8, .2, 1) forwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(40px); } }
+  .card .title { font-size: 150px; line-height: .9; font-weight: 850; letter-spacing: -.05em; background: linear-gradient(100deg, #fff 20%, var(--accent) 50%, var(--accent-2) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .progress { position: absolute; z-index: 25; left: 0; bottom: 0; height: 3px; width: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3)); transition: transform .6s; }
+
+  /* Live controls (hidden while recording) */
+  .ui { position: fixed; z-index: 40; top: 14px; right: 14px; display: flex; gap: 6px; align-items: center; padding: 6px; border-radius: 14px; background: rgb(12 13 18 / .82); backdrop-filter: blur(10px); border: 1px solid rgb(255 255 255 / .12); font: 13px var(--font); color: #c9cedb; opacity: 0; transition: opacity .3s; }
+  .ui.show, .ui:focus-within, .paused .ui { opacity: 1; }
+  .ui button, .ui select { background: rgb(255 255 255 / .06); border: 1px solid transparent; color: inherit; border-radius: 9px; padding: 7px 11px; cursor: pointer; font: inherit; }
+  .ui button:hover, .ui select:hover { background: rgb(255 255 255 / .12); }
+  .ui .count { font-family: var(--mono); padding: 0 6px; min-width: 76px; text-align: center; }
+  .ui a { color: inherit; text-decoration: none; padding: 7px 9px; }
+  .notice { position: fixed; inset: 0; z-index: 50; display: none; place-content: center; text-align: center; padding: 24px; background: var(--bg); color: var(--fg); font-size: 18px; }
+  .notice code { background: var(--bg-2); padding: 2px 8px; border-radius: 6px; }
+  .record .ui { display: none; }
+  @media (max-width: 1500px) { .tag, .sr-keys, .card > * { zoom: .68; } .sr-cursor svg { zoom: .85; } }
+</style>
+</head>
+<body>
+<div class="stage" aria-live="off">
+  <div class="tag" aria-hidden="true"><div class="meta"><b class="n"></b><span class="cat"></span></div><div class="name"></div><div class="tech"></div></div>
+  <div class="card" aria-hidden="true"></div>
+  <div class="progress"></div>
+</div>
+<div class="ui" role="toolbar" aria-label="Showreel controls">
+  <a href="../index.html" title="Back to gallery">←</a>
+  <button class="prev" title="Previous (←)" aria-label="Previous">⏮</button>
+  <button class="play" title="Pause (Space)" aria-label="Pause">⏸</button>
+  <button class="next" title="Next (→)" aria-label="Next">⏭</button>
+  <span class="count"></span>
+  <select class="jump" aria-label="Jump to category"></select>
+</div>
+<div class="notice"><div><p>The showreel drives each demo inside a frame, which browsers only allow over <code>http://</code>.</p><p>From the repository root run <code>python3 -m http.server</code> and open <code>http://localhost:8000/showreel/</code>.</p></div></div>
+
+<script src="../effects/manifest.js"></script>
+<script src="driver.js"></script>
+<script src="scenes.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const RECORD = params.has("record");
+  if (RECORD) document.body.classList.add("record");
+  const emit = (type, data = {}) => window.__srEvent && window.__srEvent(JSON.stringify({ type, ...data }));
+
+  const CAT_COLORS = ["#7c5cff", "#f472b6", "#22d3ee", "#facc15", "#fb7185", "#34d399", "#60a5fa", "#a78bfa", "#f97316", "#2dd4bf", "#e879f9", "#a3e635", "#38bdf8"];
+  const cats = Object.keys(window.EFFECT_CATEGORIES);
+  const color = (cat) => CAT_COLORS[cats.indexOf(cat) % CAT_COLORS.length];
+
+  // --- Playlist: intro, then a title card before each category, then outro ---
+  const num = (e) => +e.num;
+  const from = +params.get("from") || 1, to = +params.get("to") || 1e9;
+  const only = params.get("only") ? params.get("only").split(",").map(Number) : null;
+  const effects = window.EFFECTS.filter((e) => (only ? only.includes(num(e)) : num(e) >= from && num(e) <= to) && (!params.get("cat") || e.category === params.get("cat")));
+  const seq = [];
+  if (params.get("intro") !== "0" && !only) seq.push({ kind: "intro" });
+  let lastCat = null;
+  for (const e of effects) {
+    if (e.category !== lastCat && params.get("cards") !== "0") seq.push({ kind: "cat", cat: e.category });
+    lastCat = e.category;
+    seq.push({ kind: "fx", e });
+  }
+  if (params.get("outro") !== "0" && !only) seq.push({ kind: "outro" });
+
+  const stage = document.querySelector(".stage");
+  const tag = document.querySelector(".tag");
+  const card = document.querySelector(".card");
+  const progress = document.querySelector(".progress");
+  const driver = new ShowreelDriver(stage);
+  let frame = null, idx = 0;
+
+  const SCENES = window.SHOWREEL_SCENES || {};
+  const POINTER_OPS = new Set(["move", "hover", "click", "dbl", "down", "drag", "path", "set", "select", "type", "scroll", "wheel", "jump"]);
+  function sceneFor(e) {
+    const id = String(e.num).padStart(3, "0");
+    const s = SCENES[id];
+    const actions = !s ? [["wait", 3000]] : Array.isArray(s) ? s : s.a;
+    return { actions, cursor: actions.some((a) => POINTER_OPS.has(a[0])) };
+  }
+
+  function loadFrame(e) {
+    const f = document.createElement("iframe");
+    f.setAttribute("allow", "autoplay; camera; microphone; fullscreen; gamepad; accelerometer; gyroscope");
+    f.setAttribute("title", e.title);
+    f.tabIndex = -1;
+    f.src = "../" + e.path + "?preview";
+    stage.insertBefore(f, tag);
+    return new Promise((res) => { f.onload = () => res(f); setTimeout(() => res(f), 8000); });
+  }
+
+  function showCard(html, c) {
+    card.style.setProperty("--c", c || "#7c5cff");
+    card.innerHTML = html;
+    card.classList.remove("on");
+    void card.offsetWidth;
+    card.classList.add("on");
+  }
+
+  async function play(item, gen) {
+    progress.style.transform = `scaleX(${idx / Math.max(1, seq.length - 1)})`;
+    if (item.kind === "intro") {
+      driver.hidden = true; driver.render();
+      showCard(`<div class="title">Web Assets</div><p>${window.EFFECTS.length} web animations &amp; interactive features</p><p style="font-size:18px">${cats.length} categories · one self-contained HTML file each · no build step</p>`);
+      return driver.sleep(3600, gen);
+    }
+    if (item.kind === "outro") {
+      tag.classList.remove("on");
+      driver.hidden = true; driver.render();
+      showCard(`<div class="title" style="font-size:120px">${window.EFFECTS.length} effects</div><p>Every one a single HTML file. Open <b style="color:#fff">index.html</b> to explore.</p><div class="bar"></div>`);
+      await driver.sleep(4200, gen);
+      return;
+    }
+    if (item.kind === "cat") {
+      tag.classList.remove("on");
+      const list = window.EFFECTS.filter((e) => e.category === item.cat);
+      const n = cats.indexOf(item.cat) + 1;
+      showCard(`<div class="num">${String(n).padStart(2, "0")}</div><h2>${window.EFFECT_CATEGORIES[item.cat]}</h2><p>${list.length} effects · #${String(list[0].num).padStart(3, "0")}–#${String(list.at(-1).num).padStart(3, "0")}</p><div class="bar"></div>`, color(item.cat));
+      return driver.sleep(2600, gen);
+    }
+    // effect
+    const e = item.e, id = String(e.num).padStart(3, "0");
+    emit("scene", { id, title: e.title });
+    const scene = sceneFor(e);
+    const old = frame;
+    tag.classList.remove("on");
+    frame = await loadFrame(e);
+    if (gen !== driver.gen) { frame.remove(); frame = old; throw new ShowreelSkip(); }
+    driver.attach(frame);
+    await driver.sleep(250, gen);
+    frame.classList.add("on");
+    card.classList.remove("on");
+    if (old) setTimeout(() => old.remove(), 500);
+    tag.style.setProperty("--c", color(e.category));
+    tag.querySelector(".n").textContent = "#" + id;
+    tag.querySelector(".cat").textContent = window.EFFECT_CATEGORIES[e.category];
+    tag.querySelector(".name").textContent = e.title;
+    tag.querySelector(".tech").textContent = e.tech;
+    driver.hidden = !scene.cursor;
+    driver.render();
+    await driver.sleep(350, gen);
+    tag.classList.add("on");
+    emit("mark", { id, at: "start" });
+    for (const a of scene.actions) {
+      await driver.step(a, gen);
+      if (a[0] === "mark") emit("mark", { id, at: a[1] });
+    }
+    emit("mark", { id, at: "end" });
+    await driver.sleep(450, gen);
+  }
+
+  // --- Main loop -------------------------------------------------------------------------------
+  async function main() {
+    // Same-origin access to the frames is required to drive them.
+    try { const t = await loadFrame(window.EFFECTS[0]); void t.contentDocument.body; t.remove(); }
+    catch (err) { document.querySelector(".notice").style.display = "grid"; return; }
+    if (params.get("start")) idx = Math.max(0, seq.findIndex((s) => s.kind === "fx" && num(s.e) === +params.get("start")) - 1);
+    while (idx < seq.length) {
+      const gen = driver.gen;
+      updateUI();
+      try { await play(seq[idx], gen); idx++; }
+      catch (err) {
+        if (!(err instanceof ShowreelSkip)) { console.error(err); emit("error", { message: String(err && err.message) }); idx++; }
+      }
+    }
+    emit("done");
+    if (!RECORD && params.get("loop") !== "0") { idx = 0; main(); }
+  }
+
+  // --- Live controls ---------------------------------------------------------------------------
+  const ui = document.querySelector(".ui"), playBtn = ui.querySelector(".play"), jump = ui.querySelector(".jump");
+  function updateUI() {
+    const s = seq[idx];
+    const n = s && s.kind === "fx" ? String(s.e.num).padStart(3, "0") : "—";
+    ui.querySelector(".count").textContent = `${n} / ${window.EFFECTS.length}`;
+    if (s && s.kind !== "intro") jump.value = s.kind === "outro" ? "" : (s.cat || s.e.category);
+  }
+  jump.innerHTML = '<option value="">Jump to…</option>' + cats.map((c) => `<option value="${c}">${window.EFFECT_CATEGORIES[c]}</option>`).join("");
+  jump.onchange = () => { const i = seq.findIndex((s) => s.kind === "cat" && s.cat === jump.value); if (i >= 0) goto(i); };
+  function goto(i) { idx = Math.max(0, Math.min(seq.length - 1, i)); setPaused(false); driver.cancel(); }
+  function step(dir) {
+    // step over title cards so prev/next always land on an effect
+    let i = idx + dir;
+    while (seq[i] && seq[i].kind === "cat") i += dir;
+    goto(i);
+  }
+  function setPaused(p) {
+    driver.paused = p;
+    document.body.classList.toggle("paused", p);
+    playBtn.textContent = p ? "▶" : "⏸";
+    playBtn.setAttribute("aria-label", p ? "Play" : "Pause");
+  }
+  ui.querySelector(".prev").onclick = () => step(-1);
+  ui.querySelector(".next").onclick = () => step(1);
+  playBtn.onclick = () => setPaused(!driver.paused);
+  addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("select")) return;
+    if (e.key === " ") { e.preventDefault(); setPaused(!driver.paused); }
+    else if (e.key === "ArrowRight") step(1);
+    else if (e.key === "ArrowLeft") step(-1);
+    else if (e.key === "f") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+  let hideTimer;
+  addEventListener("pointermove", () => { ui.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ui.classList.remove("show"), 2200); });
+
+  main();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ Open `index.html` in a browser to explore them. There's no build step and no ins
 
 ```
 index.html               Gallery: search, category filters, live hover previews
+showreel/                Auto-playing showreel: a scripted cursor demonstrates every effect
 effects/
   manifest.js            Generated index of every effect (see scripts/)
   01-scroll/ … 13-components/   One HTML file per effect, numbered 001–250
@@ -24,6 +25,7 @@ scripts/
   build-manifest.mjs     Rebuilds effects/manifest.js from each page's <title>/<meta> tags
   check.mjs              Loads every page in headless Chromium, interacts with it and reports errors
   shot.mjs               Screenshots a page
+  record-showreel.mjs    Renders the showreel to an MP4, frame by frame
 ```
 
 | # | Category | Count |
@@ -43,6 +45,20 @@ scripts/
 | 237–250 | Animated UI Components | 14 |
 
 `FEATURE_CATALOG.md` is the original research list these were built from.
+
+## Showreel
+
+`showreel/index.html` plays every effect in turn. A scripted fake cursor hovers, clicks, drags, scrolls and types so each interaction is shown, with a title card per category and a caption naming each effect. The scripts live in `showreel/scenes.js`, one entry per effect. `showreel/driver.js` turns them into synthetic pointer, wheel and keyboard events.
+
+The showreel drives each demo inside a same-origin frame, so serve the repository over HTTP:
+
+```
+python3 -m http.server      # then open http://localhost:8000/showreel/
+```
+
+Space pauses, ← and → step between effects, and the menu jumps to a category. Use `?start=120` to begin at an effect, `?cat=10-webgl` to play one category, or `?only=73,85` to play a few effects.
+
+To render it as a video, run `node scripts/record-showreel.mjs --out showreel.mp4 --jobs 3`. Chromium renders with virtual time, one frame per 1/30 s, so heavy shaders stay smooth however long a frame takes to draw. `--jobs` splits the reel at category boundaries and renders the parts in parallel. This needs Playwright's `chromium-headless-shell` (or `CHROME_BIN`) and `ffmpeg`.
 
 ## Conventions
 
