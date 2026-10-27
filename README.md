@@ -58,7 +58,7 @@ python3 -m http.server      # then open http://localhost:8000/showreel/
 
 Space pauses, ← and → step between effects, and the menu jumps to a category. Use `?start=120` to begin at an effect, `?cat=10-webgl` to play one category, or `?only=73,85` to play a few effects.
 
-To render it as a video, run `node scripts/record-showreel.mjs --out showreel.mp4 --jobs 3`. Chromium renders with virtual time, one frame per 1/30 s, so heavy shaders stay smooth however long a frame takes to draw. `--jobs` splits the reel at category boundaries and renders the parts in parallel. This needs Playwright's `chromium-headless-shell` (or `CHROME_BIN`) and `ffmpeg`.
+To render it as a video, run `node scripts/record-showreel.mjs --out showreel.mp4 --jobs 3`. Chromium renders with virtual time, one frame per 1/30 s, so heavy shaders stay smooth however long a frame takes to draw. `--jobs` renders one segment per category, that many at a time, and keeps finished segments beside the output, so re-running an interrupted render resumes it. This needs Playwright's `chromium-headless-shell` (or `CHROME_BIN`) and `ffmpeg`.
 
 ## Conventions
 

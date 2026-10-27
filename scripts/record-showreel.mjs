@@ -8,7 +8,7 @@
 // Needs Playwright's chromium-headless-shell (or set CHROME_BIN) and ffmpeg on PATH.
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,37 +27,33 @@ const EXTRA = opt("query", "");
 // the demos (designed for laptop screens) the way a visitor sees them.
 const W = 1920, H = 1080, CSS_W = 1280, CSS_H = 720;
 
-// --- Parallel mode: split at category boundaries, record segments, then concatenate ---------
+// --- Parallel mode: one segment per category, JOBS at a time, then concatenate -------------
+// Finished segments are kept in --segdir (default: next to --out), so an interrupted render
+// picks up where it stopped when the same command is run again.
 if (JOBS > 1) {
   const win = {};
   new Function("window", readFileSync(join(root, "effects/manifest.js"), "utf8"))(win);
   const fx = win.EFFECTS.filter((e) => +e.num >= FROM && +e.num <= TO);
   const groups = [];
   for (const e of fx) { const g = groups.at(-1); if (g && g.cat === e.category) g.list.push(e); else groups.push({ cat: e.category, list: [e] }); }
-  // greedy contiguous partition by effect count (heavier WebGL categories weigh double)
-  const weight = (g) => g.list.length * (/webgl|backgrounds/.test(g.cat) ? 2 : 1);
-  const total = groups.reduce((a, g) => a + weight(g), 0);
-  const parts = [];
-  let acc = 0, cur = [];
-  for (const g of groups) {
-    cur.push(g); acc += weight(g);
-    if (acc >= (total / JOBS) * (parts.length + 1) && parts.length < JOBS - 1) { parts.push(cur); cur = []; }
-  }
-  if (cur.length) parts.push(cur);
-  const dir = mkdtempSync(join(tmpdir(), "showreel-"));
-  const segs = parts.map((p, i) => ({
-    file: join(dir, `seg${i}.mp4`),
-    from: +p[0].list[0].num, to: +p.at(-1).list.at(-1).num,
-    query: [i > 0 ? "intro=0" : "", i < parts.length - 1 ? "outro=0" : ""].filter(Boolean).join("&"),
+  const dir = opt("segdir", OUT.replace(/\.mp4$/, "") + ".parts");
+  mkdirSync(dir, { recursive: true });
+  const segs = groups.map((g, i) => ({
+    i, file: join(dir, `seg${String(i).padStart(2, "0")}-${g.list[0].num}-${g.list.at(-1).num}.mp4`),
+    from: +g.list[0].num, to: +g.list.at(-1).num,
+    weight: g.list.length * (/webgl|backgrounds/.test(g.cat) ? 3 : 1),
+    query: [i > 0 ? "intro=0" : "", i < groups.length - 1 ? "outro=0" : ""].filter(Boolean).join("&"),
   }));
-  console.log(segs.map((s) => `#${s.from}-#${s.to}`).join("  "));
-  await Promise.all(segs.map((s, i) => new Promise((res, rej) => {
-    const args = [fileURLToPath(import.meta.url), "--out", s.file, "--from", s.from, "--to", s.to, "--fps", FPS, "--scale", SCALE, "--crf", CRF, "--query", [s.query, EXTRA].filter(Boolean).join("&")];
-    if (SHEET) args.push("--sheet", SHEET);
+  const todo = segs.filter((s) => !existsSync(s.file)).sort((x, y) => y.weight - x.weight);
+  console.log(`${segs.length} segments, ${segs.length - todo.length} already done, rendering ${todo.length} in ${dir}`);
+  const one = (s) => new Promise((res, rej) => {
+    const part = s.file.replace(/\.mp4$/, ".part.mp4");
+    const args = [fileURLToPath(import.meta.url), "--out", part, "--from", s.from, "--to", s.to, "--fps", FPS, "--scale", SCALE, "--crf", CRF, "--query", [s.query, EXTRA].filter(Boolean).join("&")];
     const p = spawn(process.execPath, args.map(String), { stdio: ["ignore", "pipe", "inherit"] });
-    p.stdout.on("data", (d) => process.stdout.write(String(d).replace(/^(?=.)/gm, `[${i}] `)));
-    p.on("exit", (c) => (c ? rej(new Error("segment " + i + " failed")) : res()));
-  })));
+    p.stdout.on("data", (d) => process.stdout.write(String(d).replace(/^(?=.)/gm, `[${s.i}] `)));
+    p.on("exit", (c) => { if (c) return rej(new Error("segment " + s.i + " failed")); renameSync(part, s.file); res(); });
+  });
+  await Promise.all(Array.from({ length: Math.min(JOBS, todo.length) }, async () => { while (todo.length) await one(todo.shift()); }));
   writeFileSync(join(dir, "list.txt"), segs.map((s) => `file '${s.file}'`).join("\n"));
   await run("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", join(dir, "list.txt"), "-c", "copy", "-movflags", "+faststart", OUT]);
   rmSync(dir, { recursive: true, force: true });
